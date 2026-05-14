@@ -4,158 +4,286 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NeighbourPOS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='0.9em'%20font-size='90'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='0.9em'%20font-size='90'%3E%F0%9F%8F%AA%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#0b0b0c;
-      --fg:#f3f4f6;
-      --muted:#a1a1aa;
-      --line:#232325;
-      --panel:rgba(255,255,255,.02);
+      --bg:#ffffff;
+      --fg:#09090b;
+      --muted:#52525b;
+      --muted2:#71717a;
+      --line:#e4e4e7;
+      --line2:#d4d4d8;
+      --chip:#ffffff;
+      --chipText:#27272a;
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
       margin:0;
-      background:linear-gradient(180deg,#080809,#0b0b0c);
+      background:var(--bg);
       color:var(--fg);
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       font-feature-settings:"ss01" 1,"cv10" 1;
     }
-    a{color:inherit;text-decoration:none}
-    a:hover{text-decoration:underline}
-    .wrap{max-width:980px;margin:0 auto;padding:28px}
-    .topbar{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
-    .brand{display:flex;gap:12px;align-items:flex-start}
-    .badge{
-      font-weight:900;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
-      border-radius:12px;
-      padding:6px 10px;
-      letter-spacing:-.03em;
-      line-height:1;
+    a{color:inherit}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}
+    .skip:focus{position:fixed;left:16px;top:16px;z-index:50;display:inline-block;border:1px solid var(--line2);background:#fff;border-radius:8px;padding:8px 10px;font-size:14px}
+    .header{
+      position:sticky;top:0;z-index:40;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.85);
+      backdrop-filter: blur(10px);
     }
-    .brandname{font-weight:900;letter-spacing:-.03em}
-    .ver{color:var(--muted);font-size:12px;margin-top:2px;line-height:1.4}
-    h1{margin:18px 0 0;font-size:34px;letter-spacing:-.04em;line-height:1.08}
-    .lead{margin-top:10px;color:var(--muted);font-size:14px;line-height:1.65;max-width:72ch}
-    .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-    .linkbtn{
+    .container{max-width:1152px;margin:0 auto;padding:0 16px}
+    .headerin{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:36px;height:36px;
+      display:grid;place-items:center;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+    }
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .brandname{font-size:14px;font-weight:600;letter-spacing:-.02em}
+    .nav{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+    .nav a{
+      display:inline-flex;align-items:center;height:36px;
+      padding:0 8px;border-radius:8px;
+      color:var(--muted2);text-decoration:none;
+    }
+    .nav a:hover{background:#fafafa;color:var(--fg)}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      height:36px;border-radius:8px;padding:0 12px;
+      font-size:14px;font-weight:500;text-decoration:none;
+      outline:none;
+    }
+    .btn.primary{background:#09090b;color:#fff}
+    .btn.primary:hover{background:#18181b}
+    .btn.secondary{border:1px solid var(--line2);background:#fff;color:var(--fg)}
+    .btn.secondary:hover{background:#fafafa}
+    .hero{position:relative;overflow:hidden}
+    .hero::before{
+      content:"";
+      position:absolute;inset:0;
+      pointer-events:none;
+      background:radial-gradient(circle at top, rgba(0,0,0,0.06), transparent 55%);
+    }
+    .heroin{padding-top:80px;padding-bottom:80px}
+    @media (min-width: 640px){ .heroin{padding-top:96px;padding-bottom:96px} }
+    .maxw{max-width:672px}
+    .badge{
       display:inline-flex;align-items:center;gap:8px;
       border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
+      background:#fff;
       border-radius:999px;
-      padding:10px 12px;
-      font-size:13px;
-      font-weight:700;
+      padding:6px 12px;
+      font-size:12px;color:var(--muted2);
     }
-    .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-    .tag{
+    h1{margin:12px 0 0;font-size:40px;font-weight:600;letter-spacing:-.02em;line-height:1.08}
+    @media (min-width: 640px){ h1{font-size:48px} }
+    .lead{margin-top:16px;max-width:560px;font-size:16px;line-height:1.7;color:var(--muted)}
+    @media (min-width: 640px){ .lead{font-size:18px} }
+    .ctarow{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px}
+    .chips{margin-top:32px;display:flex;flex-wrap:wrap;gap:8px}
+    .chip{
+      display:inline-flex;align-items:center;
       border:1px solid var(--line);
-      background:rgba(255,255,255,.02);
-      border-radius:999px;
+      background:var(--chip);
+      border-radius:8px;
       padding:6px 10px;
-      font-size:12px;
-      color:var(--muted);
+      font-size:12px;color:var(--chipText);
     }
-    .panel{
-      margin-top:18px;
+    .section{padding:64px 0}
+    @media (min-width: 640px){ .section{padding:80px 0} }
+    .sectionhead{margin-bottom:24px}
+    .sectionhead h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em}
+    @media (min-width: 640px){ .sectionhead h2{font-size:24px} }
+    .sectionhead p{margin:8px 0 0;color:var(--muted);font-size:14px}
+    @media (min-width: 640px){ .sectionhead p{font-size:16px} }
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width: 640px){ .grid{grid-template-columns:repeat(2,1fr)} }
+    @media (min-width: 1024px){ .grid{grid-template-columns:repeat(4,1fr)} }
+    .card{
       border:1px solid var(--line);
-      border-radius:18px;
-      background:var(--panel);
+      background:#fff;
+      border-radius:12px;
       padding:16px;
+      transition:border-color .12s ease;
     }
-    h2{margin:0;font-size:15px;font-weight:900;letter-spacing:-.02em}
-    h3{margin:16px 0 0;font-size:13px;font-weight:900;letter-spacing:-.01em}
-    p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.7}
-    .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-    .row a{border-bottom:1px solid rgba(255,255,255,.18)}
-    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
-    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-    .card{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02);padding:14px}
-    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:10px}
-    .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.6}
+    .card:hover{border-color:var(--line2)}
+    .card h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.02em}
+    .card p{margin:8px 0 0;font-size:14px;line-height:1.6;color:var(--muted)}
+    .dl{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .dlgrid{display:grid;grid-template-columns:1fr}
+    @media (min-width: 640px){ .dlgrid{grid-template-columns:repeat(2,1fr)} }
+    .dlcell{padding:16px;border-top:1px solid var(--line)}
+    .dlcell:first-child{border-top:none}
+    @media (min-width: 640px){
+      .dlcell{border-top:none}
+      .dlcell:nth-child(n+3){border-top:1px solid var(--line)}
+      .dlcell:nth-child(odd){border-right:1px solid var(--line)}
+      .dlcell:nth-child(even){border-right:none}
+    }
+    dt{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2)}
+    dd{margin:8px 0 0;font-size:14px;color:var(--fg)}
+    .contact{
+      display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
+      gap:16px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:20px;
+    }
+    @media (min-width: 640px){
+      .contact{flex-direction:row;align-items:center}
+    }
+    .footer{border-top:1px solid var(--line)}
+    .footerin{padding:40px 0;display:flex;flex-direction:column;gap:12px}
+    @media (min-width: 640px){
+      .footerin{flex-direction:row;align-items:center;justify-content:space-between}
+    }
+    .footnote{font-size:12px;color:var(--muted2)}
+    .footlinks{display:flex;flex-wrap:wrap;gap:12px;font-size:12px}
+    .footlinks a{color:var(--muted);text-decoration:none}
+    .footlinks a:hover{color:var(--fg);text-decoration:underline;text-underline-offset:4px}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand">
-        <div class="badge">NP</div>
-        <div>
-          <div class="brandname">NeighbourPOS</div>
-          <div class="ver">v1 Shared-hosting • mobile-first • CRM-first (segments + campaigns)</div>
+  <a href="#content" class="sr-only skip">Skip to content</a>
+
+  <header class="header">
+    <div class="container">
+      <div class="headerin">
+        <div class="brand">
+          <div class="logo"><span class="mono" style="font-size:12px">NP</span></div>
+          <span class="brandname">NeighbourPOS</span>
+        </div>
+        <nav class="nav">
+          <a href="#features">Features</a>
+          <a href="#tech">Tech</a>
+          <a href="#contact">Contact</a>
+          <a class="btn primary" href="https://github.com/tanzir71/<REPO-NAME>" target="_blank" rel="noreferrer">View repo</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="content">
+    <section class="hero">
+      <div class="container heroin">
+        <div class="maxw">
+          <p class="badge">
+            <span class="mono">v1</span>
+            <span>Local-first • offline after setup • no cloud required</span>
+          </p>
+          <h1>Local-first POS + CRM for neighborhood stores.</h1>
+          <p class="lead">
+            Capture orders, track customers by phone, build simple segments, and export or queue campaigns — offline after setup.
+          </p>
+          <div class="ctarow">
+            <a class="btn primary" href="neighbourpos.php">Open app</a>
+            <a class="btn secondary" href="#features">See workflow</a>
+          </div>
+          <div class="chips">
+            <span class="chip mono">Local-first</span>
+            <span class="chip mono">Offline</span>
+            <span class="chip mono">SQLite</span>
+            <span class="chip mono">PDO</span>
+            <span class="chip mono">Segmentation</span>
+            <span class="chip mono">Export</span>
+          </div>
         </div>
       </div>
-      <div class="cta">
-        <a class="linkbtn" href="neighbourpos.php">Open app</a>
-        <a class="linkbtn" href="neighbourpos.php?action=portal">Customer portal</a>
-      </div>
-    </div>
+    </section>
 
-    <h1>Local-first POS + CRM for neighborhood stores.</h1>
-    <div class="lead">
-      Capture orders fast on mobile, track customers by phone, build reusable segments, and run simple campaigns (export/queue) with opt-in-by-default safeguards.
-      Shared-hosting friendly: <code>PHP + SQLite</code>.
-    </div>
-
-    <div class="cta">
-      <a class="linkbtn" href="https://github.com/tanzir71/<REPO-NAME>">View repo</a>
-      <a class="linkbtn" href="SETUP.md">Setup</a>
-      <a class="linkbtn" href="SECURITY.md">Security</a>
-      <a class="linkbtn" href="README.md">README</a>
-    </div>
-
-    <div class="tags" aria-label="tags">
-      <div class="tag">Phone-first CRM</div>
-      <div class="tag">Segmentation</div>
-      <div class="tag">Campaign exports</div>
-      <div class="tag">SQLite (WAL)</div>
-      <div class="tag">CSRF</div>
-      <div class="tag">Rate limiting</div>
-      <div class="tag">Shared hosting</div>
-    </div>
-
-    <div class="panel">
-      <h2>Workflow</h2>
-      <p>Sell → learn → target. Orders flow into customer recency/frequency/spend so you can segment and act.</p>
-
-      <h3>POS</h3>
-      <p>Search inventory, build cart, attach a phone (or walk-in), and update status from new → preparing → ready/out → completed.</p>
-
-      <h3>CRM</h3>
-      <p>Customers are keyed by phone. View LTV estimate, order history, tags, and marketing opt-in status.</p>
-
-      <h3>Campaigns</h3>
-      <p>Build segments (filters), preview recipients, simulate impact, then export/queue messages. Opt-in is enforced by default and overrides are audited.</p>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2>Repository</h2>
-        <p>GitHub: https://github.com/tanzir71/&lt;REPO-NAME&gt;</p>
-        <div class="row">
-          <a href="https://github.com/tanzir71/<REPO-NAME>">View on GitHub</a>
-          <a href="CHANGELOG.md">Changelog</a>
+    <section id="features" class="section">
+      <div class="container">
+        <div class="sectionhead">
+          <h2>Workflow</h2>
+          <p>Ingest → sell → learn → target. All local by default.</p>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <h3>POS</h3>
+            <p>Search inventory, build carts, attach a phone (or walk-in), and update statuses fast on mobile.</p>
+          </div>
+          <div class="card">
+            <h3>CRM targeting</h3>
+            <p>Customers are keyed by phone. Orders feed recency/frequency/spend so segments stay actionable.</p>
+          </div>
+          <div class="card">
+            <h3>Campaigns</h3>
+            <p>Build segments, preview recipients, simulate impact, then export/queue messages with opt-in-by-default safeguards.</p>
+          </div>
+          <div class="card">
+            <h3>Customer portal</h3>
+            <p>Customers can look up order status via phone (and you can optionally add SMS links later).</p>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <h2>Docs</h2>
-        <p>Deployment steps (cPanel/Namecheap), cron notes, and hardening guidance.</p>
-        <div class="row">
-          <a href="SETUP.md">SETUP.md</a>
-          <a href="SECURITY.md">SECURITY.md</a>
-          <a href="README.md">README.md</a>
+    </section>
+
+    <section id="tech" class="section">
+      <div class="container">
+        <div class="sectionhead">
+          <h2>Stack</h2>
+          <p>Local-first architecture built for shared hosting.</p>
+        </div>
+        <div class="dl">
+          <dl class="dlgrid">
+            <div class="dlcell">
+              <dt>App</dt>
+              <dd class="mono">Single-file PHP + SQLite + embedded mobile UI</dd>
+            </div>
+            <div class="dlcell">
+              <dt>Database</dt>
+              <dd class="mono">SQLite (WAL) via PDO</dd>
+            </div>
+            <div class="dlcell">
+              <dt>Security</dt>
+              <dd class="mono">CSRF + CSP + session timeout + rate limiting</dd>
+            </div>
+            <div class="dlcell">
+              <dt>Integrations</dt>
+              <dd class="mono">SMS/Email placeholders (Twilio/SendGrid/etc.)</dd>
+            </div>
+          </dl>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="foot">
-      Compliance note: stores are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments.
+    <section id="contact" class="section">
+      <div class="container">
+        <div class="sectionhead">
+          <h2>Get involved</h2>
+          <p>Ship the MVP, then iterate with store owners.</p>
+        </div>
+        <div class="contact">
+          <div>
+            <p style="margin:0;font-size:14px;font-weight:600;color:var(--fg)">Want this on your domain?</p>
+            <p style="margin-top:6px;font-size:14px;color:var(--muted)">Follow the setup doc and open an issue with your workflow.</p>
+          </div>
+          <a class="btn secondary" href="https://github.com/tanzir71/<REPO-NAME>/issues" target="_blank" rel="noreferrer">Open an issue</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footerin">
+      <p class="footnote">Vibe-coded with ♥ by tanziro.com</p>
+      <div class="footlinks">
+        <a href="https://github.com/tanzir71/<REPO-NAME>" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="#features">Features</a>
+        <a href="SETUP.md">Docs</a>
+      </div>
     </div>
-  </div>
+  </footer>
 </body>
 </html>
