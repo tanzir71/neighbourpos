@@ -4,73 +4,157 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NeighbourPOS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='0.9em'%20font-size='90'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{--bg:#0a0a0b;--fg:#f5f5f5;--muted:#a0a0a8;--line:#222;--accent:#fff}
+    :root{
+      --bg:#0b0b0c;
+      --fg:#f3f4f6;
+      --muted:#a1a1aa;
+      --line:#232325;
+      --panel:rgba(255,255,255,.02);
+    }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    a{color:var(--fg);text-decoration:none}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#080809,#0b0b0c);
+      color:var(--fg);
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-feature-settings:"ss01" 1,"cv10" 1;
+    }
+    a{color:inherit;text-decoration:none}
     a:hover{text-decoration:underline}
-    .wrap{max-width:920px;margin:0 auto;padding:28px}
-    .hero{border:1px solid var(--line);border-radius:18px;padding:18px;background:rgba(255,255,255,.02)}
-    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
-    .mark{display:flex;gap:10px;align-items:center}
-    .dot{width:10px;height:10px;border-radius:999px;background:#fff}
-    h1{margin:0;font-size:22px;letter-spacing:-.02em}
-    .sub{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
-    @media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
-    .card{border:1px solid var(--line);border-radius:16px;padding:14px;background:rgba(255,255,255,.02)}
-    .card h2{margin:0;font-size:14px;font-weight:800}
-    .card p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
-    .links{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px}
-    .pill{border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:12px;background:rgba(255,255,255,.03)}
-    .foot{margin-top:16px;color:var(--muted);font-size:12px;line-height:1.5}
-    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
+    .wrap{max-width:980px;margin:0 auto;padding:28px}
+    .topbar{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+    .brand{display:flex;gap:12px;align-items:flex-start}
+    .badge{
+      font-weight:900;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:12px;
+      padding:6px 10px;
+      letter-spacing:-.03em;
+      line-height:1;
+    }
+    .brandname{font-weight:900;letter-spacing:-.03em}
+    .ver{color:var(--muted);font-size:12px;margin-top:2px;line-height:1.4}
+    h1{margin:18px 0 0;font-size:34px;letter-spacing:-.04em;line-height:1.08}
+    .lead{margin-top:10px;color:var(--muted);font-size:14px;line-height:1.65;max-width:72ch}
+    .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .linkbtn{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:700;
+    }
+    .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .tag{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.02);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .panel{
+      margin-top:18px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:var(--panel);
+      padding:16px;
+    }
+    h2{margin:0;font-size:15px;font-weight:900;letter-spacing:-.02em}
+    h3{margin:16px 0 0;font-size:13px;font-weight:900;letter-spacing:-.01em}
+    p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.7}
+    .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+    .row a{border-bottom:1px solid rgba(255,255,255,.18)}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    .card{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.02);padding:14px}
+    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:10px}
+    .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.6}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="hero">
-      <div class="top">
-        <div class="mark">
-          <div class="dot"></div>
-          <div>
-            <h1>NeighbourPOS</h1>
-            <div class="sub">Minimal mobile-first POS + CRM for neighborhood stores. Shared-hosting friendly: <code>PHP + SQLite</code>.</div>
-          </div>
-        </div>
-        <div class="links">
-          <a class="pill" href="neighbourpos.php">Open app</a>
-          <a class="pill" href="neighbourpos.php?action=portal">Customer portal</a>
+    <div class="topbar">
+      <div class="brand">
+        <div class="badge">NP</div>
+        <div>
+          <div class="brandname">NeighbourPOS</div>
+          <div class="ver">v1 Shared-hosting • mobile-first • CRM-first (segments + campaigns)</div>
         </div>
       </div>
+      <div class="cta">
+        <a class="linkbtn" href="neighbourpos.php">Open app</a>
+        <a class="linkbtn" href="neighbourpos.php?action=portal">Customer portal</a>
+      </div>
+    </div>
 
-      <div class="grid">
-        <div class="card">
-          <h2>Repository</h2>
-          <p>GitHub: https://github.com/tanzir71/<REPO-NAME></p>
-          <div class="links">
-            <a class="pill" href="https://github.com/tanzir71/<REPO-NAME>">View on GitHub</a>
-            <a class="pill" href="README.md">README</a>
-          </div>
-        </div>
-        <div class="card">
-          <h2>Docs</h2>
-          <p>Deployment steps, security notes, and hardening guidance.</p>
-          <div class="links">
-            <a class="pill" href="SETUP.md">SETUP.md</a>
-            <a class="pill" href="SECURITY.md">SECURITY.md</a>
-            <a class="pill" href="CHANGELOG.md">CHANGELOG</a>
-          </div>
-        </div>
-      </div>
+    <h1>Local-first POS + CRM for neighborhood stores.</h1>
+    <div class="lead">
+      Capture orders fast on mobile, track customers by phone, build reusable segments, and run simple campaigns (export/queue) with opt-in-by-default safeguards.
+      Shared-hosting friendly: <code>PHP + SQLite</code>.
+    </div>
 
-      <div class="foot">
-        Compliance note: stores are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments.
+    <div class="cta">
+      <a class="linkbtn" href="https://github.com/tanzir71/<REPO-NAME>">View repo</a>
+      <a class="linkbtn" href="SETUP.md">Setup</a>
+      <a class="linkbtn" href="SECURITY.md">Security</a>
+      <a class="linkbtn" href="README.md">README</a>
+    </div>
+
+    <div class="tags" aria-label="tags">
+      <div class="tag">Phone-first CRM</div>
+      <div class="tag">Segmentation</div>
+      <div class="tag">Campaign exports</div>
+      <div class="tag">SQLite (WAL)</div>
+      <div class="tag">CSRF</div>
+      <div class="tag">Rate limiting</div>
+      <div class="tag">Shared hosting</div>
+    </div>
+
+    <div class="panel">
+      <h2>Workflow</h2>
+      <p>Sell → learn → target. Orders flow into customer recency/frequency/spend so you can segment and act.</p>
+
+      <h3>POS</h3>
+      <p>Search inventory, build cart, attach a phone (or walk-in), and update status from new → preparing → ready/out → completed.</p>
+
+      <h3>CRM</h3>
+      <p>Customers are keyed by phone. View LTV estimate, order history, tags, and marketing opt-in status.</p>
+
+      <h3>Campaigns</h3>
+      <p>Build segments (filters), preview recipients, simulate impact, then export/queue messages. Opt-in is enforced by default and overrides are audited.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Repository</h2>
+        <p>GitHub: https://github.com/tanzir71/&lt;REPO-NAME&gt;</p>
+        <div class="row">
+          <a href="https://github.com/tanzir71/<REPO-NAME>">View on GitHub</a>
+          <a href="CHANGELOG.md">Changelog</a>
+        </div>
       </div>
+      <div class="card">
+        <h2>Docs</h2>
+        <p>Deployment steps (cPanel/Namecheap), cron notes, and hardening guidance.</p>
+        <div class="row">
+          <a href="SETUP.md">SETUP.md</a>
+          <a href="SECURITY.md">SECURITY.md</a>
+          <a href="README.md">README.md</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      Compliance note: stores are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments.
     </div>
   </div>
 </body>
