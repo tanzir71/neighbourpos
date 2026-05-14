@@ -1,0 +1,4 @@
+.env
+neighbourpos.db
+*.log
+/.DS_Store

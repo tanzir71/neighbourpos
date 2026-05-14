@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeighbourPOS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0a0b;--fg:#f5f5f5;--muted:#a0a0a8;--line:#222;--accent:#fff}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    a{color:var(--fg);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:920px;margin:0 auto;padding:28px}
+    .hero{border:1px solid var(--line);border-radius:18px;padding:18px;background:rgba(255,255,255,.02)}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    .mark{display:flex;gap:10px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:999px;background:#fff}
+    h1{margin:0;font-size:22px;letter-spacing:-.02em}
+    .sub{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+    @media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
+    .card{border:1px solid var(--line);border-radius:16px;padding:14px;background:rgba(255,255,255,.02)}
+    .card h2{margin:0;font-size:14px;font-weight:800}
+    .card p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+    .links{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px}
+    .pill{border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:12px;background:rgba(255,255,255,.03)}
+    .foot{margin-top:16px;color:var(--muted);font-size:12px;line-height:1.5}
+    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="top">
+        <div class="mark">
+          <div class="dot"></div>
+          <div>
+            <h1>NeighbourPOS</h1>
+            <div class="sub">Minimal mobile-first POS + CRM for neighborhood stores. Shared-hosting friendly: <code>PHP + SQLite</code>.</div>
+          </div>
+        </div>
+        <div class="links">
+          <a class="pill" href="neighbourpos.php">Open app</a>
+          <a class="pill" href="neighbourpos.php?action=portal">Customer portal</a>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Repository</h2>
+          <p>GitHub: https://github.com/tanzir71/<REPO-NAME></p>
+          <div class="links">
+            <a class="pill" href="https://github.com/tanzir71/<REPO-NAME>">View on GitHub</a>
+            <a class="pill" href="README.md">README</a>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Docs</h2>
+          <p>Deployment steps, security notes, and hardening guidance.</p>
+          <div class="links">
+            <a class="pill" href="SETUP.md">SETUP.md</a>
+            <a class="pill" href="SECURITY.md">SECURITY.md</a>
+            <a class="pill" href="CHANGELOG.md">CHANGELOG</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        Compliance note: stores are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
