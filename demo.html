@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeighbourPOS Demo</title>
+  <meta name="description" content="Static NeighbourPOS demo for orders, inventory, CRM, campaigns, and reports.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --paper:#ffffff;
+      --ink:#090b10;
+      --muted:#5c6472;
+      --soft:#7b8493;
+      --line:#dce1ea;
+      --line2:#c3cad7;
+      --blue:#1652f0;
+      --green:#177a3b;
+      --red:#b42318;
+      --amber:#946200;
+      --shadow:0 16px 42px rgba(24,31,44,.1);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    a{color:inherit}
+    .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .shell{min-height:100vh;display:grid;grid-template-columns:220px 1fr}
+    .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:#fff;padding:18px 14px;display:flex;flex-direction:column;gap:18px}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .mark{width:34px;height:34px;border:1px solid var(--line2);border-radius:7px;display:grid;place-items:center;font-weight:900;background:#fff}
+    .brand strong{display:block;font-size:16px;letter-spacing:-.04em}
+    .brand span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+    .brand .mark{display:grid;place-items:center;color:var(--ink);font-size:14px;margin-top:0}
+    .nav{display:grid;gap:5px}
+    .nav button{width:100%;border:0;background:transparent;border-radius:7px;padding:10px 11px;text-align:left;color:var(--muted);font-weight:700}
+    .nav button:hover{background:#f4f6fb;color:var(--ink)}
+    .nav button.active{background:#eaf0ff;color:var(--blue)}
+    .sideNote{margin-top:auto;border:1px solid var(--line);border-radius:8px;padding:12px;background:#fafbfe;color:var(--muted);font-size:12px;line-height:1.55}
+    .main{min-width:0}
+    .top{height:62px;border-bottom:1px solid var(--line);background:rgba(245,247,251,.9);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 22px;position:sticky;top:0;z-index:5}
+    .top h1{margin:0;font-size:21px;letter-spacing:-.05em}
+    .top p{margin:3px 0 0;color:var(--muted);font-size:13px}
+    .topActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .pill{border:1px solid var(--line2);border-radius:7px;background:#fff;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:700}
+    .btn{border:1px solid var(--line2);border-radius:7px;background:#fff;color:var(--ink);height:36px;padding:0 11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.good{background:var(--green);border-color:var(--green);color:#fff}
+    .btn.danger{background:#fff;color:var(--red)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .content{padding:22px;display:grid;gap:18px}
+    .view{display:none}
+    .view.active{display:grid;gap:18px}
+    .grid{display:grid;gap:14px}
+    .grid.two{grid-template-columns:1.2fr .8fr}
+    .grid.three{grid-template-columns:repeat(3,1fr)}
+    .grid.four{grid-template-columns:repeat(4,1fr)}
+    .panel,.card{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+    .panel{padding:16px}
+    .card{padding:14px}
+    .panelHead{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:13px}
+    h2,h3{margin:0;letter-spacing:-.04em}
+    h2{font-size:19px}
+    h3{font-size:15px}
+    .sub{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+    .stat{padding:15px;background:#fff;border:1px solid var(--line);border-radius:8px}
+    .stat span{display:block;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+    .stat strong{display:block;margin-top:6px;font-size:26px;letter-spacing:-.05em}
+    .stat small{display:block;margin-top:4px;color:var(--soft)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+    th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+    tr:last-child td{border-bottom:0}
+    .status{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:800;background:#eef2f7;color:#445064}
+    .status.ready{background:#eaf7ee;color:var(--green)}
+    .status.low{background:#fff7dd;color:var(--amber)}
+    .status.alert{background:#fff0ee;color:var(--red)}
+    .products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .product{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px;background:#fff}
+    .productTop{display:flex;align-items:start;justify-content:space-between;gap:8px}
+    .price{font-weight:900}
+    .muted{color:var(--muted)}
+    .cartRows{display:grid;gap:8px}
+    .cartRow{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
+    .cartRow:last-child{border-bottom:0;padding-bottom:0}
+    .qty{display:flex;align-items:center;gap:6px}
+    .mini{height:28px;min-width:28px;border-radius:6px;border:1px solid var(--line2);background:#fff;font-size:12px;font-weight:900}
+    .total{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:13px;margin-top:13px;font-weight:900;font-size:18px}
+    .field{display:grid;gap:6px}
+    label{font-size:12px;color:var(--muted);font-weight:800}
+    input,select{width:100%;height:38px;border:1px solid var(--line2);border-radius:7px;background:#fff;padding:0 10px;color:var(--ink)}
+    .filters{display:grid;grid-template-columns:1fr 150px;gap:10px}
+    .timeline{display:grid;gap:10px}
+    .event{border-left:3px solid var(--blue);padding:2px 0 2px 12px}
+    .event strong{display:block;font-size:14px}
+    .event span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .campaigns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .preset{border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:12px;background:#fff}
+    .preset strong{font-size:15px}
+    .bar{height:9px;border-radius:999px;background:#edf1f7;overflow:hidden}
+    .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--green))}
+    .toast{position:fixed;right:18px;bottom:18px;z-index:20;max-width:340px;border:1px solid var(--line2);border-radius:8px;background:#fff;box-shadow:var(--shadow);padding:12px 14px;display:none;font-size:14px}
+    .toast.show{display:block}
+    .empty{padding:18px;border:1px dashed var(--line2);border-radius:8px;text-align:center;color:var(--muted);background:#fbfcff}
+    @media (max-width:960px){
+      .shell{grid-template-columns:1fr}
+      .side{height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}
+      .nav{grid-template-columns:repeat(3,1fr)}
+      .sideNote{display:none}
+      .top{position:static;height:auto;align-items:start;padding:16px}
+      .grid.two,.grid.three,.grid.four,.campaigns{grid-template-columns:1fr}
+      .products{grid-template-columns:1fr}
+    }
+    @media (max-width:620px){
+      .content{padding:14px}
+      .top{display:grid}
+      .topActions{justify-content:start}
+      .nav{grid-template-columns:repeat(2,1fr)}
+      table{font-size:12px}
+      th,td{padding:8px 6px}
+      .filters{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <a class="brand" href="index.html">
+        <span class="mark">NP</span>
+        <span><strong>NeighbourPOS</strong><span>Static browser demo</span></span>
+      </a>
+      <div class="nav" role="tablist" aria-label="Demo views">
+        <button class="active" data-view="dashboard">Dashboard</button>
+        <button data-view="pos">POS</button>
+        <button data-view="orders">Orders</button>
+        <button data-view="customers">CRM</button>
+        <button data-view="campaigns">Campaigns</button>
+        <button data-view="reports">Reports</button>
+      </div>
+      <div class="sideNote">
+        This is a static Vercel demo with sample data and in-browser state. The production app is <span class="mono">neighbourpos.php</span> plus SQLite.
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top">
+        <div>
+          <h1 id="viewTitle">Today snapshot</h1>
+          <p id="viewCopy">Revenue, active orders, stock alerts, and campaign queue health.</p>
+        </div>
+        <div class="topActions">
+          <span class="pill mono" id="clock">Demo store</span>
+          <a class="btn" href="index.html">Landing</a>
+          <a class="btn primary" href="https://github.com/tanzir71/neighbourpos" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="view active" id="dashboard">
+          <div class="grid four" id="stats"></div>
+          <div class="grid two">
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Recent orders</h2><p class="sub">Order status changes update the dashboard immediately.</p></div>
+                <button class="btn" data-jump="orders">Open orders</button>
+              </div>
+              <div id="recentOrders"></div>
+            </div>
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Action queue</h2><p class="sub">Tiny operational prompts from the same local data.</p></div>
+              </div>
+              <div id="actionQueue" class="timeline"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="pos">
+          <div class="grid two">
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Quick sale</h2><p class="sub">Add items, attach a customer, apply a coupon, and place an order.</p></div>
+              </div>
+              <div class="products" id="productList"></div>
+            </div>
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Cart</h2><p class="sub">The demo updates inventory and creates a real local order row.</p></div>
+              </div>
+              <div class="grid">
+                <div class="field">
+                  <label for="customerSelect">Customer</label>
+                  <select id="customerSelect"></select>
+                </div>
+                <div class="field">
+                  <label for="couponInput">Coupon</label>
+                  <input id="couponInput" placeholder="Try WINBACK10">
+                </div>
+                <div id="cartRows" class="cartRows"></div>
+                <div class="total"><span>Total</span><span id="cartTotal">$0.00</span></div>
+                <button class="btn good" id="placeOrder">Place order</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="orders">
+          <div class="panel">
+            <div class="panelHead">
+              <div><h2>Orders</h2><p class="sub">Search by order code, customer, status, or date.</p></div>
+            </div>
+            <div class="filters">
+              <input id="orderSearch" placeholder="Search orders">
+              <select id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="open">Open</option>
+                <option value="ready">Ready</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            <div id="ordersTable" style="margin-top:12px"></div>
+          </div>
+        </section>
+
+        <section class="view" id="customers">
+          <div class="grid two">
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Customer search</h2><p class="sub">Profiles are built from orders, opt-in, coupons, and campaign history.</p></div>
+              </div>
+              <input id="customerSearch" placeholder="Search name, phone, or email">
+              <div id="customerList" style="margin-top:12px"></div>
+            </div>
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2 id="customerName">Customer timeline</h2><p class="sub" id="customerMeta">Pick a customer to inspect the CRM view.</p></div>
+              </div>
+              <div id="customerTimeline" class="timeline"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="campaigns">
+          <div class="panel">
+            <div class="panelHead">
+              <div><h2>Campaign presets</h2><p class="sub">Queue recipients, generate coupon codes, and export a CSV from browser state.</p></div>
+              <button class="btn" id="exportCampaign" disabled>Export CSV</button>
+            </div>
+            <div class="campaigns" id="campaignPresets"></div>
+          </div>
+          <div class="panel">
+            <div class="panelHead">
+              <div><h2>Queued recipients</h2><p class="sub">Production exports use the campaign recipient table and staff auth.</p></div>
+            </div>
+            <div id="recipientTable"></div>
+          </div>
+        </section>
+
+        <section class="view" id="reports">
+          <div class="grid three" id="reportStats"></div>
+          <div class="grid two">
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Category mix</h2><p class="sub">Simple reporting from order items.</p></div>
+                <button class="btn" id="exportSales">Export sales CSV</button>
+              </div>
+              <div id="categoryMix"></div>
+            </div>
+            <div class="panel">
+              <div class="panelHead">
+                <div><h2>Low stock</h2><p class="sub">Restock CSV is built into the PHP app.</p></div>
+              </div>
+              <div id="stockList"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const money = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"});
+    const today = new Date().toISOString().slice(0,10);
+    const state = {
+      view:"dashboard",
+      cart:{},
+      selectedCustomer:1,
+      products:[
+        {id:1,sku:"COF-250",name:"Neighbour Blend Coffee",category:"Grocery",price:8.5,stock:18,low:6},
+        {id:2,sku:"MLK-1L",name:"Local Dairy Milk",category:"Dairy",price:3.75,stock:5,low:8},
+        {id:3,sku:"BRD-SD",name:"Sourdough Loaf",category:"Bakery",price:6.25,stock:9,low:5},
+        {id:4,sku:"EGG-12",name:"Free Range Eggs",category:"Dairy",price:5.8,stock:4,low:7},
+        {id:5,sku:"TEA-MNT",name:"Mint Tea Tin",category:"Grocery",price:7.2,stock:13,low:5},
+        {id:6,sku:"HNY-RAW",name:"Raw Honey Jar",category:"Pantry",price:11.4,stock:3,low:4}
+      ],
+      customers:[
+        {id:1,name:"Amina Rahman",phone:"555-0192",email:"amina@example.test",optIn:true,spend:142.35,orders:8,last:"2026-07-03"},
+        {id:2,name:"Mateo Cruz",phone:"555-0144",email:"mateo@example.test",optIn:true,spend:87.8,orders:5,last:"2026-06-26"},
+        {id:3,name:"June Patel",phone:"555-0171",email:"june@example.test",optIn:false,spend:231.55,orders:12,last:"2026-07-01"},
+        {id:4,name:"Sam Green",phone:"555-0118",email:"sam@example.test",optIn:true,spend:42.6,orders:2,last:"2026-05-22"}
+      ],
+      orders:[
+        {id:1007,code:"NP-1007",customerId:1,status:"open",date:today,total:24.25,items:[["Neighbour Blend Coffee",1],["Sourdough Loaf",1],["Mint Tea Tin",1]],coupon:""},
+        {id:1006,code:"NP-1006",customerId:3,status:"paid",date:"2026-07-03",total:31.05,items:[["Raw Honey Jar",1],["Free Range Eggs",2],["Local Dairy Milk",1]],coupon:"VIP15"},
+        {id:1005,code:"NP-1005",customerId:2,status:"ready",date:"2026-07-03",total:13.0,items:[["Sourdough Loaf",1],["Local Dairy Milk",1]],coupon:""}
+      ],
+      recipients:[]
+    };
+    const presets = [
+      {id:"winback",name:"Winback",segment:"No order in 30 days",channel:"sms",coupon:"WINBACK10",message:"We saved 10% for your next neighbourhood run.",score:84},
+      {id:"vip",name:"VIP thank-you",segment:"Top spenders",channel:"email",coupon:"VIP15",message:"A small thank-you for being one of our best regulars.",score:71},
+      {id:"stock",name:"Product fans",segment:"Bought coffee or tea",channel:"sms",coupon:"PANTRY5",message:"Fresh pantry favorites just landed.",score:63}
+    ];
+    const titles = {
+      dashboard:["Today snapshot","Revenue, active orders, stock alerts, and campaign queue health."],
+      pos:["Point of sale","Create a sample order and watch the local CRM data move."],
+      orders:["Order search","Find orders quickly and update the demo status."],
+      customers:["Customer CRM","Spend, opt-in, order recency, and timeline in one compact view."],
+      campaigns:["Campaign queue","Queue preset campaigns and export demo recipients."],
+      reports:["Reports and exports","Sales, category mix, low stock, and CSV exports."]
+    };
+    function customer(id){return state.customers.find(c=>c.id===id)}
+    function product(id){return state.products.find(p=>p.id===id)}
+    function showToast(text){
+      const toast=document.getElementById("toast");
+      toast.textContent=text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer=setTimeout(()=>toast.classList.remove("show"),2400);
+    }
+    function setView(view){
+      state.view=view;
+      document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
+      document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+      document.getElementById("viewTitle").textContent=titles[view][0];
+      document.getElementById("viewCopy").textContent=titles[view][1];
+      render();
+    }
+    function table(headers, rows){
+      if(!rows.length) return '<div class="empty">No rows yet.</div>';
+      return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    }
+    function renderStats(){
+      const revenue=state.orders.filter(o=>o.date===today).reduce((s,o)=>s+o.total,0);
+      const active=state.orders.filter(o=>o.status!=="paid").length;
+      const low=state.products.filter(p=>p.stock<=p.low).length;
+      const queued=state.recipients.length;
+      document.getElementById("stats").innerHTML=[
+        ["Today revenue",money.format(revenue),"From local orders"],
+        ["Orders",state.orders.filter(o=>o.date===today).length,"Created today"],
+        ["Active",active,"Open or ready"],
+        ["Low stock",low,"Needs restock"]
+      ].map(s=>`<div class="stat"><span>${s[0]}</span><strong>${s[1]}</strong><small>${s[2]}</small></div>`).join("");
+      document.getElementById("actionQueue").innerHTML=[
+        `<div class="event"><strong>${low} products below threshold</strong><span>Export low-stock CSV from production inventory.</span></div>`,
+        `<div class="event"><strong>${queued || "No"} queued campaign recipients</strong><span>Queue a preset to unlock recipient export in this demo.</span></div>`,
+        `<div class="event"><strong>${active} active orders</strong><span>Move ready orders to paid when collected.</span></div>`
+      ].join("");
+    }
+    function renderOrders(){
+      const q=(document.getElementById("orderSearch")?.value||"").toLowerCase();
+      const status=document.getElementById("statusFilter")?.value||"all";
+      const rows=state.orders.filter(o=>{
+        const c=customer(o.customerId);
+        const hay=[o.code,o.status,o.date,c.name,c.phone].join(" ").toLowerCase();
+        return hay.includes(q) && (status==="all" || o.status===status);
+      }).map(o=>{
+        const c=customer(o.customerId);
+        return `<tr><td><strong>${o.code}</strong><br><span class="muted">${o.date}</span></td><td>${c.name}<br><span class="muted">${c.phone}</span></td><td>${o.items.map(i=>`${i[1]}x ${i[0]}`).join("<br>")}</td><td>${money.format(o.total)}</td><td><span class="status ${o.status==="ready"?"ready":""}">${o.status}</span></td><td><button class="mini" data-status="${o.id}:ready">Ready</button> <button class="mini" data-status="${o.id}:paid">Paid</button></td></tr>`;
+      });
+      document.getElementById("ordersTable").innerHTML=table(["Order","Customer","Items","Total","Status","Update"],rows);
+      document.getElementById("recentOrders").innerHTML=table(["Order","Customer","Total","Status"],state.orders.slice(0,5).map(o=>`<tr><td>${o.code}</td><td>${customer(o.customerId).name}</td><td>${money.format(o.total)}</td><td><span class="status ${o.status==="ready"?"ready":""}">${o.status}</span></td></tr>`));
+    }
+    function renderProducts(){
+      document.getElementById("productList").innerHTML=state.products.map(p=>`
+        <div class="product">
+          <div class="productTop"><strong>${p.name}</strong><span class="price">${money.format(p.price)}</span></div>
+          <span class="muted">${p.sku} / ${p.category} / ${p.stock} in stock</span>
+          <button class="btn" data-add="${p.id}" ${p.stock<1?"disabled":""}>Add</button>
+        </div>`).join("");
+      document.getElementById("customerSelect").innerHTML=state.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+      document.getElementById("customerSelect").value=String(state.selectedCustomer);
+      const rows=Object.entries(state.cart).map(([id,qty])=>{
+        const p=product(Number(id));
+        return `<div class="cartRow"><span><strong>${p.name}</strong><br><span class="muted">${money.format(p.price)} each</span></span><span class="qty"><button class="mini" data-dec="${p.id}">-</button>${qty}<button class="mini" data-add="${p.id}">+</button></span></div>`;
+      });
+      document.getElementById("cartRows").innerHTML=rows.length?rows.join(""):'<div class="empty">Cart is empty.</div>';
+      document.getElementById("cartTotal").textContent=money.format(cartTotal());
+      document.getElementById("placeOrder").disabled=cartTotal()<=0;
+    }
+    function cartTotal(){
+      return Object.entries(state.cart).reduce((sum,[id,qty])=>sum+product(Number(id)).price*qty,0);
+    }
+    function renderCustomers(){
+      const q=(document.getElementById("customerSearch")?.value||"").toLowerCase();
+      const list=state.customers.filter(c=>[c.name,c.phone,c.email].join(" ").toLowerCase().includes(q));
+      document.getElementById("customerList").innerHTML=table(["Name","Spend","Opt-in","Open"],list.map(c=>`<tr><td><strong>${c.name}</strong><br><span class="muted">${c.phone}</span></td><td>${money.format(c.spend)}<br><span class="muted">${c.orders} orders</span></td><td>${c.optIn?"Yes":"No"}</td><td><button class="mini" data-customer="${c.id}">View</button></td></tr>`));
+      const c=customer(state.selectedCustomer);
+      document.getElementById("customerName").textContent=c.name;
+      document.getElementById("customerMeta").textContent=`${c.phone} / ${c.email} / ${c.optIn?"marketing opt-in":"not opted in"}`;
+      const orders=state.orders.filter(o=>o.customerId===c.id).map(o=>`<div class="event"><strong>${o.code} ${money.format(o.total)}</strong><span>${o.date} / ${o.status}${o.coupon?` / coupon ${o.coupon}`:""}</span></div>`);
+      const campaigns=state.recipients.filter(r=>r.customerId===c.id).map(r=>`<div class="event"><strong>${r.campaign}</strong><span>${r.channel} / ${r.coupon} / queued</span></div>`);
+      document.getElementById("customerTimeline").innerHTML=[...campaigns,...orders].join("") || '<div class="empty">No timeline activity yet.</div>';
+    }
+    function renderCampaigns(){
+      document.getElementById("campaignPresets").innerHTML=presets.map(p=>`
+        <div class="preset">
+          <div><strong>${p.name}</strong><p class="sub">${p.segment} / ${p.channel.toUpperCase()} / ${p.coupon}</p></div>
+          <div class="bar"><i style="width:${p.score}%"></i></div>
+          <button class="btn primary" data-queue="${p.id}">Queue campaign</button>
+        </div>`).join("");
+      document.getElementById("exportCampaign").disabled=!state.recipients.length;
+      document.getElementById("recipientTable").innerHTML=table(["Campaign","Customer","Channel","Coupon","Message"],state.recipients.map(r=>`<tr><td>${r.campaign}</td><td>${r.name}<br><span class="muted">${r.phone}</span></td><td>${r.channel}</td><td>${r.coupon}</td><td>${r.message}</td></tr>`));
+    }
+    function renderReports(){
+      const revenue=state.orders.reduce((s,o)=>s+o.total,0);
+      const avg=revenue/state.orders.length;
+      document.getElementById("reportStats").innerHTML=[
+        ["Revenue",money.format(revenue),"All demo orders"],
+        ["AOV",money.format(avg),"Average order value"],
+        ["Customers",state.customers.length,"Known profiles"]
+      ].map(s=>`<div class="stat"><span>${s[0]}</span><strong>${s[1]}</strong><small>${s[2]}</small></div>`).join("");
+      const categoryTotals={};
+      state.orders.forEach(o=>o.items.forEach(([name,qty])=>{
+        const p=state.products.find(x=>x.name===name);
+        if(p) categoryTotals[p.category]=(categoryTotals[p.category]||0)+p.price*qty;
+      }));
+      document.getElementById("categoryMix").innerHTML=table(["Category","Revenue"],Object.entries(categoryTotals).map(([k,v])=>`<tr><td>${k}</td><td>${money.format(v)}</td></tr>`));
+      const low=state.products.filter(p=>p.stock<=p.low);
+      document.getElementById("stockList").innerHTML=table(["SKU","Product","Stock","Status"],low.map(p=>`<tr><td>${p.sku}</td><td>${p.name}</td><td>${p.stock}</td><td><span class="status ${p.stock<5?"alert":"low"}">low</span></td></tr>`));
+    }
+    function render(){
+      renderStats();
+      renderProducts();
+      renderOrders();
+      renderCustomers();
+      renderCampaigns();
+      renderReports();
+      document.getElementById("clock").textContent=`${today} / static demo`;
+    }
+    function addToCart(id){
+      const p=product(id);
+      if(!p || p.stock<=0) return;
+      state.cart[id]=(state.cart[id]||0)+1;
+      p.stock-=1;
+      renderProducts();
+    }
+    function decCart(id){
+      if(!state.cart[id]) return;
+      state.cart[id]-=1;
+      product(id).stock+=1;
+      if(state.cart[id]<=0) delete state.cart[id];
+      renderProducts();
+    }
+    function placeOrder(){
+      const entries=Object.entries(state.cart);
+      if(!entries.length) return;
+      const id=1000+state.orders.length+8;
+      const c=Number(document.getElementById("customerSelect").value);
+      const coupon=document.getElementById("couponInput").value.trim().toUpperCase();
+      const items=entries.map(([pid,qty])=>[product(Number(pid)).name,qty]);
+      const total=cartTotal()*(coupon?0.9:1);
+      state.orders.unshift({id,code:`NP-${id}`,customerId:c,status:"open",date:today,total,items,coupon});
+      const cust=customer(c);
+      cust.spend+=total;
+      cust.orders+=1;
+      cust.last=today;
+      state.cart={};
+      document.getElementById("couponInput").value="";
+      showToast(`Created order NP-${id}`);
+      setView("orders");
+    }
+    function queueCampaign(id){
+      const p=presets.find(x=>x.id===id);
+      state.recipients=state.customers.filter(c=>c.optIn).map((c,i)=>({
+        campaign:p.name,customerId:c.id,name:c.name,phone:c.phone,email:c.email,channel:p.channel,coupon:`${p.coupon}-${String(i+1).padStart(2,"0")}`,message:p.message
+      }));
+      showToast(`Queued ${state.recipients.length} recipients for ${p.name}`);
+      render();
+    }
+    function csvCell(value){
+      const s=String(value ?? "");
+      const safe=/^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+      return `"${safe.replace(/"/g,'""')}"`;
+    }
+    function downloadCsv(name, rows){
+      const text=rows.map(row=>row.map(csvCell).join(",")).join("\r\n");
+      const blob=new Blob([text],{type:"text/csv"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=name;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    document.addEventListener("click",e=>{
+      const button=e.target.closest("button");
+      if(!button) return;
+      if(button.dataset.view) setView(button.dataset.view);
+      if(button.dataset.jump) setView(button.dataset.jump);
+      if(button.dataset.add) addToCart(Number(button.dataset.add));
+      if(button.dataset.dec) decCart(Number(button.dataset.dec));
+      if(button.dataset.customer){state.selectedCustomer=Number(button.dataset.customer);renderCustomers();}
+      if(button.dataset.queue) queueCampaign(button.dataset.queue);
+      if(button.dataset.status){
+        const [id,status]=button.dataset.status.split(":");
+        const order=state.orders.find(o=>o.id===Number(id));
+        if(order){order.status=status;showToast(`${order.code} marked ${status}`);render();}
+      }
+    });
+    document.getElementById("placeOrder").addEventListener("click",placeOrder);
+    document.getElementById("customerSelect").addEventListener("change",e=>{state.selectedCustomer=Number(e.target.value);});
+    document.getElementById("orderSearch").addEventListener("input",renderOrders);
+    document.getElementById("statusFilter").addEventListener("change",renderOrders);
+    document.getElementById("customerSearch").addEventListener("input",renderCustomers);
+    document.getElementById("exportCampaign").addEventListener("click",()=>downloadCsv("campaign-demo-recipients.csv",[
+      ["campaign","customer_name","phone","email","channel","coupon","message"],
+      ...state.recipients.map(r=>[r.campaign,r.name,r.phone,r.email,r.channel,r.coupon,r.message])
+    ]));
+    document.getElementById("exportSales").addEventListener("click",()=>downloadCsv("sales-demo.csv",[
+      ["order_code","date","customer","status","total","coupon"],
+      ...state.orders.map(o=>[o.code,o.date,customer(o.customerId).name,o.status,o.total.toFixed(2),o.coupon])
+    ]));
+    render();
+  </script>
+</body>
+</html>

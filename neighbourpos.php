@@ -291,6 +291,14 @@ function money_fmt(array $CONFIG, int $cents): string {
   return $sym.$amt;
 }
 
+function csv_safe_cell($value): string {
+  $text = (string)($value ?? '');
+  if ($text !== '' && preg_match('/^[=\+\-@\t\r]/', $text) === 1) {
+    return "'".$text;
+  }
+  return $text;
+}
+
 function rand_code(int $len): string {
   $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   $out = '';
@@ -365,6 +373,14 @@ function db(array $CONFIG): PDO {
   ensure_default_admin($pdo, $CONFIG);
 
   return $pdo;
+}
+
+function ensure_column(PDO $pdo, string $table, string $column, string $definition): void {
+  $st = $pdo->query("PRAGMA table_info({$table})");
+  foreach ($st->fetchAll() as $row) {
+    if ((string)$row['name'] === $column) return;
+  }
+  $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
 }
 
 function init_db(PDO $pdo): void {
@@ -442,6 +458,7 @@ function init_db(PDO $pdo): void {
       payment_method TEXT NOT NULL DEFAULT 'cash',
       payment_received INTEGER NOT NULL DEFAULT 0,
       expected_eta_minutes INTEGER NOT NULL DEFAULT 15,
+      coupon_code_text TEXT,
       stock_applied INTEGER NOT NULL DEFAULT 0,
       metrics_applied INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -495,6 +512,8 @@ function init_db(PDO $pdo): void {
       coupon_code TEXT,
       sent_at TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
+      redeemed_order_id INTEGER,
+      redeemed_at TEXT,
       payload_json TEXT NOT NULL DEFAULT '{}'
     );
   ");
@@ -538,6 +557,9 @@ function init_db(PDO $pdo): void {
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_order_items_category ON order_items(category);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_campaign_recipients_campaign ON campaign_recipients(campaign_id);");
+  ensure_column($pdo, 'orders', 'coupon_code_text', 'TEXT');
+  ensure_column($pdo, 'campaign_recipients', 'redeemed_order_id', 'INTEGER');
+  ensure_column($pdo, 'campaign_recipients', 'redeemed_at', 'TEXT');
 
   $pdo->commit();
 }
@@ -801,6 +823,62 @@ function current_store(PDO $pdo, array $CONFIG): array {
   ];
 }
 
+function report_date_bounds(array $input): array {
+  $today = gmdate('Y-m-d');
+  $from = (string)($input['from'] ?? gmdate('Y-m-d', time() - 6 * 86400));
+  $to = (string)($input['to'] ?? $today);
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $from = gmdate('Y-m-d', time() - 6 * 86400);
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) $to = $today;
+  if ($from > $to) {
+    $tmp = $from;
+    $from = $to;
+    $to = $tmp;
+  }
+  return [$from, $to, $from.' 00:00:00', $to.' 23:59:59'];
+}
+
+function sales_report_data(PDO $pdo, string $fromTs, string $toTs): array {
+  $summary = $pdo->prepare("
+    SELECT COUNT(*) AS order_count, COALESCE(SUM(total_cents),0) AS revenue_cents, COALESCE(AVG(total_cents),0) AS aov_cents
+    FROM orders
+    WHERE status = 'completed' AND created_at >= ? AND created_at <= ?
+  ");
+  $summary->execute([$fromTs, $toTs]);
+  $sum = $summary->fetch() ?: ['order_count' => 0, 'revenue_cents' => 0, 'aov_cents' => 0];
+
+  $top = $pdo->prepare("
+    SELECT oi.product_name, COALESCE(NULLIF(oi.category,''),'Uncategorized') AS category, SUM(oi.qty) AS qty, SUM(oi.qty * oi.price_cents) AS revenue_cents
+    FROM order_items oi
+    INNER JOIN orders o ON o.id = oi.order_id
+    WHERE o.status = 'completed' AND o.created_at >= ? AND o.created_at <= ?
+    GROUP BY oi.product_name, COALESCE(NULLIF(oi.category,''),'Uncategorized')
+    ORDER BY revenue_cents DESC, qty DESC
+    LIMIT 10
+  ");
+  $top->execute([$fromTs, $toTs]);
+
+  $cat = $pdo->prepare("
+    SELECT COALESCE(NULLIF(oi.category,''),'Uncategorized') AS category, SUM(oi.qty) AS qty, SUM(oi.qty * oi.price_cents) AS revenue_cents
+    FROM order_items oi
+    INNER JOIN orders o ON o.id = oi.order_id
+    WHERE o.status = 'completed' AND o.created_at >= ? AND o.created_at <= ?
+    GROUP BY COALESCE(NULLIF(oi.category,''),'Uncategorized')
+    ORDER BY revenue_cents DESC
+    LIMIT 12
+  ");
+  $cat->execute([$fromTs, $toTs]);
+
+  return [
+    'summary' => [
+      'order_count' => (int)$sum['order_count'],
+      'revenue_cents' => (int)$sum['revenue_cents'],
+      'aov_cents' => (int)round((float)$sum['aov_cents']),
+    ],
+    'top_products' => $top->fetchAll(),
+    'category_mix' => $cat->fetchAll(),
+  ];
+}
+
 /* =========================
    Auth actions
    ========================= */
@@ -845,6 +923,7 @@ if ($action === 'staff_login') {
 
   $store = current_store($pdo, $CONFIG);
   $accent = store_accent_safe($store, $CONFIG);
+  $csrf = csrf_token();
   $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>".h($CONFIG['APP_NAME'])." — Staff Login</title>";
@@ -952,6 +1031,236 @@ if ($action === 'staff_register') {
 }
 
 /* =========================
+   Campaign CSV export
+   ========================= */
+
+if ($action === 'campaign_export') {
+  require_login();
+  $uid = (int)($_SESSION['uid'] ?? 0);
+  $id = (int)($_GET['id'] ?? 0);
+
+  if ($id <= 0) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Missing or invalid campaign id";
+    exit;
+  }
+
+  $campSt = $pdo->prepare("
+    SELECT c.id, c.name, c.channel, c.message_template, c.sent_count, s.name AS segment_name
+    FROM campaigns c
+    LEFT JOIN segments s ON s.id = c.segment_id
+    WHERE c.id = ?
+  ");
+  $campSt->execute([$id]);
+  $camp = $campSt->fetch();
+  if (!$camp) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Campaign not found";
+    exit;
+  }
+
+  $rowSt = $pdo->prepare("
+    SELECT
+      cr.customer_id,
+      cr.phone,
+      cr.email AS recipient_email,
+      cr.coupon_code,
+      cr.sent_at,
+      cr.redeemed_order_id,
+      cr.redeemed_at,
+      cr.status,
+      cr.payload_json,
+      cust.name AS customer_name,
+      cust.email AS customer_email,
+      cust.marketing_opt_in,
+      cust.total_spent_cents,
+      cust.order_count,
+      cust.last_order_at
+    FROM campaign_recipients cr
+    LEFT JOIN customers cust ON cust.id = cr.customer_id
+    WHERE cr.campaign_id = ?
+    ORDER BY cr.id ASC
+  ");
+  $rowSt->execute([$id]);
+  $rows = $rowSt->fetchAll();
+
+  if (!$rows) {
+    http_response_code(409);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "No queued recipients. Queue campaign recipients before exporting.";
+    exit;
+  }
+
+  audit($pdo, $uid, 'campaigns.export', ['id' => $id, 'count' => count($rows)]);
+
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="campaign-'.$id.'-recipients.csv"');
+  header('Cache-Control: no-store');
+
+  $out = fopen('php://output', 'w');
+  fputcsv($out, [
+    'campaign_id',
+    'campaign_name',
+    'segment_name',
+    'channel',
+    'customer_id',
+    'customer_name',
+    'phone',
+    'email',
+    'marketing_opt_in',
+    'coupon_code',
+    'status',
+    'message',
+    'opt_in_required',
+    'opt_in_overridden',
+    'total_spent_cents',
+    'order_count',
+    'last_order_at',
+    'sent_at',
+    'redeemed_order_id',
+    'redeemed_at',
+  ]);
+
+  foreach ($rows as $r) {
+    $payload = json_decode((string)$r['payload_json'], true);
+    if (!is_array($payload)) $payload = [];
+
+    $message = (string)($payload['message'] ?? $camp['message_template']);
+    $coupon = (string)($r['coupon_code'] ?: ($payload['coupon_code'] ?? ''));
+    $optInRequired = array_key_exists('opt_in_required', $payload) ? (!empty($payload['opt_in_required']) ? '1' : '0') : '';
+    $optInOverridden = array_key_exists('opt_in_overridden', $payload) ? (!empty($payload['opt_in_overridden']) ? '1' : '0') : '';
+    $email = (string)($r['recipient_email'] ?: ($r['customer_email'] ?? ''));
+    $marketingOptIn = ($r['marketing_opt_in'] === null) ? '' : (string)(int)$r['marketing_opt_in'];
+
+    $csvRow = [
+      'campaign_id' => csv_safe_cell($camp['id']),
+      'campaign_name' => csv_safe_cell($camp['name']),
+      'segment_name' => csv_safe_cell($camp['segment_name'] ?? ''),
+      'channel' => csv_safe_cell($camp['channel']),
+      'customer_id' => csv_safe_cell($r['customer_id']),
+      'customer_name' => csv_safe_cell($r['customer_name'] ?? ''),
+      'phone' => csv_safe_cell($r['phone']),
+      'email' => csv_safe_cell($email),
+      'marketing_opt_in' => csv_safe_cell($marketingOptIn),
+      'coupon_code' => csv_safe_cell($coupon),
+      'status' => csv_safe_cell($r['status']),
+      'message' => csv_safe_cell($message),
+      'opt_in_required' => csv_safe_cell($optInRequired),
+      'opt_in_overridden' => csv_safe_cell($optInOverridden),
+      'total_spent_cents' => csv_safe_cell($r['total_spent_cents'] ?? ''),
+      'order_count' => csv_safe_cell($r['order_count'] ?? ''),
+      'last_order_at' => csv_safe_cell($r['last_order_at'] ?? ''),
+      'sent_at' => csv_safe_cell($r['sent_at'] ?? ''),
+      'redeemed_order_id' => csv_safe_cell($r['redeemed_order_id'] ?? ''),
+      'redeemed_at' => csv_safe_cell($r['redeemed_at'] ?? ''),
+    ];
+    fputcsv($out, array_values($csvRow));
+  }
+
+  fclose($out);
+  exit;
+}
+
+if ($action === 'inventory_low_stock_export') {
+  require_login();
+  $threshold = (int)($CONFIG['LOW_STOCK_THRESHOLD'] ?? 5);
+  $st = $pdo->prepare("SELECT sku, name, category, price_cents, stock_qty FROM products WHERE active = 1 AND stock_qty <= ? ORDER BY stock_qty ASC, name ASC");
+  $st->execute([$threshold]);
+
+  audit($pdo, (int)($_SESSION['uid'] ?? 0), 'inventory.low_stock_export', ['threshold' => $threshold]);
+
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="low-stock-products.csv"');
+  header('Cache-Control: no-store');
+  $out = fopen('php://output', 'w');
+  fputcsv($out, ['sku', 'name', 'category', 'price_cents', 'stock_qty', 'threshold']);
+  foreach ($st->fetchAll() as $r) {
+    fputcsv($out, [
+      csv_safe_cell($r['sku'] ?? ''),
+      csv_safe_cell($r['name'] ?? ''),
+      csv_safe_cell($r['category'] ?? ''),
+      csv_safe_cell($r['price_cents'] ?? ''),
+      csv_safe_cell($r['stock_qty'] ?? ''),
+      csv_safe_cell($threshold),
+    ]);
+  }
+  fclose($out);
+  exit;
+}
+
+if ($action === 'sales_report_export') {
+  require_login();
+  [$from, $to, $fromTs, $toTs] = report_date_bounds($_GET);
+  $data = sales_report_data($pdo, $fromTs, $toTs);
+  audit($pdo, (int)($_SESSION['uid'] ?? 0), 'reports.sales_export', ['from' => $from, 'to' => $to]);
+
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="sales-report-'.$from.'-'.$to.'.csv"');
+  header('Cache-Control: no-store');
+  $out = fopen('php://output', 'w');
+  fputcsv($out, ['section', 'name', 'category', 'qty', 'revenue_cents', 'order_count', 'aov_cents']);
+  fputcsv($out, ['summary', 'completed orders', '', '', $data['summary']['revenue_cents'], $data['summary']['order_count'], $data['summary']['aov_cents']]);
+  foreach ($data['top_products'] as $p) {
+    fputcsv($out, ['top_product', csv_safe_cell($p['product_name']), csv_safe_cell($p['category']), $p['qty'], $p['revenue_cents'], '', '']);
+  }
+  foreach ($data['category_mix'] as $c) {
+    fputcsv($out, ['category', '', csv_safe_cell($c['category']), $c['qty'], $c['revenue_cents'], '', '']);
+  }
+  fclose($out);
+  exit;
+}
+
+if ($action === 'database_backup') {
+  require_login();
+  if (!is_admin()) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Admin only";
+    exit;
+  }
+  $dbPath = __DIR__.DIRECTORY_SEPARATOR.'neighbourpos.db';
+  if (!is_file($dbPath)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Database file not found";
+    exit;
+  }
+  audit($pdo, (int)($_SESSION['uid'] ?? 0), 'database.backup_download', ['ip' => client_ip()]);
+  header('Content-Type: application/octet-stream');
+  header('Content-Disposition: attachment; filename="neighbourpos-backup-'.gmdate('Ymd-His').'.db"');
+  header('Content-Length: '.filesize($dbPath));
+  header('Cache-Control: no-store');
+  readfile($dbPath);
+  exit;
+}
+
+if ($action === 'portal_opt_in_update') {
+  if ($method !== 'POST') {
+    http_response_code(405);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Method Not Allowed";
+    exit;
+  }
+  require_csrf();
+  $phone = normalize_phone((string)($_POST['phone'] ?? ''));
+  $optIn = !empty($_POST['marketing_opt_in']) ? 1 : 0;
+  if ($phone !== '') {
+    $st = $pdo->prepare("SELECT id, marketing_opt_in FROM customers WHERE phone = ?");
+    $st->execute([$phone]);
+    $cust = $st->fetch();
+    if ($cust) {
+      $optTs = ($optIn === 1 && (int)$cust['marketing_opt_in'] === 0) ? now_iso() : null;
+      $up = $pdo->prepare("UPDATE customers SET marketing_opt_in = ?, marketing_opt_in_ts = COALESCE(?, marketing_opt_in_ts) WHERE id = ?");
+      $up->execute([$optIn, $optTs, (int)$cust['id']]);
+      audit($pdo, null, 'portal.opt_in_update', ['phone' => $phone, 'marketing_opt_in' => $optIn, 'ip' => client_ip()]);
+    }
+  }
+  redirect_to('?action=portal&phone='.urlencode($phone));
+}
+
+/* =========================
    Cron endpoints (token protected)
    ========================= */
 
@@ -1048,6 +1357,32 @@ if (str_starts_with($action, 'api_')) {
     ]]);
   }
 
+  if ($action === 'api_today_snapshot') {
+    $start = gmdate('Y-m-d').' 00:00:00';
+    $end = gmdate('Y-m-d').' 23:59:59';
+    $today = $pdo->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE created_at >= ? AND created_at <= ?");
+    $today->execute([$start, $end]);
+    $t = $today->fetch() ?: ['c' => 0, 'revenue' => 0];
+    $completed = $pdo->prepare("SELECT COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE status = 'completed' AND created_at >= ? AND created_at <= ?");
+    $completed->execute([$start, $end]);
+    $done = $completed->fetch() ?: ['revenue' => 0];
+    $active = (int)$pdo->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('new','preparing','ready_for_pickup','out_for_delivery')")->fetch()['c'];
+    $threshold = (int)($CONFIG['LOW_STOCK_THRESHOLD'] ?? 5);
+    $low = $pdo->prepare("SELECT COUNT(*) AS c FROM products WHERE active = 1 AND stock_qty <= ?");
+    $low->execute([$threshold]);
+    $campaigns = (int)$pdo->query("SELECT COUNT(*) AS c FROM campaigns WHERE sent_count > 0")->fetch()['c'];
+    $recipients = (int)$pdo->query("SELECT COUNT(*) AS c FROM campaign_recipients WHERE status IN ('pending','queued')")->fetch()['c'];
+    json_out(['ok' => true, 'data' => [
+      'today_order_count' => (int)$t['c'],
+      'today_revenue_cents' => (int)$t['revenue'],
+      'today_completed_revenue_cents' => (int)$done['revenue'],
+      'active_orders_count' => $active,
+      'low_stock_count' => (int)$low->fetch()['c'],
+      'queued_campaigns_count' => $campaigns,
+      'queued_recipients_count' => $recipients,
+    ]]);
+  }
+
   if ($action === 'api_settings_update') {
     if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
     $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
@@ -1075,7 +1410,8 @@ if (str_starts_with($action, 'api_')) {
     $per = min(50, max(10, (int)($_GET['per'] ?? 25)));
     $off = ($page - 1) * $per;
 
-    $where = "WHERE active = 1";
+    $includeInactive = !empty($_GET['include_inactive']) && is_admin();
+    $where = $includeInactive ? "WHERE 1=1" : "WHERE active = 1";
     $params = [];
     if ($q !== '') {
       $where .= " AND name LIKE ?";
@@ -1107,6 +1443,34 @@ if (str_starts_with($action, 'api_')) {
     audit($pdo, $uid, 'products.update', ['id' => $id, 'stock_qty' => $stock, 'active' => $active]);
 
     json_out(['ok' => true]);
+  }
+
+  if ($action === 'api_product_save') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+
+    $id = (int)($body['id'] ?? 0);
+    $sku = substr(trim((string)($body['sku'] ?? '')), 0, 64);
+    $name = trim((string)($body['name'] ?? ''));
+    $price = max(0, (int)($body['price_cents'] ?? 0));
+    $stock = (int)($body['stock_qty'] ?? 0);
+    $category = substr(trim((string)($body['category'] ?? '')), 0, 80);
+    $active = !empty($body['active']) ? 1 : 0;
+    if ($name === '') json_out(['ok' => false, 'error' => 'Product name required'], 400);
+
+    if ($id > 0) {
+      $st = $pdo->prepare("UPDATE products SET sku=?, name=?, price_cents=?, stock_qty=?, category=?, active=? WHERE id=?");
+      $st->execute([$sku ?: null, $name, $price, $stock, $category ?: null, $active, $id]);
+      audit($pdo, $uid, 'products.save', ['id' => $id, 'name' => $name, 'active' => $active]);
+    } else {
+      $st = $pdo->prepare("INSERT INTO products(sku,name,price_cents,stock_qty,category,active,created_at) VALUES(?,?,?,?,?,?,?)");
+      $st->execute([$sku ?: null, $name, $price, $stock, $category ?: null, $active, now_iso()]);
+      $id = (int)$pdo->lastInsertId();
+      audit($pdo, $uid, 'products.create', ['id' => $id, 'name' => $name, 'active' => $active]);
+    }
+
+    json_out(['ok' => true, 'data' => ['id' => $id]]);
   }
 
   if ($action === 'api_low_stock') {
@@ -1166,6 +1530,55 @@ if (str_starts_with($action, 'api_')) {
 
     $cust['ltv_estimate'] = calc_customer_ltv($CONFIG, $cust);
     json_out(['ok' => true, 'data' => ['customer' => $cust, 'orders' => $o->fetchAll()]]);
+  }
+
+  if ($action === 'api_customer_timeline') {
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) json_out(['ok' => false, 'error' => 'Missing customer id'], 400);
+
+    $events = [];
+    $orders = $pdo->prepare("SELECT id, order_code, status, total_cents, created_at, coupon_code_text FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 20");
+    $orders->execute([$id]);
+    foreach ($orders->fetchAll() as $o) {
+      $events[] = [
+        'ts' => (string)$o['created_at'],
+        'type' => 'order',
+        'label' => (string)$o['order_code'].' '.$o['status'],
+        'amount_cents' => (int)$o['total_cents'],
+        'meta' => (string)($o['coupon_code_text'] ? 'coupon '.$o['coupon_code_text'] : ''),
+      ];
+    }
+
+    $campaigns = $pdo->prepare("
+      SELECT c.name, cr.status, cr.coupon_code, cr.sent_at, cr.redeemed_at, cr.redeemed_order_id, c.created_at
+      FROM campaign_recipients cr
+      INNER JOIN campaigns c ON c.id = cr.campaign_id
+      WHERE cr.customer_id = ?
+      ORDER BY COALESCE(cr.sent_at, c.created_at) DESC
+      LIMIT 20
+    ");
+    $campaigns->execute([$id]);
+    foreach ($campaigns->fetchAll() as $c) {
+      $events[] = [
+        'ts' => (string)($c['sent_at'] ?: $c['created_at']),
+        'type' => 'campaign',
+        'label' => (string)$c['name'],
+        'amount_cents' => null,
+        'meta' => trim((string)$c['status'].' '.($c['coupon_code'] ? 'coupon '.$c['coupon_code'] : '')),
+      ];
+      if (!empty($c['redeemed_at'])) {
+        $events[] = [
+          'ts' => (string)$c['redeemed_at'],
+          'type' => 'coupon_redeemed',
+          'label' => 'Coupon redeemed',
+          'amount_cents' => null,
+          'meta' => (string)$c['coupon_code'].' on order #'.$c['redeemed_order_id'],
+        ];
+      }
+    }
+
+    usort($events, fn($a, $b) => strcmp((string)$b['ts'], (string)$a['ts']));
+    json_out(['ok' => true, 'data' => array_slice($events, 0, 30)]);
   }
 
   if ($action === 'api_customer_upsert') {
@@ -1299,6 +1712,8 @@ if (str_starts_with($action, 'api_')) {
     $paymentMethod = (string)($body['payment_method'] ?? 'cash');
     if (!in_array($paymentMethod, ['cash','card','online'], true)) $paymentMethod = 'cash';
     $paid = !empty($body['payment_received']) ? 1 : 0;
+    $couponCode = strtoupper(trim((string)($body['coupon_code'] ?? '')));
+    $couponCode = substr((string)preg_replace('/[^A-Z0-9\-]/', '', $couponCode), 0, 40);
 
     $orderCode = rand_code(8);
     $ts = now_iso();
@@ -1306,8 +1721,8 @@ if (str_starts_with($action, 'api_')) {
     $pdo->beginTransaction();
 
     $ins = $pdo->prepare("
-      INSERT INTO orders(order_code,customer_id,phone_text,order_type,items_json,subtotal_cents,tax_cents,tip_cents,total_cents,status,payment_method,payment_received,expected_eta_minutes,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO orders(order_code,customer_id,phone_text,order_type,items_json,subtotal_cents,tax_cents,tip_cents,total_cents,status,payment_method,payment_received,expected_eta_minutes,coupon_code_text,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
     $ins->execute([
       $orderCode,
@@ -1323,6 +1738,7 @@ if (str_starts_with($action, 'api_')) {
       $paymentMethod,
       $paid,
       $eta,
+      $couponCode ?: null,
       $ts,
       $ts,
     ]);
@@ -1340,6 +1756,22 @@ if (str_starts_with($action, 'api_')) {
         $pdo->prepare("UPDATE products SET stock_qty = stock_qty - ? WHERE id = ?")->execute([(int)$it['qty'], (int)$it['product_id']]);
       }
       $pdo->prepare("UPDATE orders SET stock_applied = 1 WHERE id = ?")->execute([$orderId]);
+    }
+
+    if ($couponCode !== '' && $custId) {
+      $couponSt = $pdo->prepare("
+        SELECT id FROM campaign_recipients
+        WHERE customer_id = ? AND coupon_code = ? AND redeemed_order_id IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+      ");
+      $couponSt->execute([$custId, $couponCode]);
+      $couponRow = $couponSt->fetch();
+      if ($couponRow) {
+        $pdo->prepare("UPDATE campaign_recipients SET redeemed_order_id = ?, redeemed_at = ?, status = 'redeemed' WHERE id = ?")
+          ->execute([$orderId, $ts, (int)$couponRow['id']]);
+        audit($pdo, $uid, 'coupon.redeemed', ['order_id' => $orderId, 'coupon_code' => $couponCode, 'campaign_recipient_id' => (int)$couponRow['id']]);
+      }
     }
 
     audit($pdo, $uid, 'orders.create', ['order_id' => $orderId, 'order_code' => $orderCode, 'total_cents' => $total, 'ip' => client_ip()]);
@@ -1371,6 +1803,26 @@ if (str_starts_with($action, 'api_')) {
     json_out(['ok' => true, 'data' => $st->fetchAll()]);
   }
 
+  if ($action === 'api_orders_search') {
+    $q = trim((string)($_GET['q'] ?? ''));
+    $status = trim((string)($_GET['status'] ?? ''));
+    [$from, $to, $fromTs, $toTs] = report_date_bounds($_GET);
+    $where = "WHERE created_at >= ? AND created_at <= ?";
+    $params = [$fromTs, $toTs];
+    if ($q !== '') {
+      $where .= " AND (order_code LIKE ? OR phone_text LIKE ?)";
+      $params[] = '%'.$q.'%';
+      $params[] = '%'.$q.'%';
+    }
+    if ($status !== '' && $status !== 'all') {
+      $where .= " AND status = ?";
+      $params[] = $status;
+    }
+    $st = $pdo->prepare("SELECT id, order_code, order_type, phone_text, total_cents, status, payment_method, payment_received, coupon_code_text, created_at, updated_at FROM orders {$where} ORDER BY created_at DESC LIMIT 50");
+    $st->execute($params);
+    json_out(['ok' => true, 'data' => ['from' => $from, 'to' => $to, 'items' => $st->fetchAll()]]);
+  }
+
   if ($action === 'api_order_get') {
     $id = (int)($_GET['id'] ?? 0);
     $st = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
@@ -1398,6 +1850,14 @@ if (str_starts_with($action, 'api_')) {
     }
 
     json_out(['ok' => true]);
+  }
+
+  if ($action === 'api_sales_report') {
+    [$from, $to, $fromTs, $toTs] = report_date_bounds($_GET);
+    $data = sales_report_data($pdo, $fromTs, $toTs);
+    $data['from'] = $from;
+    $data['to'] = $to;
+    json_out(['ok' => true, 'data' => $data]);
   }
 
   if ($action === 'api_segments_list') {
@@ -1462,6 +1922,54 @@ if (str_starts_with($action, 'api_')) {
     audit($pdo, $uid, 'campaigns.create', ['id' => $id, 'name' => $name, 'channel' => $channel]);
 
     json_out(['ok' => true, 'data' => ['id' => $id]]);
+  }
+
+  if ($action === 'api_campaign_preset_create') {
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+    $preset = (string)($body['preset'] ?? 'winback');
+    $category = trim((string)($body['category'] ?? 'Deli'));
+
+    $defs = [
+      'winback' => [
+        'segment' => 'Preset: Winback 30d',
+        'filters' => ['inactive_days' => 30, 'order_count_min' => 1],
+        'campaign' => 'Winback thank-you offer',
+        'message' => 'We miss you. Come back this week for a thank-you offer.',
+      ],
+      'vip' => [
+        'segment' => 'Preset: VIP customers',
+        'filters' => ['total_spent_min_cents' => 2000, 'order_count_min' => 2],
+        'campaign' => 'VIP appreciation',
+        'message' => 'Thanks for being a regular. Show this message for a VIP perk.',
+      ],
+      'new_customers' => [
+        'segment' => 'Preset: New customers',
+        'filters' => ['recency_days' => 14, 'order_count_max' => 1],
+        'campaign' => 'Second visit nudge',
+        'message' => 'Thanks for trying us. Your next visit has a small thank-you waiting.',
+      ],
+      'product_fans' => [
+        'segment' => 'Preset: '.$category.' fans',
+        'filters' => ['purchased_category' => $category],
+        'campaign' => $category.' fan offer',
+        'message' => 'You might like what is new in '.$category.'. Stop by this week.',
+      ],
+    ];
+    if (!isset($defs[$preset])) json_out(['ok' => false, 'error' => 'Unknown preset'], 400);
+    $def = $defs[$preset];
+
+    $pdo->beginTransaction();
+    $seg = $pdo->prepare("INSERT INTO segments(name, filters_json, last_run_at) VALUES(?,?,NULL)");
+    $seg->execute([$def['segment'], json_encode($def['filters'], JSON_UNESCAPED_SLASHES)]);
+    $segmentId = (int)$pdo->lastInsertId();
+    $camp = $pdo->prepare("INSERT INTO campaigns(name, segment_id, channel, message_template, scheduled_at, sent_count, created_at) VALUES(?,?,?,?,NULL,0,?)");
+    $camp->execute([$def['campaign'], $segmentId, 'export', $def['message'], now_iso()]);
+    $campaignId = (int)$pdo->lastInsertId();
+    audit($pdo, $uid, 'campaigns.preset_create', ['preset' => $preset, 'segment_id' => $segmentId, 'campaign_id' => $campaignId]);
+    $pdo->commit();
+
+    json_out(['ok' => true, 'data' => ['segment_id' => $segmentId, 'campaign_id' => $campaignId]]);
   }
 
   if ($action === 'api_campaign_send') {
@@ -1563,6 +2071,59 @@ if (str_starts_with($action, 'api_')) {
       'avg_order_value_cents_est' => (int)round($avgSpend),
       'assumptions' => ['redemption_rate' => $red, 'coupon_lift' => $lift],
     ]]);
+  }
+
+  if ($action === 'api_audit_log') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $q = trim((string)($_GET['q'] ?? ''));
+    $where = "WHERE 1=1";
+    $params = [];
+    if ($q !== '') {
+      $where .= " AND (a.action LIKE ? OR a.payload_json LIKE ? OR u.email LIKE ?)";
+      $params[] = '%'.$q.'%';
+      $params[] = '%'.$q.'%';
+      $params[] = '%'.$q.'%';
+    }
+    $params[] = min(200, max(25, (int)($_GET['limit'] ?? 100)));
+    $st = $pdo->prepare("
+      SELECT a.id, a.action, a.payload_json, a.ts, u.email AS user_email
+      FROM audit_log a
+      LEFT JOIN users u ON u.id = a.user_id
+      {$where}
+      ORDER BY a.id DESC
+      LIMIT ?
+    ");
+    $st->execute($params);
+    json_out(['ok' => true, 'data' => $st->fetchAll()]);
+  }
+
+  if ($action === 'api_password_change') {
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+    $current = (string)($body['current_password'] ?? '');
+    $new = (string)($body['new_password'] ?? '');
+    if (strlen($new) < 8) json_out(['ok' => false, 'error' => 'New password must be 8+ characters'], 400);
+    $st = $pdo->prepare("SELECT password_hash FROM users WHERE id = ?");
+    $st->execute([$uid]);
+    $u = $st->fetch();
+    if (!$u || !password_verify($current, (string)$u['password_hash'])) json_out(['ok' => false, 'error' => 'Current password incorrect'], 403);
+    $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([password_hash($new, PASSWORD_DEFAULT), $uid]);
+    audit($pdo, $uid, 'users.password_change', ['ip' => client_ip()]);
+    json_out(['ok' => true]);
+  }
+
+  if ($action === 'api_admin_password_reset') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $email = strtolower(trim((string)($body['email'] ?? '')));
+    $new = (string)($body['new_password'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($new) < 8) json_out(['ok' => false, 'error' => 'Valid email and 8+ character password required'], 400);
+    $st = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $st->execute([$email]);
+    $target = $st->fetch();
+    if (!$target) json_out(['ok' => false, 'error' => 'User not found'], 404);
+    $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([password_hash($new, PASSWORD_DEFAULT), (int)$target['id']]);
+    audit($pdo, $uid, 'users.password_reset', ['target_email' => $email, 'ip' => client_ip()]);
+    json_out(['ok' => true]);
   }
 
   if ($action === 'api_load_sample_data') {
@@ -1722,7 +2283,12 @@ if ($action === 'portal') {
       echo "<div class='card'><div class='h1'>Not found</div><div class='muted'>No customer record for ".h($phone).". Ask staff to add you at checkout.</div></div>";
     } else {
       echo "<div class='card'><div class='h1'>".h($cust['name'] ?: $cust['phone'])."</div>";
-      echo "<div class='muted'>Marketing opt-in: ".(((int)$cust['marketing_opt_in'] === 1) ? "Yes" : "No")."</div></div>";
+      echo "<div class='muted'>Marketing opt-in: ".(((int)$cust['marketing_opt_in'] === 1) ? "Yes" : "No")."</div>";
+      echo "<form method='post' action='?action=portal_opt_in_update'>";
+      echo "<input type='hidden' name='csrf' value='".h($csrf)."'>";
+      echo "<input type='hidden' name='phone' value='".h($cust['phone'])."'>";
+      echo "<label class='muted' style='display:block;margin-top:10px'><input type='checkbox' name='marketing_opt_in' value='1' ".(((int)$cust['marketing_opt_in'] === 1) ? "checked" : "")."> Marketing opt-in</label>";
+      echo "<button class='btn' type='submit'>Update opt-in</button></form></div>";
 
       echo "<div class='card'><div class='h1'>Recent orders</div>";
       if (!$orders) echo "<div class='muted' style='margin-top:8px'>No orders yet.</div>";
@@ -1868,8 +2434,8 @@ $csrf = csrf_token();
     .btn:disabled{opacity:.5}
 
     .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(9,10,14,.9);backdrop-filter: blur(10px);border-top:1px solid rgba(255,255,255,.06)}
-    .navin{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px 12px}
-    .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:11px;color:#cbd5e1}
+    .navin{max-width:1100px;margin:0 auto;display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
+    .tab{min-width:82px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:11px;color:#cbd5e1}
     .tab.active{border-color:rgba(37,99,235,.28);background:rgba(37,99,235,.12);color:#eaf0ff}
 
     .list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
@@ -1915,11 +2481,14 @@ $csrf = csrf_token();
 
 <div class="nav">
   <div class="navin">
+    <button class="tab" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="pos">POS</button>
     <button class="tab" data-tab="orders">Orders</button>
     <button class="tab" data-tab="inventory">Inventory</button>
     <button class="tab" data-tab="crm">CRM</button>
     <button class="tab" data-tab="campaigns">Campaigns</button>
+    <button class="tab" data-tab="reports">Reports</button>
+    <button class="tab" data-tab="admin">Admin</button>
   </div>
 </div>
 
@@ -1929,16 +2498,24 @@ $csrf = csrf_token();
   const state = {
     me: null,
     store: null,
-    tab: 'pos',
+    tab: 'dashboard',
+    dashboard: null,
+    report: null,
+    reportFrom: '',
+    reportTo: '',
     products: [],
     cart: [],
     lowStock: [],
     orders: [],
+    orderSearch: [],
+    selectedOrder: null,
     customerSearch: [],
     selectedCustomer: null,
     customerOrders: [],
+    customerTimeline: [],
     segments: [],
     campaigns: [],
+    auditLogs: [],
     sim: null
   }
 
@@ -1978,9 +2555,15 @@ $csrf = csrf_token();
     return `<span class="badge ${cls}">${esc(status)}</span>`
   }
 
-  function setTab(tab){
+  async function setTab(tab){
     state.tab = tab
     qsa('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab))
+    if (tab === 'dashboard') await loadDashboard()
+    if (tab === 'pos') await loadProducts('', false)
+    if (tab === 'inventory') { await loadProducts('', true); await loadLowStock() }
+    if (tab === 'orders') await loadOrders('active')
+    if (tab === 'reports') await loadSalesReport()
+    if (tab === 'admin') await loadAuditLog('')
     render()
     window.location.hash = tab
   }
@@ -2018,8 +2601,12 @@ $csrf = csrf_token();
     document.documentElement.style.setProperty('--accent', state.store.accent)
   }
 
-  async function loadProducts(q=''){
-    const data = await api('api_products_list', { params: { q, page: 1, per: 30 }})
+  async function loadDashboard(){
+    state.dashboard = await api('api_today_snapshot')
+  }
+
+  async function loadProducts(q='', includeInactive=false){
+    const data = await api('api_products_list', { params: { q, page: 1, per: 30, include_inactive: includeInactive ? 1 : 0 }})
     state.products = data.items
   }
 
@@ -2038,6 +2625,64 @@ $csrf = csrf_token();
 
   async function loadCampaigns(){
     state.campaigns = await api('api_campaigns_list')
+  }
+
+  async function loadSalesReport(){
+    const today = new Date().toISOString().slice(0,10)
+    if (!state.reportTo) state.reportTo = today
+    if (!state.reportFrom) {
+      const d = new Date()
+      d.setDate(d.getDate() - 6)
+      state.reportFrom = d.toISOString().slice(0,10)
+    }
+    state.report = await api('api_sales_report', { params: { from: state.reportFrom, to: state.reportTo }})
+  }
+
+  async function loadAuditLog(q=''){
+    if (state.me?.role !== 'admin') return
+    state.auditLogs = await api('api_audit_log', { params: { q, limit: 50 }})
+  }
+
+  async function loadOrderSearch(){
+    const q = qs('#order_q')?.value || ''
+    const status = qs('#order_status')?.value || 'all'
+    const from = qs('#order_from')?.value || ''
+    const to = qs('#order_to')?.value || ''
+    const data = await api('api_orders_search', { params: { q, status, from, to }})
+    state.orderSearch = data.items
+  }
+
+  function renderDashboard(){
+    const d = state.dashboard || {}
+    return `
+      <div class="grid">
+        <div class="card">
+          <div class="h1">Today snapshot dashboard</div>
+          <div class="muted">A tiny control room for sales, service, stock, and queued CRM work.</div>
+          <div class="kpi">
+            <div class="k"><div class="v">${money(d.today_revenue_cents || 0)}</div><div class="l">Today revenue</div></div>
+            <div class="k"><div class="v">${esc(d.today_order_count || 0)}</div><div class="l">Today orders</div></div>
+            <div class="k"><div class="v">${esc(d.active_orders_count || 0)}</div><div class="l">Active orders</div></div>
+            <div class="k"><div class="v">${esc(d.low_stock_count || 0)}</div><div class="l">Low-stock products</div></div>
+            <div class="k"><div class="v">${esc(d.queued_campaigns_count || 0)}</div><div class="l">Queued campaigns</div></div>
+            <div class="k"><div class="v">${esc(d.queued_recipients_count || 0)}</div><div class="l">Queued recipients</div></div>
+          </div>
+          <div class="row" style="margin-top:12px;flex-wrap:wrap">
+            <button class="btn small primary" data-go="pos">New order</button>
+            <button class="btn small" data-go="orders">Orders</button>
+            <button class="btn small" data-go="inventory">Inventory</button>
+            <button class="btn small" data-go="reports">Reports</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="h1">Quick health</div>
+          <div class="list">
+            <div class="item"><div class="name">CRM loop</div><div class="meta">Orders feed recency, spend, campaigns, coupon redemptions, and timeline events.</div></div>
+            <div class="item"><div class="name">Shared hosting fit</div><div class="meta">No workers, no services, no build step. Exports are direct CSV downloads.</div></div>
+          </div>
+        </div>
+      </div>
+    `
   }
 
   function renderPOS(){
@@ -2129,6 +2774,11 @@ $csrf = csrf_token();
             </div>
           </div>
 
+          <div class="field">
+            <label>Coupon code</label>
+            <input id="pos_coupon" placeholder="Optional campaign coupon code">
+          </div>
+
           <div class="row">
             <div class="field">
               <label><input id="pos_paid" type="checkbox"> Mark payment received</label>
@@ -2203,6 +2853,36 @@ $csrf = csrf_token();
           </div>
         </div>
 
+        <div class="item" style="margin-top:10px">
+          <div class="h1">Order search</div>
+          <div class="row" style="align-items:flex-end;flex-wrap:wrap">
+            <div class="field"><label>Code or phone</label><input id="order_q" placeholder="Order code or phone"></div>
+            <div class="field"><label>Status</label><select id="order_status"><option value="all">all</option><option value="new">new</option><option value="preparing">preparing</option><option value="ready_for_pickup">ready</option><option value="out_for_delivery">out</option><option value="completed">completed</option><option value="cancelled">cancelled</option></select></div>
+            <div class="field"><label>From</label><input id="order_from" type="date"></div>
+            <div class="field"><label>To</label><input id="order_to" type="date"></div>
+            <button class="btn small primary" id="order_search_btn">Search</button>
+          </div>
+          <div class="list">
+            ${state.orderSearch.length===0 ? `<div class="muted" style="margin-top:8px">Search recent orders by code, phone, status, or date.</div>` : state.orderSearch.map(o=>`
+              <div class="item">
+                <div class="row" style="align-items:flex-start">
+                  <div style="flex:1">
+                    <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
+                    <div class="meta">${esc(o.phone_text || '')} • ${money(o.total_cents)} • ${esc(o.created_at)}</div>
+                  </div>
+                  <button class="btn small" data-open-order="${o.id}" style="flex:0">Open</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${state.selectedOrder ? `
+            <div class="okbox">
+              <b>${esc(state.selectedOrder.order_code)}</b> ${badge(state.selectedOrder.status)}<br>
+              ${(state.selectedOrder.items || []).map(it=>`${esc(it.qty)} x ${esc(it.name)} ${it.notes ? '('+esc(it.notes)+')' : ''}`).join('<br>')}
+            </div>
+          ` : ``}
+        </div>
+
         <div class="list">
           ${state.orders.length===0 ? `<div class="muted" style="margin-top:8px">No orders.</div>` : state.orders.map(o=>`
             <div class="item">
@@ -2240,6 +2920,23 @@ $csrf = csrf_token();
             <input id="inv_q" placeholder="Search inventory">
           </div>
 
+          <div class="item">
+            <div class="h1">Save product</div>
+            <div class="row" style="flex-wrap:wrap">
+              <input id="prod_id" type="hidden">
+              <div class="field"><label>SKU</label><input id="prod_sku" placeholder="SKU"></div>
+              <div class="field"><label>Name</label><input id="prod_name" placeholder="Product name"></div>
+              <div class="field"><label>Price cents</label><input id="prod_price" type="number" min="0" value="0"></div>
+            </div>
+            <div class="row" style="flex-wrap:wrap">
+              <div class="field"><label>Stock</label><input id="prod_stock" type="number" value="0"></div>
+              <div class="field"><label>Category</label><input id="prod_cat" placeholder="Category"></div>
+              <div class="field"><label>Active</label><select id="prod_active"><option value="1">active</option><option value="0">inactive</option></select></div>
+            </div>
+            <button class="btn small primary" id="prod_save">Save product</button>
+            <button class="btn small ghost" id="prod_clear">Clear</button>
+          </div>
+
           <div class="list">
             ${state.products.map(p=>`
               <div class="item">
@@ -2254,6 +2951,7 @@ $csrf = csrf_token();
                       <input data-stock="${p.id}" type="number" value="${esc(p.stock_qty)}">
                     </div>
                     <button class="btn small" data-saveprod="${p.id}">Save</button>
+                    <button class="btn small ghost" data-editprod="${p.id}">Edit</button>
                   </div>
                 </div>
               </div>
@@ -2268,6 +2966,7 @@ $csrf = csrf_token();
           <div class="muted">Export lists to CSV for restocking workflows.</div>
 
           <button class="btn small" id="low_refresh">Refresh</button>
+          <a class="btn small ghost" href="?action=inventory_low_stock_export">Export low-stock CSV</a>
           <div class="list">
             ${state.lowStock.length===0 ? `<div class="muted" style="margin-top:8px">No low-stock products.</div>` : state.lowStock.map(p=>`
               <div class="item">
@@ -2385,6 +3084,19 @@ $csrf = csrf_token();
               </div>
             </div>
           `}
+          ${cust ? `
+            <div style="margin-top:12px">
+              <div class="h1">Timeline</div>
+              <div class="list">
+                ${state.customerTimeline.length===0 ? `<div class="muted" style="margin-top:8px">No timeline events yet.</div>` : state.customerTimeline.map(ev=>`
+                  <div class="item">
+                    <div class="name">${esc(ev.type)} • ${esc(ev.label)}</div>
+                    <div class="meta">${esc(ev.ts)} ${ev.amount_cents ? '• '+money(ev.amount_cents) : ''} ${ev.meta ? '• '+esc(ev.meta) : ''}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ``}
           <div id="cust_msg"></div>
         </div>
       </div>
@@ -2455,6 +3167,16 @@ $csrf = csrf_token();
 
         <div class="card">
           <div class="h1">Campaign builder</div>
+          <div class="item">
+            <div class="h1">Campaign presets</div>
+            <div class="muted">One click creates a reusable segment and draft export campaign.</div>
+            <div class="row" style="flex-wrap:wrap;margin-top:8px">
+              <button class="btn small" data-preset="winback">Winback</button>
+              <button class="btn small" data-preset="vip">VIP</button>
+              <button class="btn small" data-preset="new_customers">New customers</button>
+              <button class="btn small" data-preset="product_fans">Product fans</button>
+            </div>
+          </div>
           <div class="muted">Choose a segment → write message → export list or (optionally) send via SMS/Email provider.</div>
 
           <div class="field">
@@ -2528,7 +3250,12 @@ $csrf = csrf_token();
                 <div class="item">
                   <div class="row" style="align-items:flex-start">
                     <div style="flex:1">
-                      <div class="name">#${c.id} ${esc(c.name)}</div>
+                      <div class="name" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+                        <span>#${c.id} ${esc(c.name)}</span>
+                        ${Number(c.sent_count || 0) > 0
+                          ? `<a class="btn small ghost" href="?action=campaign_export&id=${c.id}">Export CSV</a>`
+                          : `<button class="btn small ghost" disabled>Queue first</button>`}
+                      </div>
                       <div class="meta">Segment: ${esc(c.segment_name || ('#'+c.segment_id))} • Channel: ${esc(c.channel)} • Sent/queued: ${esc(c.sent_count)}</div>
                       <div class="meta">Scheduled: ${esc(c.scheduled_at || '—')} • Created: ${esc(c.created_at)}</div>
                     </div>
@@ -2542,12 +3269,96 @@ $csrf = csrf_token();
     `
   }
 
+  function renderReports(){
+    const r = state.report || { summary:{}, top_products:[], category_mix:[] }
+    const exportHref = `?action=sales_report_export&from=${encodeURIComponent(state.reportFrom || '')}&to=${encodeURIComponent(state.reportTo || '')}`
+    return `
+      <div class="grid">
+        <div class="card">
+          <div class="h1">Sales reports</div>
+          <div class="muted">Completed-order revenue by date, category, and product.</div>
+          <div class="row" style="align-items:flex-end">
+            <div class="field"><label>From</label><input id="rep_from" type="date" value="${esc(state.reportFrom)}"></div>
+            <div class="field"><label>To</label><input id="rep_to" type="date" value="${esc(state.reportTo)}"></div>
+            <button class="btn small primary" id="rep_refresh">Refresh</button>
+            <a class="btn small ghost" href="${exportHref}">Export report CSV</a>
+          </div>
+          <div class="kpi">
+            <div class="k"><div class="v">${money(r.summary?.revenue_cents || 0)}</div><div class="l">Revenue</div></div>
+            <div class="k"><div class="v">${esc(r.summary?.order_count || 0)}</div><div class="l">Completed orders</div></div>
+            <div class="k"><div class="v">${money(r.summary?.aov_cents || 0)}</div><div class="l">AOV</div></div>
+            <div class="k"><div class="v">${esc(state.reportFrom || '')} - ${esc(state.reportTo || '')}</div><div class="l">Window</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="h1">Top products</div>
+          <div class="list">
+            ${(r.top_products || []).length===0 ? `<div class="muted">No completed sales in this window.</div>` : r.top_products.map(p=>`
+              <div class="item"><div class="name">${esc(p.product_name)}</div><div class="meta">${esc(p.category)} • Qty ${esc(p.qty)} • ${money(p.revenue_cents)}</div></div>
+            `).join('')}
+          </div>
+          <div class="h1" style="margin-top:12px">Category mix</div>
+          <div class="list">
+            ${(r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} • ${money(c.revenue_cents)}</div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  function renderAdmin(){
+    const isAdmin = state.me?.role === 'admin'
+    return `
+      <div class="grid">
+        <div class="card">
+          <div class="h1">Change password</div>
+          <div class="field"><label>Current password</label><input id="pw_current" type="password"></div>
+          <div class="field"><label>New password</label><input id="pw_new" type="password"></div>
+          <button class="btn small primary" id="pw_change">Change password</button>
+          <div id="admin_msg"></div>
+          ${isAdmin ? `
+            <div class="item" style="margin-top:12px">
+              <div class="h1">Admin reset</div>
+              <div class="field"><label>User email</label><input id="reset_email" type="email"></div>
+              <div class="field"><label>New password</label><input id="reset_pw" type="password"></div>
+              <button class="btn small danger" id="pw_reset">Reset password</button>
+            </div>
+            <div class="item" style="margin-top:12px">
+              <div class="h1">Download database backup</div>
+              <div class="muted">Contains customer, order, campaign, and audit data. Store it carefully.</div>
+              <a class="btn small ghost" href="?action=database_backup">Download database backup</a>
+            </div>
+          ` : `<div class="warnbox">Admin-only tools are hidden for staff accounts.</div>`}
+        </div>
+        <div class="card">
+          <div class="h1">Audit log</div>
+          ${isAdmin ? `
+            <div class="field"><label>Filter</label><input id="audit_q" placeholder="action, email, payload"></div>
+            <button class="btn small" id="audit_refresh">Refresh</button>
+            <div class="list">
+              ${state.auditLogs.length===0 ? `<div class="muted">No audit rows loaded.</div>` : state.auditLogs.map(a=>`
+                <div class="item">
+                  <div class="name">${esc(a.action)}</div>
+                  <div class="meta">${esc(a.ts)} • ${esc(a.user_email || 'system')}</div>
+                  <div class="meta">${esc(a.payload_json || '')}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `<div class="muted">Audit log is admin only.</div>`}
+        </div>
+      </div>
+    `
+  }
+
   function render(){
+    if (state.tab === 'dashboard') $view.innerHTML = renderDashboard()
     if (state.tab === 'pos') $view.innerHTML = renderPOS()
     if (state.tab === 'orders') $view.innerHTML = renderOrders()
     if (state.tab === 'inventory') $view.innerHTML = renderInventory()
     if (state.tab === 'crm') $view.innerHTML = renderCRM()
     if (state.tab === 'campaigns') $view.innerHTML = renderCampaigns()
+    if (state.tab === 'reports') $view.innerHTML = renderReports()
+    if (state.tab === 'admin') $view.innerHTML = renderAdmin()
     bind()
   }
 
@@ -2559,7 +3370,8 @@ $csrf = csrf_token();
   }
 
   function bind(){
-    qsa('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab))
+    qsa('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
+    qsa('[data-go]').forEach(b=>b.onclick=()=>setTab(b.dataset.go).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
 
     const posQ = qs('#pos_q')
     if (posQ) posQ.oninput = async () => {
@@ -2591,6 +3403,7 @@ $csrf = csrf_token();
           order_type: qs('#pos_type')?.value || 'pickup',
           expected_eta_minutes: parseInt(qs('#pos_eta')?.value||'15',10)||15,
           tip_cents: parseInt(qs('#pos_tip')?.value||'0',10)||0,
+          coupon_code: qs('#pos_coupon')?.value || '',
           payment_method: qs('#pos_paymethod')?.value || 'cash',
           payment_received: qs('#pos_paid')?.checked ? 1 : 0,
           walkin,
@@ -2603,6 +3416,7 @@ $csrf = csrf_token();
         state.cart = []
         msg('pos_msg','ok',`Order placed: ${out.order_code}`)
         await loadOrders('active')
+        await loadDashboard()
         render()
       }catch(e){
         msg('pos_msg','err', e.message || 'Failed to place order')
@@ -2614,11 +3428,31 @@ $csrf = csrf_token();
     const ordFil = qs('#orders_filter')
     if (ordFil) ordFil.onchange = async ()=>{ await loadOrders(ordFil.value); render() }
 
+    const orderSearch = qs('#order_search_btn')
+    if (orderSearch) orderSearch.onclick = async ()=>{
+      try{
+        await loadOrderSearch()
+        render()
+      }catch(e){
+        msg('orders_msg','err', e.message || 'Order search failed')
+      }
+    }
+
+    qsa('[data-open-order]').forEach(b=>b.onclick=async ()=>{
+      try{
+        state.selectedOrder = await api('api_order_get', { params: { id: Number(b.dataset.openOrder) }})
+        render()
+      }catch(e){
+        msg('orders_msg','err', e.message || 'Order open failed')
+      }
+    })
+
     qsa('[data-st]').forEach(b=>b.onclick=async ()=>{
       try{
         await api('api_order_status_update', { method:'POST', body:{ id:Number(b.dataset.st), status:b.dataset.next } })
         msg('orders_msg','ok','Order updated')
         await loadOrders(qs('#orders_filter')?.value || 'active')
+        await loadDashboard()
         render()
       }catch(e){
         msg('orders_msg','err', e.message || 'Failed to update')
@@ -2626,7 +3460,55 @@ $csrf = csrf_token();
     })
 
     const invQ = qs('#inv_q')
-    if (invQ) invQ.oninput = async ()=>{ await loadProducts(invQ.value); render() }
+    if (invQ) invQ.oninput = async ()=>{ await loadProducts(invQ.value, true); render() }
+
+    const clearProd = () => {
+      if (qs('#prod_id')) qs('#prod_id').value = ''
+      if (qs('#prod_sku')) qs('#prod_sku').value = ''
+      if (qs('#prod_name')) qs('#prod_name').value = ''
+      if (qs('#prod_price')) qs('#prod_price').value = '0'
+      if (qs('#prod_stock')) qs('#prod_stock').value = '0'
+      if (qs('#prod_cat')) qs('#prod_cat').value = ''
+      if (qs('#prod_active')) qs('#prod_active').value = '1'
+    }
+    const prodClear = qs('#prod_clear')
+    if (prodClear) prodClear.onclick = clearProd
+
+    const prodSave = qs('#prod_save')
+    if (prodSave) prodSave.onclick = async ()=>{
+      try{
+        const payload = {
+          id: parseInt(qs('#prod_id')?.value || '0',10) || 0,
+          sku: qs('#prod_sku')?.value || '',
+          name: qs('#prod_name')?.value || '',
+          price_cents: parseInt(qs('#prod_price')?.value || '0',10) || 0,
+          stock_qty: parseInt(qs('#prod_stock')?.value || '0',10) || 0,
+          category: qs('#prod_cat')?.value || '',
+          active: (qs('#prod_active')?.value || '1') === '1' ? 1 : 0
+        }
+        await api('api_product_save', { method:'POST', body: payload })
+        msg('inv_msg','ok','Product saved')
+        clearProd()
+        await loadProducts(qs('#inv_q')?.value || '', true)
+        await loadLowStock()
+        await loadDashboard()
+        render()
+      }catch(e){
+        msg('inv_msg','err', e.message || 'Product save failed')
+      }
+    }
+
+    qsa('[data-editprod]').forEach(b=>b.onclick=()=>{
+      const p = state.products.find(x=>Number(x.id)===Number(b.dataset.editprod))
+      if (!p) return
+      qs('#prod_id').value = p.id
+      qs('#prod_sku').value = p.sku || ''
+      qs('#prod_name').value = p.name || ''
+      qs('#prod_price').value = p.price_cents || 0
+      qs('#prod_stock').value = p.stock_qty || 0
+      qs('#prod_cat').value = p.category || ''
+      qs('#prod_active').value = Number(p.active)===1 ? '1' : '0'
+    })
 
     qsa('[data-saveprod]').forEach(b=>b.onclick=async ()=>{
       try{
@@ -2635,7 +3517,8 @@ $csrf = csrf_token();
         await api('api_product_update', { method:'POST', body:{ id, stock_qty: stock, active: 1 } })
         msg('inv_msg','ok','Saved')
         await loadLowStock()
-        await loadProducts(qs('#inv_q')?.value || '')
+        await loadProducts(qs('#inv_q')?.value || '', true)
+        await loadDashboard()
         render()
       }catch(e){
         msg('inv_msg','err', e.message || 'Save failed')
@@ -2643,7 +3526,7 @@ $csrf = csrf_token();
     })
 
     const lowRef = qs('#low_refresh')
-    if (lowRef) lowRef.onclick = async ()=>{ await loadLowStock(); render() }
+    if (lowRef) lowRef.onclick = async ()=>{ await loadLowStock(); await loadDashboard(); render() }
 
     const crmQ = qs('#crm_q')
     if (crmQ) crmQ.oninput = async ()=>{
@@ -2661,6 +3544,7 @@ $csrf = csrf_token();
       try{
         const id = Number(b.dataset.open)
         state.selectedCustomer = await api('api_customer_get', { params: { id }})
+        state.customerTimeline = await api('api_customer_timeline', { params: { id }})
         render()
       }catch(e){
         msg('crm_msg','err', e.message || 'Open failed')
@@ -2682,6 +3566,9 @@ $csrf = csrf_token();
         await api('api_customer_upsert', { method:'POST', body: payload })
         msg('cust_msg','ok','Saved')
         state.selectedCustomer = await api('api_customer_get', { params: { phone: payload.phone }})
+        if (state.selectedCustomer?.customer?.id) {
+          state.customerTimeline = await api('api_customer_timeline', { params: { id: state.selectedCustomer.customer.id }})
+        }
         render()
       }catch(e){
         msg('cust_msg','err', e.message || 'Save failed')
@@ -2718,6 +3605,18 @@ $csrf = csrf_token();
       msg('camp_msgbox','ok',`Selected segment #${b.dataset.useSeg}`)
     })
 
+    qsa('[data-preset]').forEach(b=>b.onclick=async ()=>{
+      try{
+        const out = await api('api_campaign_preset_create', { method:'POST', body: { preset: b.dataset.preset }})
+        msg('camp_msgbox','ok',`Created preset segment #${out.segment_id} and campaign #${out.campaign_id}`)
+        await loadSegments()
+        await loadCampaigns()
+        render()
+      }catch(e){
+        msg('camp_msgbox','err', e.message || 'Preset failed')
+      }
+    })
+
     const campSim = qs('#camp_sim')
     if (campSim) campSim.onclick = async ()=>{
       try{
@@ -2744,6 +3643,7 @@ $csrf = csrf_token();
         const out = await api('api_campaign_create', { method:'POST', body: payload })
         msg('camp_msgbox','ok',`Created campaign #${out.id}`)
         await loadCampaigns()
+        await loadDashboard()
         render()
       }catch(e){
         msg('camp_msgbox','err', e.message || 'Create failed')
@@ -2758,11 +3658,60 @@ $csrf = csrf_token();
         const override_opt_in = (qs('#camp_override')?.value || '0') === '1' ? 1 : 0
         const with_coupons = (qs('#camp_coupon')?.value || '0') === '1' ? 1 : 0
         const out = await api('api_campaign_send', { method:'POST', body: { id, override_opt_in, with_coupons } })
-        msg('camp_msgbox','ok',`Queued ${out.queued} recipients. Export lists from DB or extend with /export endpoint.`)
         await loadCampaigns()
+        await loadDashboard()
         render()
+        msg('camp_msgbox','ok',`Queued ${out.queued} recipients. Use Export CSV on this campaign row.`)
       }catch(e){
         msg('camp_msgbox','err', e.message || 'Send failed')
+      }
+    }
+
+    const repRefresh = qs('#rep_refresh')
+    if (repRefresh) repRefresh.onclick = async ()=>{
+      try{
+        state.reportFrom = qs('#rep_from')?.value || state.reportFrom
+        state.reportTo = qs('#rep_to')?.value || state.reportTo
+        await loadSalesReport()
+        render()
+      }catch(e){
+        $view.insertAdjacentHTML('afterbegin', `<div class="errbox">${esc(e.message || 'Report failed')}</div>`)
+      }
+    }
+
+    const auditRefresh = qs('#audit_refresh')
+    if (auditRefresh) auditRefresh.onclick = async ()=>{
+      try{
+        await loadAuditLog(qs('#audit_q')?.value || '')
+        render()
+      }catch(e){
+        msg('admin_msg','err', e.message || 'Audit load failed')
+      }
+    }
+
+    const pwChange = qs('#pw_change')
+    if (pwChange) pwChange.onclick = async ()=>{
+      try{
+        await api('api_password_change', { method:'POST', body: {
+          current_password: qs('#pw_current')?.value || '',
+          new_password: qs('#pw_new')?.value || ''
+        }})
+        msg('admin_msg','ok','Password changed')
+      }catch(e){
+        msg('admin_msg','err', e.message || 'Password change failed')
+      }
+    }
+
+    const pwReset = qs('#pw_reset')
+    if (pwReset) pwReset.onclick = async ()=>{
+      try{
+        await api('api_admin_password_reset', { method:'POST', body: {
+          email: qs('#reset_email')?.value || '',
+          new_password: qs('#reset_pw')?.value || ''
+        }})
+        msg('admin_msg','ok','Password reset')
+      }catch(e){
+        msg('admin_msg','err', e.message || 'Password reset failed')
       }
     }
   }
@@ -2784,14 +3733,17 @@ $csrf = csrf_token();
 
   async function boot(){
     await loadMe()
+    await loadDashboard()
     await loadProducts('')
     await loadLowStock()
     await loadOrders('active')
     await loadSegments()
     await loadCampaigns()
+    await loadSalesReport()
+    await loadAuditLog('')
 
-    const initial = (window.location.hash || '#pos').slice(1)
-    setTab(['pos','orders','inventory','crm','campaigns'].includes(initial) ? initial : 'pos')
+    const initial = (window.location.hash || '#dashboard').slice(1)
+    await setTab(['dashboard','pos','orders','inventory','crm','campaigns','reports','admin'].includes(initial) ? initial : 'dashboard')
   }
 
   boot().catch(e=>{

@@ -2,3 +2,4 @@
 neighbourpos.db
 *.log
 /.DS_Store
+.vercel

@@ -26,4 +26,6 @@ If cPanel cron supports CLI PHP, you can call:
 
 ## Notes
 - Customer portal is public: `?action=portal` (phone lookup only).
+- Campaign recipient CSV exports are available from queued campaign rows after staff login.
+- Sales reports, low-stock CSV exports, and admin database backup are built in; protect downloaded files because they may contain customer/order data.
 - For production, enable HTTPS (AutoSSL / Let’s Encrypt) and keep the app behind TLS.

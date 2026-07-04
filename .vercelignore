@@ -1,0 +1,6 @@
+neighbourpos.php
+neighbourpos.db
+*.db
+*.log
+.env
+tests/
