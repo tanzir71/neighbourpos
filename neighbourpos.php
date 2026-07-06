@@ -943,12 +943,12 @@ if ($action === 'staff_login') {
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:16px}
-    .h1{font-size:18px;font-weight:800;margin:0}
+    .h1{font-size:18px;font-weight:700;margin:0}
     .p{color:var(--muted);font-size:13px;line-height:1.4;margin:6px 0 0}
     label{display:block;font-size:12px;color:var(--muted);margin-top:12px}
     input{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none}
     input:focus{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 4px rgba(37,99,235,.14)}
-    .btn{margin-top:14px;width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:700}
+    .btn{margin-top:14px;width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
     .btn:active{transform:translateY(1px)}
     .err{margin-top:12px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#fecaca;padding:10px;border-radius:12px;font-size:13px}
     .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.5}
@@ -1012,10 +1012,10 @@ if ($action === 'staff_register') {
     *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#07080b,#0b0c0f);color:var(--txt);}
     .wrap{max-width:420px;margin:0 auto;padding:24px}
     .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:16px}
-    .h1{font-size:18px;font-weight:800;margin:0}
+    .h1{font-size:18px;font-weight:700;margin:0}
     label{display:block;font-size:12px;color:var(--muted);margin-top:12px}
     input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none}
-    .btn{margin-top:14px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:700}
+    .btn{margin-top:14px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
     .err{margin-top:12px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#fecaca;padding:10px;border-radius:12px;font-size:13px}
     .muted{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.4}
   </style></head><body>";
@@ -2267,10 +2267,10 @@ if ($action === 'portal') {
     *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#07080b;color:var(--txt);}
     .wrap{max-width:520px;margin:0 auto;padding:18px}
     .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
-    .h1{font-size:16px;font-weight:800;margin:0}
+    .h1{font-size:16px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none;margin-top:10px}
-    .btn{margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:700}
+    .btn{margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
     .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
     .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:#cbd5e1}
     .b-new{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.22)}
@@ -2306,7 +2306,7 @@ if ($action === 'portal') {
         if ($st === 'out_for_delivery') $cls = 'b-out';
         if ($st === 'completed' || $st === 'cancelled') $cls = 'b-done';
         echo "<div style='margin-top:10px;padding-top:10px;border-top:1px solid var(--line)'>";
-        echo "<div class='row'><div><div style='font-weight:700'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])." • ".h($o['created_at'])."</div></div>";
+        echo "<div class='row'><div><div style='font-weight:500'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])." • ".h($o['created_at'])."</div></div>";
         echo "<div class='badge {$cls}'>".h($st)."</div></div>";
         echo "<div class='muted' style='margin-top:6px'>Total: ".h(money_fmt($CONFIG, (int)$o['total_cents']))." • ETA: ".(int)$o['expected_eta_minutes']." min</div>";
         echo "</div>";
@@ -2340,15 +2340,15 @@ if ($action === 'receipt') {
   echo "<style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:16px;color:#111}
     .wrap{max-width:520px;margin:0 auto}
-    .h1{font-size:18px;font-weight:800;margin:0}
+    .h1{font-size:18px;font-weight:700;margin:0}
     .muted{color:#555;font-size:12px}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     td{padding:8px 0;border-bottom:1px solid #eee;font-size:13px}
     .right{text-align:right}
-    .tot{font-weight:800}
+    .tot{font-weight:700}
     @media print{button{display:none}}
   </style></head><body><div class='wrap'>";
-  echo "<button onclick='window.print()' style='padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font-weight:700'>Print</button>";
+  echo "<button onclick='window.print()' style='padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font-weight:500'>Print</button>";
   echo "<div style='margin-top:10px'><div class='h1'>".h($store['name'])."</div><div class='muted'>Order ".h($o['order_code'])." • ".h($o['created_at'])."</div>";
   echo "<div class='muted'>Type: ".h($o['order_type'])." • Status: ".h($o['status'])."</div>";
   echo "<div class='muted'>Customer: ".h((string)($o['phone_text'] ?? ''))."</div></div>";
@@ -2430,14 +2430,14 @@ $csrf = csrf_token();
     .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none;flex:0 0 auto}
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .title{font-weight:900;font-size:16px}
+    .title{font-weight:700;font-size:16px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
-    .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:800}
+    .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:500}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
     .card{background:var(--card);border:0;border-radius:8px;padding:14px;box-shadow:none}
-    .h1{font-size:14px;font-weight:900;margin:0}
+    .h1{font-size:14px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center}
     .row > *{flex:1}
@@ -2446,7 +2446,7 @@ $csrf = csrf_token();
     .field textarea{min-height:70px;resize:vertical}
     .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
 
-    .btn{padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:700}
+    .btn{padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:500}
     .btn.primary{background:var(--accent);color:#fff}
     .btn.danger{background:var(--redWash);color:var(--bad)}
     .btn.ghost{background:var(--wash)}
@@ -2458,7 +2458,7 @@ $csrf = csrf_token();
     .navHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .navBrandText{min-width:0}
     .navin{display:grid;gap:4px;padding:0;overflow:visible}
-    .tab{--nav-bg:var(--wash);--nav-color:var(--muted);min-width:0;display:grid;grid-template-columns:32px 1fr;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;border:0;background:transparent;font-size:13px;color:var(--muted);font-weight:700;text-align:left}
+    .tab{--nav-bg:var(--wash);--nav-color:var(--muted);min-width:0;display:grid;grid-template-columns:32px 1fr;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;border:0;background:transparent;font-size:13px;color:var(--muted);font-weight:500;text-align:left}
     .tab[data-tab="pos"]{--nav-bg:var(--blueWash);--nav-color:var(--accent)}
     .tab[data-tab="dashboard"]{--nav-bg:var(--greenWash);--nav-color:var(--good)}
     .tab[data-tab="orders"]{--nav-bg:var(--amberWash);--nav-color:var(--warn)}
@@ -2467,10 +2467,10 @@ $csrf = csrf_token();
     .tab[data-tab="campaigns"]{--nav-bg:#edf8e8;--nav-color:#4d7c0f}
     .tab[data-tab="reports"]{--nav-bg:var(--redWash);--nav-color:var(--bad)}
     .tab[data-tab="admin"]{--nav-bg:#eef0f4;--nav-color:#4b5563}
-    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center;font-size:11px;font-weight:900;letter-spacing:-.03em}
+    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0}
     .tab:hover,.tab.active{background:var(--nav-bg);color:var(--nav-color)}
     .tab.active .navIcon{background:#fff}
-    .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:900;display:grid;place-items:center;flex:0 0 auto}
+    .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:700;display:grid;place-items:center;flex:0 0 auto}
     .sideToggle:hover{background:var(--blueWash);color:var(--accent)}
     .navCopy{margin-top:auto;border-radius:8px;background:var(--wash);padding:12px;color:var(--muted);font-size:12px;line-height:1.45}
     .appShell.navCollapsed .nav{align-items:center}
@@ -2479,11 +2479,12 @@ $csrf = csrf_token();
     .appShell.navCollapsed .tab{width:44px;grid-template-columns:1fr;justify-items:center;padding:6px}
     .appShell.navCollapsed .sideToggle span{transform:rotate(180deg)}
 
-    .list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-    .item{padding:12px;border-radius:8px;border:0;background:#fff}
-    .item .name{font-weight:900;font-size:13px}
+    .list{display:flex;flex-direction:column;gap:0;margin-top:10px}
+    .item{padding:12px 0;border-radius:0;border:0;background:#fff}
+    .item + .item{border-top:1px solid var(--line)}
+    .item .name{font-weight:500;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
-    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:800}
+    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:500}
     .b-new{background:var(--blueWash)}
     .b-prep{background:var(--amberWash)}
     .b-ready{background:var(--greenWash)}
@@ -2491,7 +2492,7 @@ $csrf = csrf_token();
     .b-done{background:#eef0f4}
     .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
     .k{padding:12px;border-radius:8px;border:0;background:#fff}
-    .k .v{font-weight:900;font-size:16px}
+    .k .v{font-weight:700;font-size:16px}
     .k .l{color:var(--muted);font-size:11px;margin-top:4px}
     .warnbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--amberWash);color:#744800;font-size:12px;line-height:1.35}
     .okbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--greenWash);color:#145c2e;font-size:12px;line-height:1.35}
@@ -2502,29 +2503,29 @@ $csrf = csrf_token();
     .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
     .saleSearch{height:44px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
-    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:900;display:grid;place-items:center}
+    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:700;display:grid;place-items:center}
     .categoryTabs{display:flex;gap:4px;border:0;border-radius:8px;overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
-    .categoryTabs button{min-width:104px;height:36px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:800}
+    .categoryTabs button{min-width:104px;height:36px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:500}
     .categoryTabs button:last-child{border-right:0}
     .categoryTabs button.active{background:var(--accent);color:#fff}
     .saleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
     .saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:background .12s ease}
     .saleTile:hover{background:var(--blueWash)}
-    .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:900}
+    .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:700}
     .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
-    .stockText{font-size:12px;font-weight:800;color:var(--good)}
+    .stockText{font-size:12px;font-weight:500;color:var(--good)}
     .stockText.low{color:var(--warn)}
     .cartTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .cartTitle .h1{font-size:18px}
     .customerLookup{display:grid;gap:8px}
     .customerChip{border:0;border-radius:8px;background:var(--greenWash);padding:10px;display:flex;gap:10px;align-items:center}
-    .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+    .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
     .chipMain{min-width:0;flex:1}
-    .chipMain strong{display:block;font-size:14px}
+    .chipMain strong{display:block;font-size:14px;font-weight:500}
     .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
-    .chipMeta{font-size:12px;font-weight:800;color:var(--good);white-space:nowrap}
+    .chipMeta{font-size:12px;font-weight:500;color:var(--good);white-space:nowrap}
     .compactFields{display:grid;grid-template-columns:1fr 112px;gap:8px}
-    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:0;background:var(--wash);border-radius:8px;padding:10px}
+    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line);background:#fff;border-radius:0;padding:10px 0}
     .cartLine:first-child{border-top:0}
     .lineControls{display:flex;align-items:center;gap:5px}
     .lineControls .btn.small{padding:8px}
@@ -2533,16 +2534,17 @@ $csrf = csrf_token();
     .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
     .totals{border:0;border-radius:8px;background:var(--blueWash);padding:10px;display:grid;gap:8px}
     .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
-    .totalRow strong{font-size:24px;color:var(--txt)}
+    .totalRow strong{font-size:24px;color:var(--txt);font-weight:700}
     .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .segmented button{height:38px;border:0;border-radius:7px;background:var(--wash);font-weight:800;color:#445064}
+    .segmented button{height:38px;border:0;border-radius:7px;background:var(--wash);font-weight:500;color:#445064}
     .segmented button.active{color:var(--accent);background:var(--blueWash)}
     .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
-    .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800}
+    .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:500}
     .switch{width:43px;height:24px;border-radius:999px;border:0;background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
     .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
-    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:8px;background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:800}
+    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:8px;background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:500}
+    .saleTile strong,.cartLine strong,td strong{font-weight:500}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
     @media(max-width:980px){

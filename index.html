@@ -45,12 +45,12 @@
     .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:950;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none}
     .brandMark::after{content:"";position:absolute;right:5px;top:6px;width:4px;height:24px;border-radius:999px;background:var(--blue)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .brand strong{font-size:17px;letter-spacing:-.04em;white-space:nowrap}
+    .brand strong{font-size:17px;letter-spacing:-.04em;white-space:nowrap;font-weight:700}
     .brandTag{font-size:13px;color:var(--muted);white-space:nowrap}
     nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
     nav a,.btn{min-height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;padding:8px 12px;text-decoration:none;font-size:14px;line-height:1.1;letter-spacing:0}
-    nav a{color:var(--muted);font-weight:700}
-    .btn{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:600}
+    nav a{color:var(--muted);font-weight:500}
+    .btn{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:500}
     nav a:hover{background:var(--panel);color:var(--ink)}
     .btn.primary{background:var(--blue);color:#fff;border:0}
     .btn.primary:hover{background:var(--blue-dark)}
@@ -65,21 +65,21 @@
     .proofLine{display:grid;grid-template-columns:1fr;gap:10px;margin-top:34px;max-width:620px}
     @media (min-width:700px){.proofLine{grid-template-columns:repeat(3,1fr)}}
     .proofLine div{border-radius:8px;padding:10px 12px;background:var(--blue-wash)}
-    .proofLine strong{display:block;font-size:13px;letter-spacing:-.02em}
+    .proofLine strong{display:block;font-size:13px;letter-spacing:-.02em;font-weight:500}
     .proofLine span{display:block;margin-top:4px;font-size:12px;line-height:1.45;color:var(--muted)}
     section{padding:66px 0}
     .sectionHead{display:flex;align-items:end;justify-content:space-between;gap:22px;margin-bottom:24px}
-    .sectionHead h2{margin:0;font-size:clamp(28px,4vw,42px);line-height:1.04;letter-spacing:-.06em}
+    .sectionHead h2{margin:0;font-size:clamp(28px,4vw,42px);line-height:1.04;letter-spacing:-.06em;font-weight:800}
     .sectionHead p{margin:10px 0 0;color:var(--muted);max-width:680px;line-height:1.65}
-    .micro{font-size:12px;color:var(--soft);font-weight:800;text-transform:uppercase;letter-spacing:.1em}
+    .micro{font-size:12px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.1em}
     .flowGrid{display:grid;grid-template-columns:1fr;gap:14px}
     @media (min-width:820px){.flowGrid{grid-template-columns:repeat(3,1fr)}}
     .flowCard{border:0;border-radius:8px;background:#fff;padding:18px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
-    .flowCard h3,.fitCard h3,.limitCard h3{margin:0;font-size:18px;letter-spacing:-.035em}
+    .flowCard h3,.fitCard h3,.limitCard h3{margin:0;font-size:18px;letter-spacing:-.035em;font-weight:700}
     .flowCard p,.fitCard p,.limitCard p{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
     .miniUi{margin-top:18px;border:0;border-radius:8px;background:var(--panel);padding:10px;display:grid;gap:8px}
     .miniRow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0;border-radius:6px;padding:8px 9px;font-size:12px}
-    .miniRow strong{font-size:12px}
+    .miniRow strong{font-size:12px;font-weight:500}
     .miniRow span{color:var(--muted)}
     .miniRow.good{background:var(--green-wash)}
     .miniRow.warn{background:var(--amber-wash)}
@@ -95,18 +95,19 @@
     @media (min-width:880px){.setupGrid{grid-template-columns:1.05fr .95fr}}
     .codebox,.ownershipBox{border:0;border-radius:8px;background:#fff;overflow:hidden}
     .codeHead{display:flex;background:var(--panel)}
-    .codeHead span{flex:1;text-align:center;padding:10px 8px;font-size:12px;font-weight:800;color:#303744}
+    .codeHead span{flex:1;text-align:center;padding:10px 8px;font-size:12px;font-weight:500;color:#303744}
     pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.75;color:#15171c;background:#fff}
     .ownershipBox{padding:18px;display:grid;gap:12px}
     .ownRow{display:grid;grid-template-columns:90px 1fr;gap:12px;background:var(--panel);border-radius:8px;padding:12px}
     .ownRow:last-child{padding-bottom:12px}
-    .ownRow strong{font-size:13px}
+    .ownRow strong{font-size:13px;font-weight:500}
     .ownRow span{color:var(--muted);font-size:14px;line-height:1.55}
     table{width:100%;border-collapse:collapse;border:0;border-radius:8px;overflow:hidden;background:#fff}
     th,td{border:0;padding:12px;text-align:left;font-size:13px;line-height:1.45;vertical-align:top}
-    th{background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#303744}
-    td.good{color:var(--green);font-weight:800}
-    td.bad{color:var(--red);font-weight:700}
+    th{background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#303744;font-weight:500;border-bottom:1px solid var(--line)}
+    tbody tr + tr td{border-top:1px solid var(--line)}
+    td.good{color:var(--green);font-weight:500}
+    td.bad{color:var(--red);font-weight:500}
     .limitGrid{display:grid;grid-template-columns:1fr;gap:14px}
     @media (min-width:820px){.limitGrid{grid-template-columns:repeat(3,1fr)}}
     .limitCard{border:0;border-radius:8px;background:#fff;padding:18px}
