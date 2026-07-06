@@ -54,6 +54,8 @@ Assert-SourceContains $demo 'customerLookup' 'Static demo checkout customer look
 Assert-SourceContains $demo 'paymentMethod' 'Static demo payment method state/control is missing'
 Assert-SourceContains $demo 'markPaid' 'Static demo mark-paid control is missing'
 Assert-SourceContains $demo 'tinyStatus' 'Static demo checkout status strip is missing'
+Assert-SourceContains $demo 'brandMark' 'Static demo premium brand mark is missing'
+Assert-SourceContains $demo 'rel="icon" type="image/svg\+xml"' 'Static demo SVG favicon is missing'
 
 Assert-SourceContains $source 'checkoutShell' 'Production cashier station shell is missing'
 Assert-SourceContains $source 'pos_category' 'Production checkout category filter is missing'
@@ -61,14 +63,17 @@ Assert-SourceContains $source 'attachedCustomer' 'Production checkout attached c
 Assert-SourceContains $source 'lookupCustomerByPhone' 'Production checkout phone lookup helper is missing'
 Assert-SourceContains $source 'payment_received' 'Production checkout payment received payload is missing'
 Assert-SourceContains $source 'api_customer_get' 'Production checkout does not use existing customer lookup API'
+Assert-SourceContains $source 'brand_favicon_href' 'Production SVG favicon helper is missing'
+Assert-SourceContains $source 'brandMark' 'Production premium brand mark is missing'
 
-Assert-SourceContains $landing 'assets/landing-checkout-preview\.png' 'Landing page checkout preview asset is missing'
+Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
+Assert-SourceContains $landing 'heroLogo brandMark' 'Landing page logo-led hero is missing'
+Assert-SourceContains $landing 'rel="icon" type="image/svg\+xml"' 'Landing page SVG favicon is missing'
 Assert-SourceContains $landing 'Sell fast, remember customers, bring them back' 'Landing page owner-first hero copy is missing'
 Assert-SourceContains $landing 'Open demo' 'Landing page primary demo CTA is missing'
 Assert-SourceContains $landing 'Deploy guide' 'Landing page deploy guide link is missing'
 Assert-SourceContains $landing 'View source' 'Landing page source link is missing'
 Assert-SourceContains $landing 'No payment processing' 'Landing page payment-processing limit is missing'
-Assert-SourceContains $landing 'NeighbourPOS checkout screen with item grid' 'Landing page checkout image alt text is missing'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'

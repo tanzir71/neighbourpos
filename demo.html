@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NeighbourPOS Demo</title>
   <meta name="description" content="Static NeighbourPOS demo for orders, inventory, CRM, campaigns, and reports.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='-2' fill='white'%3ENP%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -29,13 +30,15 @@
     button{cursor:pointer}
     a{color:inherit}
     .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-    .shell{min-height:100vh;display:grid;grid-template-columns:164px 1fr}
+    .shell{min-height:100vh;display:grid;grid-template-columns:188px 1fr}
     .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:#fff;padding:18px 14px;display:flex;flex-direction:column;gap:18px}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-    .mark{width:34px;height:34px;border:1px solid var(--line2);border-radius:7px;display:grid;place-items:center;font-weight:900;background:#fff}
+    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:950;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:0 8px 18px rgba(9,11,16,.18)}
+    .brandMark::after{content:"";position:absolute;right:5px;top:6px;width:4px;height:24px;border-radius:999px;background:var(--blue)}
+    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .brand strong{display:block;font-size:16px;letter-spacing:-.04em}
-    .brand span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
-    .brand .mark{display:grid;place-items:center;color:var(--ink);font-size:14px;margin-top:0}
+    .brandText{display:block}
+    .brandKicker{display:block;font-size:12px;color:var(--muted);margin-top:2px}
     .nav{display:grid;gap:5px}
     .nav button{width:100%;border:0;background:transparent;border-radius:7px;padding:10px 11px;text-align:left;color:var(--muted);font-weight:700}
     .nav button:hover{background:#f4f6fb;color:var(--ink)}
@@ -185,8 +188,8 @@
   <div class="shell">
     <aside class="side">
       <a class="brand" href="index.html">
-        <span class="mark">NP</span>
-        <span><strong>NeighbourPOS</strong><span>Static browser demo</span></span>
+        <span class="brandMark mono" aria-hidden="true"><span>NP</span></span>
+        <span class="brandText"><strong>NeighbourPOS</strong><span class="brandKicker">Static browser demo</span></span>
       </a>
       <div class="nav" role="tablist" aria-label="Demo views">
         <button class="active" data-view="pos">POS</button>

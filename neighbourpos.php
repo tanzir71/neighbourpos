@@ -136,6 +136,9 @@ enforce_session_timeout($CONFIG);
 
 function htmlEscape(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function h(string $s): string { return htmlEscape($s); }
+function brand_favicon_href(): string {
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='-2' fill='white'%3ENP%3C/text%3E%3C/svg%3E";
+}
 function now_iso(): string { return gmdate('Y-m-d H:i:s'); }
 function client_ip(): string { return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'; }
 
@@ -927,6 +930,7 @@ if ($action === 'staff_login') {
   $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>".h($CONFIG['APP_NAME'])." — Staff Login</title>";
+  echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
   echo "<style>
@@ -935,7 +939,9 @@ if ($action === 'staff_login') {
     a{color:var(--txt)}
     .wrap{max-width:420px;margin:0 auto;padding:24px}
     .brand{display:flex;align-items:center;gap:10px;margin-top:20px;margin-bottom:18px}
-    .dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(37,99,235,.14)}
+    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#050609;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:0 12px 26px rgba(0,0,0,.3)}
+    .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
+    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:16px}
     .h1{font-size:18px;font-weight:800;margin:0}
     .p{color:var(--muted);font-size:13px;line-height:1.4;margin:6px 0 0}
@@ -948,7 +954,7 @@ if ($action === 'staff_login') {
     .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.5}
   </style></head><body>";
   echo "<div class='wrap'>";
-  echo "<div class='brand'><div class='dot'></div><div><div class='h1'>".h($CONFIG['APP_NAME'])."</div><div class='p'>Mobile-first POS + CRM for neighborhood stores.</div></div></div>";
+  echo "<div class='brand'><div class='brandMark' aria-hidden='true'><span>NP</span></div><div><div class='h1'>".h($CONFIG['APP_NAME'])."</div><div class='p'>Mobile-first POS + CRM for neighborhood stores.</div></div></div>";
   echo "<div class='card'>";
   echo "<form method='post' action='?action=staff_login'>";
   echo "<input type='hidden' name='csrf' value='".h($csrf)."'>";
@@ -2384,6 +2390,7 @@ $csrf = csrf_token();
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="<?=h($csrf)?>">
   <title><?=h($CONFIG['APP_NAME'])?></title>
+  <link rel="icon" type="image/svg+xml" href="<?=h(brand_favicon_href())?>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -2410,7 +2417,9 @@ $csrf = csrf_token();
     .app{max-width:1360px;margin:0 auto;padding:14px;padding-bottom:86px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(37,99,235,.14)}
+    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:0 10px 22px rgba(9,11,16,.18);flex:0 0 auto}
+    .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
+    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .title{font-weight:900;font-size:16px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
     .pill{border:1px solid var(--line2);background:#fff;padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:800}
@@ -2521,7 +2530,7 @@ $csrf = csrf_token();
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <div class="dot"></div>
+      <div class="brandMark" aria-hidden="true"><span>NP</span></div>
       <div>
         <div class="title"><?=h($CONFIG['APP_NAME'])?> <span class="pill"><?=h((string)$store['name'])?></span></div>
         <div class="sub">POS convenience → CRM moat (segments + campaigns). Customer portal: <span class="pill">?action=portal</span></div>
