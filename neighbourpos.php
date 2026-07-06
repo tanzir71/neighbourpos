@@ -2400,8 +2400,8 @@ $csrf = csrf_token();
       --bg:#f6f8fc;
       --panel:#ffffff;
       --card:#ffffff;
-      --line:#edf1f6;
-      --line2:#e3e8f0;
+      --line:#e5ebf3;
+      --line2:#d8e0eb;
       --txt:#090b10;
       --muted:#5c6472;
       --good:#177a3b;
@@ -2417,7 +2417,7 @@ $csrf = csrf_token();
       --shadow:none;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
     a{color:inherit}
     button,input,select,textarea{font-family:inherit}
     input,select,textarea{border:0;border-radius:7px;background:var(--wash);color:var(--txt);outline:none}
@@ -2430,7 +2430,7 @@ $csrf = csrf_token();
     .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none;flex:0 0 auto}
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .title{font-weight:700;font-size:16px}
+    .title{font-weight:700;font-size:15px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
     .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:500}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
@@ -2442,11 +2442,11 @@ $csrf = csrf_token();
     .row{display:flex;gap:10px;align-items:center}
     .row > *{flex:1}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
-    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);outline:none}
+    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-size:13px;outline:none}
     .field textarea{min-height:70px;resize:vertical}
     .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
 
-    .btn{padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:500}
+    .btn{padding:9px 11px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:13px;font-weight:500}
     .btn.primary{background:var(--accent);color:#fff}
     .btn.danger{background:var(--redWash);color:var(--bad)}
     .btn.ghost{background:var(--wash)}
@@ -2481,7 +2481,7 @@ $csrf = csrf_token();
 
     .list{display:flex;flex-direction:column;gap:0;margin-top:10px}
     .item{padding:12px 0;border-radius:0;border:0;background:#fff}
-    .item + .item{border-top:1px solid var(--line)}
+    .item + .item{border-top:1px solid var(--line2)}
     .item .name{font-weight:500;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
     .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:500}
@@ -2502,14 +2502,14 @@ $csrf = csrf_token();
     .stationPanel{padding:16px;min-width:0}
     .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
-    .saleSearch{height:44px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
+    .saleSearch{height:42px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
     .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:700;display:grid;place-items:center}
     .categoryTabs{display:flex;gap:4px;border:0;border-radius:8px;overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
-    .categoryTabs button{min-width:104px;height:36px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:500}
+    .categoryTabs button{min-width:104px;height:34px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:13px;font-weight:500}
     .categoryTabs button:last-child{border-right:0}
     .categoryTabs button.active{background:var(--accent);color:#fff}
     .saleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
-    .saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:background .12s ease}
+    .saleTile{min-height:150px;padding:12px;align-content:space-between;text-align:left;transition:background .12s ease}
     .saleTile:hover{background:var(--blueWash)}
     .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:700}
     .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
@@ -2521,11 +2521,11 @@ $csrf = csrf_token();
     .customerChip{border:0;border-radius:8px;background:var(--greenWash);padding:10px;display:flex;gap:10px;align-items:center}
     .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
     .chipMain{min-width:0;flex:1}
-    .chipMain strong{display:block;font-size:14px;font-weight:500}
+    .chipMain strong{display:block;font-size:13px;font-weight:500}
     .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
     .chipMeta{font-size:12px;font-weight:500;color:var(--good);white-space:nowrap}
     .compactFields{display:grid;grid-template-columns:1fr 112px;gap:8px}
-    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line);background:#fff;border-radius:0;padding:10px 0}
+    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line2);background:#fff;border-radius:0;padding:9px 0}
     .cartLine:first-child{border-top:0}
     .lineControls{display:flex;align-items:center;gap:5px}
     .lineControls .btn.small{padding:8px}
@@ -2534,9 +2534,9 @@ $csrf = csrf_token();
     .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
     .totals{border:0;border-radius:8px;background:var(--blueWash);padding:10px;display:grid;gap:8px}
     .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
-    .totalRow strong{font-size:24px;color:var(--txt);font-weight:700}
+    .totalRow strong{font-size:22px;color:var(--txt);font-weight:700}
     .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .segmented button{height:38px;border:0;border-radius:7px;background:var(--wash);font-weight:500;color:#445064}
+    .segmented button{height:36px;border:0;border-radius:7px;background:var(--wash);font-size:13px;font-weight:500;color:#445064}
     .segmented button.active{color:var(--accent);background:var(--blueWash)}
     .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
     .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:500}
@@ -2544,7 +2544,7 @@ $csrf = csrf_token();
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
     .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
     .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:8px;background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:500}
-    .saleTile strong,.cartLine strong,td strong{font-weight:500}
+    .saleTile strong,.cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
     @media(max-width:980px){

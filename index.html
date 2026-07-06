@@ -15,8 +15,8 @@
       --ink:#0b0d12;
       --muted:#58606d;
       --soft:#737b88;
-      --line:#edf1f6;
-      --line-strong:#e3e8f0;
+      --line:#e5ebf3;
+      --line-strong:#d8e0eb;
       --panel:#f6f8fb;
       --wash:#edf2f8;
       --blue-wash:#eaf1ff;
@@ -32,7 +32,7 @@
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
     a{color:inherit}
     img{max-width:100%;display:block}
     .mono,code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -48,7 +48,7 @@
     .brand strong{font-size:17px;letter-spacing:-.04em;white-space:nowrap;font-weight:700}
     .brandTag{font-size:13px;color:var(--muted);white-space:nowrap}
     nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
-    nav a,.btn{min-height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;padding:8px 12px;text-decoration:none;font-size:14px;line-height:1.1;letter-spacing:0}
+    nav a,.btn{min-height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;padding:7px 11px;text-decoration:none;font-size:13px;line-height:1.1;letter-spacing:0}
     nav a{color:var(--muted);font-weight:500}
     .btn{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:500}
     nav a:hover{background:var(--panel);color:var(--ink)}
@@ -76,7 +76,7 @@
     @media (min-width:820px){.flowGrid{grid-template-columns:repeat(3,1fr)}}
     .flowCard{border:0;border-radius:8px;background:#fff;padding:18px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
     .flowCard h3,.fitCard h3,.limitCard h3{margin:0;font-size:18px;letter-spacing:-.035em;font-weight:700}
-    .flowCard p,.fitCard p,.limitCard p{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
+    .flowCard p,.fitCard p,.limitCard p{margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
     .miniUi{margin-top:18px;border:0;border-radius:8px;background:var(--panel);padding:10px;display:grid;gap:8px}
     .miniRow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0;border-radius:6px;padding:8px 9px;font-size:12px}
     .miniRow strong{font-size:12px;font-weight:500}
@@ -88,7 +88,7 @@
     @media (min-width:880px){.fitGrid{grid-template-columns:1fr 1fr}}
     .fitCard{border:0;border-radius:8px;background:#fff;padding:18px}
     .fitList{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
-    .fitList li{display:flex;gap:10px;color:var(--muted);font-size:14px;line-height:1.55}
+    .fitList li{display:flex;gap:10px;color:var(--muted);font-size:13px;line-height:1.55}
     .fitList li::before{content:"";flex:0 0 8px;width:8px;height:8px;border-radius:2px;background:var(--blue);margin-top:7px}
     .fitList.avoid li::before{background:var(--amber)}
     .setupGrid{display:grid;grid-template-columns:1fr;gap:16px}
@@ -101,11 +101,12 @@
     .ownRow{display:grid;grid-template-columns:90px 1fr;gap:12px;background:var(--panel);border-radius:8px;padding:12px}
     .ownRow:last-child{padding-bottom:12px}
     .ownRow strong{font-size:13px;font-weight:500}
-    .ownRow span{color:var(--muted);font-size:14px;line-height:1.55}
-    table{width:100%;border-collapse:collapse;border:0;border-radius:8px;overflow:hidden;background:#fff}
-    th,td{border:0;padding:12px;text-align:left;font-size:13px;line-height:1.45;vertical-align:top}
-    th{background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#303744;font-weight:500;border-bottom:1px solid var(--line)}
-    tbody tr + tr td{border-top:1px solid var(--line)}
+    .ownRow span{color:var(--muted);font-size:13px;line-height:1.55}
+    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:#fff}
+    th,td{border:0;border-right:1px solid var(--line);padding:11px 12px;text-align:left;font-size:13px;line-height:1.45;vertical-align:top}
+    th:last-child,td:last-child{border-right:0}
+    th{background:var(--panel);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#303744;font-weight:500;border-bottom:1px solid var(--line-strong)}
+    tbody tr + tr td{border-top:1px solid var(--line-strong)}
     td.good{color:var(--green);font-weight:500}
     td.bad{color:var(--red);font-weight:500}
     .limitGrid{display:grid;grid-template-columns:1fr;gap:14px}
