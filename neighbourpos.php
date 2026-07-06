@@ -2397,89 +2397,119 @@ $csrf = csrf_token();
   <style>
     :root{
       --accent: <?=$accent?>;
-      --bg:#f6f8fb;
+      --bg:#f6f8fc;
       --panel:#ffffff;
       --card:#ffffff;
-      --line:#dce1ea;
-      --line2:#c3cad7;
+      --line:#edf1f6;
+      --line2:#e3e8f0;
       --txt:#090b10;
       --muted:#5c6472;
       --good:#177a3b;
       --warn:#946200;
       --bad:#b42318;
       --violet:#6d35c9;
-      --shadow:0 14px 34px rgba(24,31,44,.08);
+      --wash:#edf2f8;
+      --blueWash:#eaf1ff;
+      --greenWash:#eaf7ef;
+      --amberWash:#fff5dc;
+      --redWash:#fff0ee;
+      --violetWash:#f1ecff;
+      --shadow:none;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);}
     a{color:inherit}
     button,input,select,textarea{font-family:inherit}
-    .app{max-width:1360px;margin:0 auto;padding:14px;padding-bottom:86px}
+    input,select,textarea{border:0;border-radius:7px;background:var(--wash);color:var(--txt);outline:none}
+    input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
+    .appShell{min-height:100vh;display:grid;grid-template-columns:214px minmax(0,1fr);transition:grid-template-columns .18s ease}
+    .appShell.navCollapsed{grid-template-columns:72px minmax(0,1fr)}
+    .app{max-width:1360px;width:100%;margin:0 auto;padding:14px 18px 32px;min-width:0}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:0 10px 22px rgba(9,11,16,.18);flex:0 0 auto}
+    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none;flex:0 0 auto}
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .title{font-weight:900;font-size:16px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
-    .pill{border:1px solid var(--line2);background:#fff;padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:800}
+    .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:800}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
-    .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
+    .card{background:var(--card);border:0;border-radius:8px;padding:14px;box-shadow:none}
     .h1{font-size:14px;font-weight:900;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center}
     .row > *{flex:1}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
-    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:1px solid var(--line2);background:#fff;color:var(--txt);outline:none}
+    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);outline:none}
     .field textarea{min-height:70px;resize:vertical}
-    .field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 4px rgba(37,99,235,.14)}
+    .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
 
-    .btn{padding:10px 12px;border-radius:7px;border:1px solid var(--line2);background:#fff;color:var(--txt);font-weight:800}
-    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-    .btn.danger{background:#fff;color:var(--bad);border-color:#efc2bd}
-    .btn.ghost{background:transparent;border-color:var(--line2)}
+    .btn{padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:700}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.danger{background:var(--redWash);color:var(--bad)}
+    .btn.ghost{background:var(--wash)}
     .btn:active{transform:translateY(1px)}
     .btn.small{padding:8px 10px;border-radius:7px;font-size:12px}
     .btn:disabled{opacity:.5}
 
-    .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter: blur(10px);border-top:1px solid var(--line);z-index:10}
-    .navin{max-width:1360px;margin:0 auto;display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
-    .tab{min-width:82px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:7px;border:1px solid var(--line);background:#fff;font-size:11px;color:var(--muted);font-weight:800}
-    .tab.active{border-color:rgba(37,99,235,.28);background:#eaf0ff;color:var(--accent)}
+    .nav{position:sticky;top:0;height:100vh;background:#fff;z-index:10;padding:14px 10px;display:flex;flex-direction:column;gap:14px}
+    .navHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .navBrandText{min-width:0}
+    .navin{display:grid;gap:4px;padding:0;overflow:visible}
+    .tab{--nav-bg:var(--wash);--nav-color:var(--muted);min-width:0;display:grid;grid-template-columns:32px 1fr;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;border:0;background:transparent;font-size:13px;color:var(--muted);font-weight:700;text-align:left}
+    .tab[data-tab="pos"]{--nav-bg:var(--blueWash);--nav-color:var(--accent)}
+    .tab[data-tab="dashboard"]{--nav-bg:var(--greenWash);--nav-color:var(--good)}
+    .tab[data-tab="orders"]{--nav-bg:var(--amberWash);--nav-color:var(--warn)}
+    .tab[data-tab="inventory"]{--nav-bg:#e9f7f7;--nav-color:#0f766e}
+    .tab[data-tab="crm"]{--nav-bg:var(--violetWash);--nav-color:var(--violet)}
+    .tab[data-tab="campaigns"]{--nav-bg:#edf8e8;--nav-color:#4d7c0f}
+    .tab[data-tab="reports"]{--nav-bg:var(--redWash);--nav-color:var(--bad)}
+    .tab[data-tab="admin"]{--nav-bg:#eef0f4;--nav-color:#4b5563}
+    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center;font-size:11px;font-weight:900;letter-spacing:-.03em}
+    .tab:hover,.tab.active{background:var(--nav-bg);color:var(--nav-color)}
+    .tab.active .navIcon{background:#fff}
+    .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:900;display:grid;place-items:center;flex:0 0 auto}
+    .sideToggle:hover{background:var(--blueWash);color:var(--accent)}
+    .navCopy{margin-top:auto;border-radius:8px;background:var(--wash);padding:12px;color:var(--muted);font-size:12px;line-height:1.45}
+    .appShell.navCollapsed .nav{align-items:center}
+    .appShell.navCollapsed .navHead{display:grid;justify-items:center}
+    .appShell.navCollapsed .navBrandText,.appShell.navCollapsed .navLabel,.appShell.navCollapsed .navCopy{display:none}
+    .appShell.navCollapsed .tab{width:44px;grid-template-columns:1fr;justify-items:center;padding:6px}
+    .appShell.navCollapsed .sideToggle span{transform:rotate(180deg)}
 
     .list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-    .item{padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff}
+    .item{padding:12px;border-radius:8px;border:0;background:#fff}
     .item .name{font-weight:900;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
-    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid var(--line2);color:#445064;white-space:nowrap;font-weight:800}
-    .b-new{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.22)}
-    .b-prep{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22)}
-    .b-ready{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.22)}
-    .b-out{background:rgba(147,51,234,.12);border-color:rgba(147,51,234,.22)}
-    .b-done{background:rgba(100,116,139,.18);border-color:rgba(100,116,139,.26)}
+    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:800}
+    .b-new{background:var(--blueWash)}
+    .b-prep{background:var(--amberWash)}
+    .b-ready{background:var(--greenWash)}
+    .b-out{background:var(--violetWash)}
+    .b-done{background:#eef0f4}
     .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
-    .k{padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff}
+    .k{padding:12px;border-radius:8px;border:0;background:#fff}
     .k .v{font-weight:900;font-size:16px}
     .k .l{color:var(--muted);font-size:11px;margin-top:4px}
-    .warnbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #f5d58b;background:#fff8e6;color:#744800;font-size:12px;line-height:1.35}
-    .okbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #9ed8ad;background:#eefaf1;color:#145c2e;font-size:12px;line-height:1.35}
-    .errbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #efc2bd;background:#fff0ee;color:#8a1f17;font-size:12px;line-height:1.35}
+    .warnbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--amberWash);color:#744800;font-size:12px;line-height:1.35}
+    .okbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--greenWash);color:#145c2e;font-size:12px;line-height:1.35}
+    .errbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--redWash);color:#8a1f17;font-size:12px;line-height:1.35}
     .checkoutShell{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
-    .stationPanel,.cartPanel{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+    .stationPanel,.cartPanel{background:#fff;border:0;border-radius:8px;box-shadow:none}
     .stationPanel{padding:16px;min-width:0}
     .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
     .saleSearch{height:44px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
-    .iconBtn{width:42px;height:42px;border:1px solid var(--line2);border-radius:7px;background:#fff;color:#1f2a3d;font-weight:900;display:grid;place-items:center}
-    .categoryTabs{display:flex;border:1px solid var(--line);border-radius:8px;overflow:auto;margin-bottom:14px;background:#fff}
-    .categoryTabs button{min-width:104px;height:40px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--muted);font-weight:800}
+    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:900;display:grid;place-items:center}
+    .categoryTabs{display:flex;gap:4px;border:0;border-radius:8px;overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
+    .categoryTabs button{min-width:104px;height:36px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:800}
     .categoryTabs button:last-child{border-right:0}
     .categoryTabs button.active{background:var(--accent);color:#fff}
     .saleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
-    .saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:transform .12s ease,border-color .12s ease}
-    .saleTile:hover{border-color:#b7c3d6;transform:translateY(-1px)}
+    .saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:background .12s ease}
+    .saleTile:hover{background:var(--blueWash)}
     .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:900}
     .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
     .stockText{font-size:12px;font-weight:800;color:var(--good)}
@@ -2487,39 +2517,50 @@ $csrf = csrf_token();
     .cartTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .cartTitle .h1{font-size:18px}
     .customerLookup{display:grid;gap:8px}
-    .customerChip{border:1px solid var(--line);border-radius:8px;background:#fbfcff;padding:10px;display:flex;gap:10px;align-items:center}
+    .customerChip{border:0;border-radius:8px;background:var(--greenWash);padding:10px;display:flex;gap:10px;align-items:center}
     .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:900;flex:0 0 auto}
     .chipMain{min-width:0;flex:1}
     .chipMain strong{display:block;font-size:14px}
     .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
     .chipMeta{font-size:12px;font-weight:800;color:var(--good);white-space:nowrap}
     .compactFields{display:grid;grid-template-columns:1fr 112px;gap:8px}
-    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line);padding-top:10px}
-    .cartLine:first-child{border-top:0;padding-top:0}
+    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:0;background:var(--wash);border-radius:8px;padding:10px}
+    .cartLine:first-child{border-top:0}
     .lineControls{display:flex;align-items:center;gap:5px}
     .lineControls .btn.small{padding:8px}
     .lineControls [data-note-prompt]{min-width:52px}
     .noteText{display:block;color:var(--muted);font-size:12px;margin-top:3px}
     .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
-    .totals{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;display:grid;gap:8px}
+    .totals{border:0;border-radius:8px;background:var(--blueWash);padding:10px;display:grid;gap:8px}
     .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
     .totalRow strong{font-size:24px;color:var(--txt)}
     .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .segmented button{height:38px;border:1px solid var(--line2);border-radius:7px;background:#fff;font-weight:800;color:#445064}
-    .segmented button.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;color:var(--accent);background:#f8fbff}
+    .segmented button{height:38px;border:0;border-radius:7px;background:var(--wash);font-weight:800;color:#445064}
+    .segmented button.active{color:var(--accent);background:var(--blueWash)}
     .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
     .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800}
-    .switch{width:43px;height:24px;border-radius:999px;border:1px solid var(--line2);background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
+    .switch{width:43px;height:24px;border-radius:999px;border:0;background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
     .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
-    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:800}
+    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:8px;background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:800}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
     @media(max-width:980px){
+      .appShell,.appShell.navCollapsed{grid-template-columns:1fr}
+      .nav{height:auto;position:sticky;top:0;align-items:stretch}
+      .navHead{display:flex}
+      .sideToggle{display:none}
+      .navin{grid-template-columns:repeat(4,minmax(0,1fr));overflow:auto}
+      .tab,.appShell.navCollapsed .tab{width:100%;grid-template-columns:32px 1fr;justify-items:start}
+      .appShell.navCollapsed .navBrandText,.appShell.navCollapsed .navLabel{display:block}
+      .navCopy{display:none}
       .checkoutShell{grid-template-columns:1fr}
       .cartPanel{position:static;max-height:none}
     }
     @media(max-width:620px){
+      .app{padding:12px}
+      .topbar{display:grid}
+      .navin{grid-template-columns:repeat(2,minmax(0,1fr))}
       .saleToolbar,.compactFields,.tenderGrid{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
       .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -2527,13 +2568,37 @@ $csrf = csrf_token();
   </style>
 </head>
 <body>
-<div class="app">
+<div class="appShell" id="appShell">
+  <aside class="nav" aria-label="Primary">
+    <div class="navHead">
+      <div class="brand">
+        <div class="brandMark" aria-hidden="true"><span>NP</span></div>
+        <div class="navBrandText">
+          <div class="title"><?=h($CONFIG['APP_NAME'])?></div>
+          <div class="sub"><?=h((string)$store['name'])?></div>
+        </div>
+      </div>
+      <button class="sideToggle" id="navToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true">&lt;</span></button>
+    </div>
+    <div class="navin">
+      <button class="tab" data-tab="dashboard"><span class="navIcon" aria-hidden="true">D</span><span class="navLabel">Dashboard</span></button>
+      <button class="tab" data-tab="pos"><span class="navIcon" aria-hidden="true">POS</span><span class="navLabel">POS</span></button>
+      <button class="tab" data-tab="orders"><span class="navIcon" aria-hidden="true">O</span><span class="navLabel">Orders</span></button>
+      <button class="tab" data-tab="inventory"><span class="navIcon" aria-hidden="true">I</span><span class="navLabel">Inventory</span></button>
+      <button class="tab" data-tab="crm"><span class="navIcon" aria-hidden="true">C</span><span class="navLabel">CRM</span></button>
+      <button class="tab" data-tab="campaigns"><span class="navIcon" aria-hidden="true">M</span><span class="navLabel">Campaigns</span></button>
+      <button class="tab" data-tab="reports"><span class="navIcon" aria-hidden="true">R</span><span class="navLabel">Reports</span></button>
+      <button class="tab" data-tab="admin"><span class="navIcon" aria-hidden="true">A</span><span class="navLabel">Admin</span></button>
+    </div>
+    <div class="navCopy">Flat local POS + CRM with owned data, CSV exports, and SQLite backups.</div>
+  </aside>
+
+  <main class="app">
   <div class="topbar">
     <div class="brand">
-      <div class="brandMark" aria-hidden="true"><span>NP</span></div>
       <div>
-        <div class="title"><?=h($CONFIG['APP_NAME'])?> <span class="pill"><?=h((string)$store['name'])?></span></div>
-        <div class="sub">POS convenience → CRM moat (segments + campaigns). Customer portal: <span class="pill">?action=portal</span></div>
+        <div class="title"><?=h((string)$store['name'])?> counter</div>
+        <div class="sub">POS convenience, customer memory, campaigns, and local data ownership.</div>
       </div>
     </div>
     <div class="row" style="justify-content:flex-end;flex:0;gap:8px">
@@ -2546,19 +2611,7 @@ $csrf = csrf_token();
   </div>
 
   <div id="view"></div>
-</div>
-
-<div class="nav">
-  <div class="navin">
-    <button class="tab" data-tab="dashboard">Dashboard</button>
-    <button class="tab" data-tab="pos">POS</button>
-    <button class="tab" data-tab="orders">Orders</button>
-    <button class="tab" data-tab="inventory">Inventory</button>
-    <button class="tab" data-tab="crm">CRM</button>
-    <button class="tab" data-tab="campaigns">Campaigns</button>
-    <button class="tab" data-tab="reports">Reports</button>
-    <button class="tab" data-tab="admin">Admin</button>
-  </div>
+  </main>
 </div>
 
 <script>
@@ -2609,6 +2662,18 @@ $csrf = csrf_token();
   function qs(sel, el=document){ return el.querySelector(sel) }
   function qsa(sel, el=document){ return [...el.querySelectorAll(sel)] }
   function esc(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])) }
+  function setAppSidebarCollapsed(collapsed){
+    const shell = qs('#appShell')
+    const toggle = qs('#navToggle')
+    if (!shell) return
+    shell.classList.toggle('navCollapsed', collapsed)
+    if (toggle) {
+      toggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false')
+      toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar')
+      toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+    }
+    localStorage.setItem('neighbourposSidebarCollapsed', collapsed ? '1' : '0')
+  }
 
   async function api(action, {method='GET', body=null, params=null} = {}) {
     let url = `?action=${action}`
@@ -3640,6 +3705,8 @@ $csrf = csrf_token();
   }
 
   function bind(){
+    const navToggle = qs('#navToggle')
+    if (navToggle) navToggle.onclick = () => setAppSidebarCollapsed(!qs('#appShell').classList.contains('navCollapsed'))
     qsa('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
     qsa('[data-go]').forEach(b=>b.onclick=()=>setTab(b.dataset.go).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
 
@@ -4067,6 +4134,7 @@ $csrf = csrf_token();
   }
 
   async function boot(){
+    setAppSidebarCollapsed(localStorage.getItem('neighbourposSidebarCollapsed') === '1')
     await loadMe()
     await loadDashboard()
     await loadProducts('')
