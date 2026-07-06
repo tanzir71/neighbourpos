@@ -2390,71 +2390,131 @@ $csrf = csrf_token();
   <style>
     :root{
       --accent: <?=$accent?>;
-      --bg:#07080b;
-      --panel:#0f1118;
-      --card:rgba(17,19,26,.78);
-      --line:#23283a;
-      --txt:#f5f7ff;
-      --muted:#9aa3b2;
-      --good:#22c55e;
-      --warn:#f59e0b;
-      --bad:#ef4444;
-      --violet:#9333ea;
+      --bg:#f6f8fb;
+      --panel:#ffffff;
+      --card:#ffffff;
+      --line:#dce1ea;
+      --line2:#c3cad7;
+      --txt:#090b10;
+      --muted:#5c6472;
+      --good:#177a3b;
+      --warn:#946200;
+      --bad:#b42318;
+      --violet:#6d35c9;
+      --shadow:0 14px 34px rgba(24,31,44,.08);
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#06070a,#07080b);color:var(--txt);}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);}
     a{color:inherit}
     button,input,select,textarea{font-family:inherit}
-    .app{max-width:1100px;margin:0 auto;padding:14px;padding-bottom:84px}
+    .app{max-width:1360px;margin:0 auto;padding:14px;padding-bottom:86px}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
     .dot{width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(37,99,235,.14)}
-    .title{font-weight:900;font-size:16px;letter-spacing:-.02em}
+    .title{font-weight:900;font-size:16px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
-    .pill{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);padding:6px 10px;border-radius:999px;font-size:12px;color:#dbe3f3}
+    .pill{border:1px solid var(--line2);background:#fff;padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:800}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
-    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:var(--shadow)}
     .h1{font-size:14px;font-weight:900;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center}
     .row > *{flex:1}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
-    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none}
+    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:1px solid var(--line2);background:#fff;color:var(--txt);outline:none}
     .field textarea{min-height:70px;resize:vertical}
     .field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 4px rgba(37,99,235,.14)}
 
-    .btn{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.06);color:var(--txt);font-weight:800}
-    .btn.primary{background:var(--accent);border-color:rgba(255,255,255,.08)}
-    .btn.danger{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.24)}
-    .btn.ghost{background:transparent;border-color:rgba(255,255,255,.1)}
+    .btn{padding:10px 12px;border-radius:7px;border:1px solid var(--line2);background:#fff;color:var(--txt);font-weight:800}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.danger{background:#fff;color:var(--bad);border-color:#efc2bd}
+    .btn.ghost{background:transparent;border-color:var(--line2)}
     .btn:active{transform:translateY(1px)}
-    .btn.small{padding:8px 10px;border-radius:10px;font-size:12px}
+    .btn.small{padding:8px 10px;border-radius:7px;font-size:12px}
     .btn:disabled{opacity:.5}
 
-    .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(9,10,14,.9);backdrop-filter: blur(10px);border-top:1px solid rgba(255,255,255,.06)}
-    .navin{max-width:1100px;margin:0 auto;display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
-    .tab{min-width:82px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);font-size:11px;color:#cbd5e1}
-    .tab.active{border-color:rgba(37,99,235,.28);background:rgba(37,99,235,.12);color:#eaf0ff}
+    .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter: blur(10px);border-top:1px solid var(--line);z-index:10}
+    .navin{max-width:1360px;margin:0 auto;display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
+    .tab{min-width:82px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:7px;border:1px solid var(--line);background:#fff;font-size:11px;color:var(--muted);font-weight:800}
+    .tab.active{border-color:rgba(37,99,235,.28);background:#eaf0ff;color:var(--accent)}
 
     .list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-    .item{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+    .item{padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff}
     .item .name{font-weight:900;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
-    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:#cbd5e1;white-space:nowrap}
+    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid var(--line2);color:#445064;white-space:nowrap;font-weight:800}
     .b-new{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.22)}
     .b-prep{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22)}
     .b-ready{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.22)}
     .b-out{background:rgba(147,51,234,.12);border-color:rgba(147,51,234,.22)}
     .b-done{background:rgba(100,116,139,.18);border-color:rgba(100,116,139,.26)}
     .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
-    .k{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+    .k{padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff}
     .k .v{font-weight:900;font-size:16px}
     .k .l{color:var(--muted);font-size:11px;margin-top:4px}
-    .warnbox{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(245,158,11,.22);background:rgba(245,158,11,.10);color:#fde68a;font-size:12px;line-height:1.35}
-    .okbox{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(34,197,94,.22);background:rgba(34,197,94,.10);color:#bbf7d0;font-size:12px;line-height:1.35}
-    .errbox{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(239,68,68,.22);background:rgba(239,68,68,.10);color:#fecaca;font-size:12px;line-height:1.35}
+    .warnbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #f5d58b;background:#fff8e6;color:#744800;font-size:12px;line-height:1.35}
+    .okbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #9ed8ad;background:#eefaf1;color:#145c2e;font-size:12px;line-height:1.35}
+    .errbox{margin-top:10px;padding:10px;border-radius:8px;border:1px solid #efc2bd;background:#fff0ee;color:#8a1f17;font-size:12px;line-height:1.35}
+    .checkoutShell{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+    .stationPanel,.cartPanel{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+    .stationPanel{padding:16px;min-width:0}
+    .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
+    .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
+    .saleSearch{height:44px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
+    .iconBtn{width:42px;height:42px;border:1px solid var(--line2);border-radius:7px;background:#fff;color:#1f2a3d;font-weight:900;display:grid;place-items:center}
+    .categoryTabs{display:flex;border:1px solid var(--line);border-radius:8px;overflow:auto;margin-bottom:14px;background:#fff}
+    .categoryTabs button{min-width:104px;height:40px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--muted);font-weight:800}
+    .categoryTabs button:last-child{border-right:0}
+    .categoryTabs button.active{background:var(--accent);color:#fff}
+    .saleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+    .saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:transform .12s ease,border-color .12s ease}
+    .saleTile:hover{border-color:#b7c3d6;transform:translateY(-1px)}
+    .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:900}
+    .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
+    .stockText{font-size:12px;font-weight:800;color:var(--good)}
+    .stockText.low{color:var(--warn)}
+    .cartTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .cartTitle .h1{font-size:18px}
+    .customerLookup{display:grid;gap:8px}
+    .customerChip{border:1px solid var(--line);border-radius:8px;background:#fbfcff;padding:10px;display:flex;gap:10px;align-items:center}
+    .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+    .chipMain{min-width:0;flex:1}
+    .chipMain strong{display:block;font-size:14px}
+    .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+    .chipMeta{font-size:12px;font-weight:800;color:var(--good);white-space:nowrap}
+    .compactFields{display:grid;grid-template-columns:1fr 112px;gap:8px}
+    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line);padding-top:10px}
+    .cartLine:first-child{border-top:0;padding-top:0}
+    .lineControls{display:flex;align-items:center;gap:5px}
+    .lineControls .btn.small{padding:8px}
+    .lineControls [data-note-prompt]{min-width:52px}
+    .noteText{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
+    .totals{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;display:grid;gap:8px}
+    .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
+    .totalRow strong{font-size:24px;color:var(--txt)}
+    .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .segmented button{height:38px;border:1px solid var(--line2);border-radius:7px;background:#fff;font-weight:800;color:#445064}
+    .segmented button.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;color:var(--accent);background:#f8fbff}
+    .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
+    .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800}
+    .switch{width:43px;height:24px;border-radius:999px;border:1px solid var(--line2);background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
+    .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
+    .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
+    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:800}
+    .tinyStatus span{white-space:nowrap}
+    .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
+    @media(max-width:980px){
+      .checkoutShell{grid-template-columns:1fr}
+      .cartPanel{position:static;max-height:none}
+    }
+    @media(max-width:620px){
+      .saleToolbar,.compactFields,.tenderGrid{grid-template-columns:1fr}
+      .segmented{grid-template-columns:1fr}
+      .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
   </style>
 </head>
 <body>
@@ -2498,13 +2558,31 @@ $csrf = csrf_token();
   const state = {
     me: null,
     store: null,
-    tab: 'dashboard',
+    tab: 'pos',
     dashboard: null,
     report: null,
     reportFrom: '',
     reportTo: '',
     products: [],
     cart: [],
+    categoryFilter: 'All',
+    attachedCustomer: null,
+    customerLookupStatus: 'empty',
+    customerLookupError: '',
+    pos: {
+      q: '',
+      phone: '',
+      name: '',
+      address: '',
+      optIn: '0',
+      walkin: false,
+      coupon: '',
+      tipCents: 0,
+      payMethod: 'cash',
+      paid: false,
+      type: 'pickup',
+      eta: 15
+    },
     lowStock: [],
     orders: [],
     orderSearch: [],
@@ -2559,7 +2637,7 @@ $csrf = csrf_token();
     state.tab = tab
     qsa('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab))
     if (tab === 'dashboard') await loadDashboard()
-    if (tab === 'pos') await loadProducts('', false)
+    if (tab === 'pos') { await loadProducts(state.pos.q || '', false); await loadOrders('active'); await loadLowStock() }
     if (tab === 'inventory') { await loadProducts('', true); await loadLowStock() }
     if (tab === 'orders') await loadOrders('active')
     if (tab === 'reports') await loadSalesReport()
@@ -2590,7 +2668,7 @@ $csrf = csrf_token();
     for (const it of state.cart) subtotal += it.price_cents * it.qty
     const taxRate = Number(state.store?.tax_rate ?? 0)
     const tax = Math.round(subtotal * taxRate)
-    const tip = Math.max(0, parseInt(qs('#pos_tip')?.value || '0', 10) || 0)
+    const tip = Math.max(0, parseInt(state.pos.tipCents || 0, 10) || 0)
     return { subtotal, tax, tip, total: subtotal + tax + tip }
   }
 
@@ -2685,7 +2763,80 @@ $csrf = csrf_token();
     `
   }
 
-  function renderPOS(){
+  function productInitials(name){
+    return String(name || 'NP').split(/\s+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()
+  }
+
+  function checkoutCategories(){
+    return ['All', ...new Set(state.products.map(p=>p.category || 'Uncategorized'))]
+  }
+
+  function visibleCheckoutProducts(){
+    return state.products.filter(p=>state.categoryFilter === 'All' || (p.category || 'Uncategorized') === state.categoryFilter)
+  }
+
+  function customerSummaryHtml(){
+    const found = state.attachedCustomer?.customer
+    if (state.pos.walkin) {
+      return `<div class="customerChip"><span class="avatar">WI</span><span class="chipMain"><strong>Walk-in</strong><span>Customer lookup skipped</span></span><span class="chipMeta">Anonymous</span></div>`
+    }
+    if (found) {
+      return `<div class="customerChip">
+        <span class="avatar">${esc(productInitials(found.name || found.phone))}</span>
+        <span class="chipMain"><strong>${esc(found.name || found.phone)}</strong><span>${esc(found.phone)} / ${money(found.total_spent_cents || 0)} / ${esc(found.order_count || 0)} orders</span></span>
+        <span class="chipMeta">${found.marketing_opt_in ? 'Opt-in' : 'No opt-in'}</span>
+      </div>`
+    }
+    return `<div class="compactFields">
+      <input id="pos_name" placeholder="${state.customerLookupStatus === 'new' ? 'New customer name' : 'Customer name'}" value="${esc(state.pos.name)}">
+      <select id="pos_optin">
+        <option value="0" ${state.pos.optIn === '1' ? '' : 'selected'}>No opt-in</option>
+        <option value="1" ${state.pos.optIn === '1' ? 'selected' : ''}>Opt-in</option>
+      </select>
+    </div>`
+  }
+
+  function checkoutStatusHtml(){
+    const active = state.orders.length
+    const low = state.lowStock || []
+    return [
+      `<span>Active orders <b>${esc(active)}</b></span>`,
+      `<span>Low stock <b>${esc(low.length)}</b></span>`,
+      ...low.slice(0,3).map(p=>`<span>${esc(p.name)} (${esc(p.stock_qty)} left)</span>`)
+    ].join('')
+  }
+
+  let customerLookupTimer = null
+  async function lookupCustomerByPhone(phone){
+    const value = String(phone || '').trim()
+    state.pos.phone = value
+    state.customerLookupError = ''
+    state.attachedCustomer = null
+    if (!value || state.pos.walkin) {
+      state.customerLookupStatus = value ? 'walkin' : 'empty'
+      render()
+      return
+    }
+    state.customerLookupStatus = 'checking'
+    render()
+    try {
+      state.attachedCustomer = await api('api_customer_get', { params: { phone: value }})
+      state.customerLookupStatus = 'found'
+      const c = state.attachedCustomer?.customer
+      if (c) {
+        state.pos.name = c.name || ''
+        state.pos.address = c.address || ''
+        state.pos.optIn = c.marketing_opt_in ? '1' : '0'
+      }
+    } catch (e) {
+      state.attachedCustomer = null
+      state.customerLookupStatus = 'new'
+      state.customerLookupError = e.message || ''
+    }
+    render()
+  }
+
+  function renderPOSOld(){
     const enableDelivery = Number(state.store?.enable_delivery ?? 1) === 1
     const totals = cartTotals()
 
@@ -2826,6 +2977,116 @@ $csrf = csrf_token();
           </div>
           <div id="pos_msg"></div>
         </div>
+      </div>
+    `
+  }
+
+  function renderPOS(){
+    const enableDelivery = Number(state.store?.enable_delivery ?? 1) === 1
+    const totals = cartTotals()
+    const products = visibleCheckoutProducts()
+    const count = state.cart.reduce((sum,it)=>sum+it.qty,0)
+
+    return `
+      <div class="checkoutShell">
+        <div class="stationPanel">
+          <div class="saleToolbar">
+            <input class="saleSearch" id="pos_q" placeholder="Search or scan" value="${esc(state.pos.q)}">
+            <button class="iconBtn" type="button" aria-label="Scan barcode">|||</button>
+            <button class="iconBtn" type="button" aria-label="Keyboard shortcuts">kbd</button>
+          </div>
+
+          <div class="categoryTabs" id="pos_category" aria-label="Product categories">
+            ${checkoutCategories().map(cat=>`
+              <button type="button" class="${state.categoryFilter === cat ? 'active' : ''}" data-poscat="${esc(cat)}">${esc(cat)}</button>
+            `).join('')}
+          </div>
+
+          <div class="saleGrid" id="pos_products">
+            ${products.length === 0 ? `<div class="muted">No matching products.</div>` : products.map(p=>`
+              <button class="item saleTile" type="button" data-add="${p.id}" ${Number(p.stock_qty) <= 0 ? 'disabled' : ''}>
+                <span class="productVisual">${esc(productInitials(p.name))}</span>
+                <span class="productMeta">
+                  <span class="name">${esc(p.name)}</span>
+                  <span>${money(p.price_cents)}</span>
+                  <span class="stockText ${Number(p.stock_qty) <= Number(state.store?.low_stock_threshold ?? 5) ? 'low' : ''}">In stock ${esc(p.stock_qty)}</span>
+                </span>
+              </button>
+            `).join('')}
+          </div>
+          <div class="tinyStatus" id="tinyStatus">${checkoutStatusHtml()}</div>
+        </div>
+
+        <aside class="cartPanel" aria-label="Current checkout">
+          <div class="cartTitle">
+            <div class="h1">Cart</div>
+            <span class="pill">${esc(count)} ${count === 1 ? 'item' : 'items'}</span>
+          </div>
+
+          <div class="customerLookup" id="customerLookup">
+            <input id="pos_phone" placeholder="Enter phone number" value="${esc(state.pos.phone)}" ${state.pos.walkin ? 'disabled' : ''}>
+            ${customerSummaryHtml()}
+            <label class="muted"><input id="pos_walkin" type="checkbox" ${state.pos.walkin ? 'checked' : ''}> Walk-in anonymous</label>
+          </div>
+
+          <div class="list">
+            ${state.cart.length === 0 ? `<div class="muted">Cart empty. Add items from inventory.</div>` : state.cart.map(it=>`
+              <div class="cartLine">
+                <div><strong>${esc(it.name)}</strong><br><span class="muted">${money(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
+                <div class="lineControls">
+                  <button class="btn small" data-qtyminus="${it.product_id}">-</button>
+                  <span class="pill">${esc(it.qty)}</span>
+                  <button class="btn small" data-qtyplus="${it.product_id}">+</button>
+                  <button class="btn small" data-note-prompt="${it.product_id}">Note</button>
+                  <button class="btn small danger" data-remove="${it.product_id}">x</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="field couponRow">
+            <label>Coupon code</label>
+            <input id="pos_coupon" placeholder="Optional campaign coupon code" value="${esc(state.pos.coupon)}">
+          </div>
+
+          <div class="totals">
+            <div class="totalRow"><span>Subtotal</span><span>${money(totals.subtotal)}</span></div>
+            <div class="totalRow"><span>Tax</span><span>${money(totals.tax)}</span></div>
+            <div class="totalRow"><span>Tip (cents)</span><input id="pos_tip" style="max-width:104px;text-align:right" type="number" min="0" value="${esc(state.pos.tipCents)}"></div>
+            <div class="totalRow"><span>Total</span><strong>${money(totals.total)}</strong></div>
+          </div>
+
+          <div class="segmented" id="pos_paymethod" aria-label="Payment method">
+            ${['cash','card','online'].map(method=>`
+              <button type="button" class="${state.pos.payMethod === method ? 'active' : ''}" data-paymethod="${method}">${method[0].toUpperCase()+method.slice(1)}</button>
+            `).join('')}
+          </div>
+
+          <div class="paidRow">
+            <span>Mark payment received</span>
+            <button type="button" class="switch ${state.pos.paid ? 'on' : ''}" id="pos_paid" aria-label="Mark payment received"><i></i></button>
+          </div>
+
+          <div class="tenderGrid">
+            <select id="pos_type">
+              <option value="pickup" ${state.pos.type === 'pickup' ? 'selected' : ''}>pickup</option>
+              <option value="dine_in" ${state.pos.type === 'dine_in' ? 'selected' : ''}>dine-in</option>
+              ${enableDelivery ? `<option value="delivery" ${state.pos.type === 'delivery' ? 'selected' : ''}>delivery</option>` : ``}
+            </select>
+            <input id="pos_eta" type="number" min="5" value="${esc(state.pos.eta)}">
+          </div>
+
+          <div class="field">
+            <input id="pos_addr" placeholder="Address (optional)" value="${esc(state.pos.address)}">
+          </div>
+
+          <button class="btn primary" style="width:100%" id="pos_place" ${state.cart.length===0?'disabled':''}>Place order</button>
+
+          <div class="warnbox">
+            Compliance warning: only message customers who explicitly opted in. This app defaults marketing_opt_in=false and audits campaign runs.
+          </div>
+          <div id="pos_msg"></div>
+        </aside>
       </div>
     `
   }
@@ -3375,9 +3636,62 @@ $csrf = csrf_token();
 
     const posQ = qs('#pos_q')
     if (posQ) posQ.oninput = async () => {
-      await loadProducts(posQ.value)
+      state.pos.q = posQ.value
+      state.categoryFilter = 'All'
+      await loadProducts(state.pos.q)
       render()
     }
+
+    qsa('[data-poscat]').forEach(b=>b.onclick=()=>{
+      state.categoryFilter = b.dataset.poscat || 'All'
+      render()
+    })
+
+    qsa('[data-paymethod]').forEach(b=>b.onclick=()=>{
+      state.pos.payMethod = b.dataset.paymethod || 'cash'
+      render()
+    })
+
+    const paidToggle = qs('#pos_paid')
+    if (paidToggle) paidToggle.onclick = () => {
+      state.pos.paid = !state.pos.paid
+      render()
+    }
+
+    const phone = qs('#pos_phone')
+    if (phone) phone.oninput = () => {
+      state.pos.phone = phone.value
+      clearTimeout(customerLookupTimer)
+      customerLookupTimer = setTimeout(()=>lookupCustomerByPhone(state.pos.phone).catch(e=>msg('pos_msg','err', e.message || 'Customer lookup failed')), 350)
+    }
+
+    const walkin = qs('#pos_walkin')
+    if (walkin) walkin.onchange = () => {
+      state.pos.walkin = walkin.checked
+      if (state.pos.walkin) {
+        state.attachedCustomer = null
+        state.customerLookupStatus = 'walkin'
+      }
+      render()
+    }
+
+    const posName = qs('#pos_name')
+    if (posName) posName.oninput = () => { state.pos.name = posName.value }
+    const posOptin = qs('#pos_optin')
+    if (posOptin) posOptin.onchange = () => { state.pos.optIn = posOptin.value }
+    const posAddr = qs('#pos_addr')
+    if (posAddr) posAddr.oninput = () => { state.pos.address = posAddr.value }
+    const posCoupon = qs('#pos_coupon')
+    if (posCoupon) posCoupon.oninput = () => { state.pos.coupon = posCoupon.value }
+    const posTip = qs('#pos_tip')
+    if (posTip) posTip.oninput = () => {
+      state.pos.tipCents = Math.max(0, parseInt(posTip.value || '0', 10) || 0)
+      render()
+    }
+    const posType = qs('#pos_type')
+    if (posType) posType.onchange = () => { state.pos.type = posType.value }
+    const posEta = qs('#pos_eta')
+    if (posEta) posEta.oninput = () => { state.pos.eta = Math.max(5, parseInt(posEta.value || '15', 10) || 15) }
 
     qsa('[data-add]').forEach(b=>b.onclick=()=>{
       const id = Number(b.dataset.add)
@@ -3393,27 +3707,39 @@ $csrf = csrf_token();
       const it = state.cart.find(x=>x.product_id===pid)
       if (it) it.notes = inp.value
     })
+    qsa('[data-note-prompt]').forEach(b=>b.onclick=()=>{
+      const pid = Number(b.dataset.notePrompt)
+      const it = state.cart.find(x=>x.product_id===pid)
+      if (!it) return
+      const next = prompt('Item note', it.notes || '')
+      if (next !== null) {
+        it.notes = next.trim()
+        render()
+      }
+    })
 
     const place = qs('#pos_place')
     if (place) place.onclick = async () => {
       try{
-        const walkin = qs('#pos_walkin')?.checked ? 1 : 0
+        const walkin = state.pos.walkin ? 1 : 0
         const payload = {
           items: state.cart.map(it=>({ product_id: it.product_id, qty: it.qty, notes: it.notes })),
-          order_type: qs('#pos_type')?.value || 'pickup',
-          expected_eta_minutes: parseInt(qs('#pos_eta')?.value||'15',10)||15,
-          tip_cents: parseInt(qs('#pos_tip')?.value||'0',10)||0,
-          coupon_code: qs('#pos_coupon')?.value || '',
-          payment_method: qs('#pos_paymethod')?.value || 'cash',
-          payment_received: qs('#pos_paid')?.checked ? 1 : 0,
+          order_type: state.pos.type || 'pickup',
+          expected_eta_minutes: parseInt(state.pos.eta||'15',10)||15,
+          tip_cents: parseInt(state.pos.tipCents||'0',10)||0,
+          coupon_code: state.pos.coupon || '',
+          payment_method: state.pos.payMethod || 'cash',
+          payment_received: state.pos.paid ? 1 : 0,
           walkin,
-          phone: qs('#pos_phone')?.value || '',
-          customer_name: qs('#pos_name')?.value || '',
-          customer_address: qs('#pos_addr')?.value || '',
-          marketing_opt_in: (qs('#pos_optin')?.value || '0') === '1' ? 1 : 0
+          phone: state.pos.phone || '',
+          customer_name: state.pos.name || '',
+          customer_address: state.pos.address || '',
+          marketing_opt_in: (state.pos.optIn || '0') === '1' ? 1 : 0
         }
         const out = await api('api_orders_create', { method:'POST', body: payload })
         state.cart = []
+        state.pos.coupon = ''
+        state.pos.tipCents = 0
         msg('pos_msg','ok',`Order placed: ${out.order_code}`)
         await loadOrders('active')
         await loadDashboard()
@@ -3742,8 +4068,8 @@ $csrf = csrf_token();
     await loadSalesReport()
     await loadAuditLog('')
 
-    const initial = (window.location.hash || '#dashboard').slice(1)
-    await setTab(['dashboard','pos','orders','inventory','crm','campaigns','reports','admin'].includes(initial) ? initial : 'dashboard')
+    const initial = (window.location.hash || '#pos').slice(1)
+    await setTab(['dashboard','pos','orders','inventory','crm','campaigns','reports','admin'].includes(initial) ? initial : 'pos')
   }
 
   boot().catch(e=>{

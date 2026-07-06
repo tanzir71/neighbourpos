@@ -13,6 +13,8 @@ function Assert-SourceContains {
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'neighbourpos.php')
+$demo = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'demo.html')
+$landing = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'index.html')
 $readme = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'README.md')
 $setup = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'SETUP.md')
 
@@ -44,6 +46,29 @@ Assert-SourceContains $source 'Order search' 'Order search UI is missing'
 Assert-SourceContains $source 'Audit log' 'Audit log UI is missing'
 Assert-SourceContains $source 'Change password' 'Password management UI is missing'
 Assert-SourceContains $source 'Download database backup' 'Database backup UI is missing'
+
+Assert-SourceContains $demo 'checkoutShell' 'Static demo cashier station shell is missing'
+Assert-SourceContains $demo 'saleSearch' 'Static demo checkout search/scan control is missing'
+Assert-SourceContains $demo 'categoryTabs' 'Static demo checkout category tabs are missing'
+Assert-SourceContains $demo 'customerLookup' 'Static demo checkout customer lookup is missing'
+Assert-SourceContains $demo 'paymentMethod' 'Static demo payment method state/control is missing'
+Assert-SourceContains $demo 'markPaid' 'Static demo mark-paid control is missing'
+Assert-SourceContains $demo 'tinyStatus' 'Static demo checkout status strip is missing'
+
+Assert-SourceContains $source 'checkoutShell' 'Production cashier station shell is missing'
+Assert-SourceContains $source 'pos_category' 'Production checkout category filter is missing'
+Assert-SourceContains $source 'attachedCustomer' 'Production checkout attached customer state is missing'
+Assert-SourceContains $source 'lookupCustomerByPhone' 'Production checkout phone lookup helper is missing'
+Assert-SourceContains $source 'payment_received' 'Production checkout payment received payload is missing'
+Assert-SourceContains $source 'api_customer_get' 'Production checkout does not use existing customer lookup API'
+
+Assert-SourceContains $landing 'assets/landing-checkout-preview\.png' 'Landing page checkout preview asset is missing'
+Assert-SourceContains $landing 'Sell fast, remember customers, bring them back' 'Landing page owner-first hero copy is missing'
+Assert-SourceContains $landing 'Open demo' 'Landing page primary demo CTA is missing'
+Assert-SourceContains $landing 'Deploy guide' 'Landing page deploy guide link is missing'
+Assert-SourceContains $landing 'View source' 'Landing page source link is missing'
+Assert-SourceContains $landing 'No payment processing' 'Landing page payment-processing limit is missing'
+Assert-SourceContains $landing 'NeighbourPOS checkout screen with item grid' 'Landing page checkout image alt text is missing'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'

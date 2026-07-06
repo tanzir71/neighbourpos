@@ -3,107 +3,137 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NeighbourPOS - Single-file POS + CRM</title>
-  <meta name="description" content="NeighbourPOS is a tiny PHP + SQLite POS and CRM for neighborhood stores, shared hosting, customer segments, campaigns, and local ownership.">
+  <title>NeighbourPOS - POS + CRM for neighborhood stores</title>
+  <meta name="description" content="NeighbourPOS helps tiny neighborhood stores sell fast, remember customers, bring them back, and keep store data on shared PHP hosting.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='0.9em'%20font-size='90'%3ENP%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --bg:#ffffff;
-      --fg:#08090b;
-      --muted:#53565f;
-      --soft:#747986;
-      --line:#dfe2e8;
-      --line2:#c7ccd6;
-      --panel:#f8fafc;
-      --blue:#164bff;
-      --green:#1c8b3a;
-      --red:#b42318;
+      --ink:#0b0d12;
+      --muted:#58606d;
+      --soft:#737b88;
+      --line:#dde2ea;
+      --line-strong:#c3cad6;
+      --panel:#f6f8fb;
+      --panel-blue:#eef4ff;
+      --blue:#1747d5;
+      --blue-dark:#11369f;
+      --green:#14784f;
+      --amber:#a45f00;
+      --red:#aa2b20;
+      --shadow:0 18px 44px rgba(18,29,48,.12);
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
     a{color:inherit}
+    img{max-width:100%;display:block}
     .mono,code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
     .skip{position:absolute;left:-999px;top:12px}
-    .skip:focus{left:12px;z-index:20;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px}
-    .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
-    .top{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-    .topin{height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-    .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-    .mark{width:34px;height:34px;border:1px solid var(--line2);border-radius:7px;display:grid;place-items:center;background:#fff;font-weight:900}
-    .brand strong{font-size:17px;letter-spacing:-.04em}
-    .brand span{font-size:13px;color:var(--muted)}
-    .brand .mark{display:grid;place-items:center;color:var(--fg);font-size:14px}
-    nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-    nav a,.btn{height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;padding:0 11px;text-decoration:none;font-size:14px;font-weight:650}
+    .skip:focus{left:12px;z-index:30;background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:8px 10px}
+    .wrap{width:min(1180px,calc(100% - 40px));margin:0 auto}
+    .top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+    .topin{min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .brand{display:flex;align-items:center;gap:11px;text-decoration:none;min-width:0}
+    .mark{width:34px;height:34px;border:1px solid var(--line-strong);border-radius:7px;display:grid;place-items:center;background:#fff;font-size:13px;font-weight:900;letter-spacing:-.04em}
+    .brand strong{font-size:17px;letter-spacing:-.04em;white-space:nowrap}
+    .brand span:last-child{font-size:13px;color:var(--muted);white-space:nowrap}
+    nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+    nav a,.btn{min-height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;padding:8px 11px;text-decoration:none;font-size:14px;line-height:1.1;font-weight:750}
     nav a{color:var(--muted)}
-    nav a:hover{background:var(--panel);color:var(--fg)}
-    .btn.primary{background:var(--blue);color:#fff}
-    .btn.secondary{border:1px solid var(--line2);background:#fff;color:var(--fg)}
-    .btn.ghost{border:1px solid var(--line);background:var(--panel);color:var(--fg)}
-    .hero{border-bottom:1px solid var(--line)}
-    .heroGrid{display:grid;grid-template-columns:1fr;gap:34px;padding:68px 0 36px}
-    @media (min-width:920px){.heroGrid{grid-template-columns:1fr 1.05fr;align-items:center;padding:74px 0 42px}}
-    h1{margin:0;font-size:48px;line-height:.98;letter-spacing:-.07em;font-weight:900}
-    @media (min-width:720px){h1{font-size:72px}}
-    .subhead{margin:18px 0 0;max-width:620px;font-size:18px;line-height:1.7;color:var(--muted)}
-    .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
-    .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
-    .tag{border:1px solid var(--line2);border-radius:7px;padding:7px 9px;font-size:13px;background:#fff;color:var(--blue)}
-    .tag.green{color:var(--green)}
-    .terminal{border:1px solid var(--line2);border-radius:8px;background:#060708;color:#f4f7fb;box-shadow:0 16px 42px rgba(8,9,11,.14);overflow:hidden}
-    .terminalHead{height:34px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a2f38;padding:0 12px;color:#cbd5e1;font-size:12px}
-    .dot{width:9px;height:9px;border-radius:999px;background:#49d35d;display:inline-block;margin-right:7px}
-    .receipt{padding:22px;font-size:13px;line-height:1.6;white-space:pre-wrap}
-    .receipt b{color:#5ee073}
-    .metrics{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-    @media (min-width:760px){.metrics{grid-template-columns:repeat(6,1fr)}}
-    .metric{padding:18px 12px;text-align:center;border-right:1px solid var(--line)}
-    .metric:last-child{border-right:none}
-    .metric strong{display:block;font-size:22px;letter-spacing:-.04em}
-    .metric span{display:block;margin-top:4px;color:var(--muted);font-size:12px}
-    section{padding:62px 0;border-bottom:1px solid var(--line)}
-    .sectionHead{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:22px}
-    .sectionHead h2{margin:0;font-size:28px;letter-spacing:-.05em}
-    .sectionHead p{margin:7px 0 0;color:var(--muted);max-width:640px;line-height:1.6}
-    .sys{font-size:12px;color:var(--soft);letter-spacing:.12em;text-transform:uppercase}
-    .grid{display:grid;grid-template-columns:1fr;gap:16px}
-    @media (min-width:760px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:repeat(3,1fr)}.grid.four{grid-template-columns:repeat(4,1fr)}}
-    .card{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
-    .card h3{margin:0;font-size:16px;letter-spacing:-.03em}
-    .card p{margin:9px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
-    .codebox{border:1px solid var(--line2);border-radius:8px;background:#fff;overflow:hidden}
+    nav a:hover{background:var(--panel);color:var(--ink)}
+    .btn.primary{background:var(--blue);color:#fff;border:1px solid var(--blue)}
+    .btn.primary:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+    .btn.secondary{border:1px solid var(--line-strong);background:#fff;color:var(--ink)}
+    .btn.secondary:hover{border-color:#aab3c0;background:var(--panel)}
+    .hero{position:relative;isolation:isolate;height:clamp(560px,calc(100vh - 190px),720px);overflow:hidden;border-bottom:1px solid var(--line);background:#fff}
+    .heroImage{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:70% 44%;z-index:-2}
+    .hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#fff 0%,rgba(255,255,255,.96) 30%,rgba(255,255,255,.72) 56%,rgba(255,255,255,.1) 100%)}
+    .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:150px;z-index:-1;background:linear-gradient(0deg,#fff 0%,rgba(255,255,255,0) 100%)}
+    .heroInner{padding:88px 0 84px;display:flex;align-items:center;min-height:inherit}
+    .heroCopy{max-width:610px}
+    h1{margin:0;font-size:clamp(48px,8vw,88px);line-height:.95;letter-spacing:-.07em;font-weight:900}
+    .subhead{margin:18px 0 0;max-width:590px;font-size:clamp(17px,2vw,21px);line-height:1.65;color:#343944}
+    .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+    .proofLine{display:grid;grid-template-columns:1fr;gap:10px;margin-top:34px;max-width:620px}
+    @media (min-width:700px){.proofLine{grid-template-columns:repeat(3,1fr)}}
+    .proofLine div{border-left:3px solid var(--blue);padding:4px 14px 5px 11px;background:rgba(255,255,255,.64)}
+    .proofLine strong{display:block;font-size:13px;letter-spacing:-.02em}
+    .proofLine span{display:block;margin-top:4px;font-size:12px;line-height:1.45;color:var(--muted)}
+    section{padding:66px 0;border-bottom:1px solid var(--line)}
+    .sectionHead{display:flex;align-items:end;justify-content:space-between;gap:22px;margin-bottom:24px}
+    .sectionHead h2{margin:0;font-size:clamp(28px,4vw,42px);line-height:1.04;letter-spacing:-.06em}
+    .sectionHead p{margin:10px 0 0;color:var(--muted);max-width:680px;line-height:1.65}
+    .micro{font-size:12px;color:var(--soft);font-weight:800;text-transform:uppercase;letter-spacing:.1em}
+    .flowGrid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width:820px){.flowGrid{grid-template-columns:repeat(3,1fr)}}
+    .flowCard{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
+    .flowCard h3,.fitCard h3,.limitCard h3{margin:0;font-size:18px;letter-spacing:-.035em}
+    .flowCard p,.fitCard p,.limitCard p{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65}
+    .miniUi{margin-top:18px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px;display:grid;gap:8px}
+    .miniRow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 9px;font-size:12px}
+    .miniRow strong{font-size:12px}
+    .miniRow span{color:var(--muted)}
+    .miniRow.good{border-color:#b8dfca;background:#f5fcf8}
+    .miniRow.warn{border-color:#efd0a7;background:#fffaf2}
+    .fit{background:var(--panel)}
+    .fitGrid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width:880px){.fitGrid{grid-template-columns:1fr 1fr}}
+    .fitCard{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
+    .fitList{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
+    .fitList li{display:flex;gap:10px;color:var(--muted);font-size:14px;line-height:1.55}
+    .fitList li::before{content:"";flex:0 0 8px;width:8px;height:8px;border-radius:2px;background:var(--blue);margin-top:7px}
+    .fitList.avoid li::before{background:var(--amber)}
+    .setupGrid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media (min-width:880px){.setupGrid{grid-template-columns:1.05fr .95fr}}
+    .codebox,.ownershipBox{border:1px solid var(--line-strong);border-radius:8px;background:#fff;overflow:hidden}
     .codeHead{display:flex;border-bottom:1px solid var(--line);background:var(--panel)}
-    .codeHead span{flex:1;text-align:center;padding:10px;font-size:12px;font-weight:700}
-    pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.75;color:#15171c}
-    .flow{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:860px){.flow{grid-template-columns:repeat(5,1fr)}}
-    .step{border:1px solid var(--line);border-radius:8px;padding:16px;background:#fff;position:relative}
-    .step .n{font-size:12px;color:var(--blue);font-weight:800}
-    .step h3{margin:10px 0 0;font-size:15px}
-    .step p{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.55}
+    .codeHead span{flex:1;text-align:center;padding:10px 8px;font-size:12px;font-weight:800;color:#303744}
+    pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.75;color:#15171c;background:#fff}
+    .ownershipBox{padding:18px;display:grid;gap:12px}
+    .ownRow{display:grid;grid-template-columns:90px 1fr;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px}
+    .ownRow:last-child{border-bottom:0;padding-bottom:0}
+    .ownRow strong{font-size:13px}
+    .ownRow span{color:var(--muted);font-size:14px;line-height:1.55}
     table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
-    th,td{border:1px solid var(--line);padding:11px 12px;text-align:left;font-size:13px;vertical-align:top}
-    th{background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-    td.good{color:var(--green);font-weight:700}
-    td.bad{color:var(--red)}
-    .arch{border:1px solid var(--line2);border-radius:8px;padding:22px;background:#fff}
-    .diagram{display:grid;grid-template-columns:1fr;gap:12px;align-items:center}
-    @media (min-width:760px){.diagram{grid-template-columns:1fr auto 1fr auto 1fr}}
-    .box{border:1px solid var(--fg);padding:18px;text-align:center;border-radius:5px;background:#fff}
-    .arrow{text-align:center;color:var(--muted)}
-    .checklist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-    .checklist li{font-size:14px;color:var(--muted)}
-    .checklist li::before{content:"+";color:var(--green);font-weight:900;margin-right:8px}
-    .banner{display:flex;flex-direction:column;gap:14px;justify-content:space-between;border:1px solid var(--line2);border-radius:8px;padding:20px;background:#fff}
+    th,td{border:1px solid var(--line);padding:12px;text-align:left;font-size:13px;line-height:1.45;vertical-align:top}
+    th{background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#303744}
+    td.good{color:var(--green);font-weight:800}
+    td.bad{color:var(--red);font-weight:700}
+    .limitGrid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width:820px){.limitGrid{grid-template-columns:repeat(3,1fr)}}
+    .limitCard{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px}
+    .final{padding:38px 0}
+    .banner{border:1px solid var(--line-strong);border-radius:8px;background:#fff;display:flex;flex-direction:column;gap:16px;justify-content:space-between;padding:22px}
+    .banner h2{margin:0;font-size:28px;letter-spacing:-.05em}
+    .banner p{margin:7px 0 0;color:var(--muted);line-height:1.55}
     @media (min-width:760px){.banner{flex-direction:row;align-items:center}}
-    footer{padding:36px 0;color:var(--muted);font-size:13px}
+    footer{padding:34px 0;color:var(--muted);font-size:13px}
     .foot{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}
     .foot a{color:var(--muted);text-decoration:none}
-    .foot a:hover{text-decoration:underline;text-underline-offset:4px;color:var(--fg)}
+    .foot a:hover{text-decoration:underline;text-underline-offset:4px;color:var(--ink)}
+    @media (max-width:820px){
+      .topin{padding:8px 0}
+      nav{justify-content:flex-start}
+      .brand span:last-child{display:none}
+      .hero{height:auto}
+      .heroImage{position:relative;height:30svh;min-height:220px;object-position:64% 20%;border-bottom:1px solid var(--line)}
+      .hero::before{background:linear-gradient(0deg,#fff 0%,rgba(255,255,255,.94) 38%,rgba(255,255,255,.2) 80%)}
+      .hero::after{display:none}
+      .heroInner{min-height:auto;padding:24px 0 30px;align-items:flex-start}
+      .sectionHead{display:block}
+      table{display:block;overflow-x:auto}
+      .ownRow{grid-template-columns:1fr}
+    }
+    @media (max-width:520px){
+      .wrap{width:min(100% - 28px,1180px)}
+      nav a:not(.btn){display:none}
+      .proofLine{display:none}
+      section{padding:48px 0}
+    }
   </style>
 </head>
 <body>
@@ -113,13 +143,13 @@
       <a class="brand" href="#">
         <span class="mark mono">NP</span>
         <strong>NeighbourPOS</strong>
-        <span class="mono">single-file POS + CRM</span>
+        <span class="mono">POS + CRM for tiny stores</span>
       </a>
       <nav aria-label="Primary">
-        <a href="#docs">Docs</a>
-        <a href="#compare">Compare</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#compare">Fit</a>
+        <a href="#docs">Setup</a>
         <a href="#limits">Limits</a>
-        <a href="demo.html">Demo</a>
         <a class="btn primary" href="demo.html">Open demo</a>
         <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos" target="_blank" rel="noreferrer">GitHub</a>
       </nav>
@@ -127,48 +157,102 @@
   </header>
 
   <main id="content">
-    <section class="hero">
-      <div class="wrap heroGrid">
-        <div>
-          <h1>NeighbourPOS</h1>
-          <p class="subhead">Single-file POS + CRM for neighborhood stores. One PHP file creates one SQLite database, then runs orders, inventory, customer profiles, segments, campaigns, exports, and a small customer portal.</p>
+    <section class="hero" aria-labelledby="hero-title">
+      <img class="heroImage" src="assets/landing-checkout-preview.png" alt="NeighbourPOS checkout screen with item grid, attached customer, cart, tender controls, and place order action">
+      <div class="wrap heroInner">
+        <div class="heroCopy">
+          <h1 id="hero-title">NeighbourPOS</h1>
+          <p class="subhead">Sell fast, remember customers, bring them back, and keep your store data on shared hosting. A tiny POS + CRM for neighborhood shops that want the checkout flow without the platform lock-in.</p>
           <div class="cta">
             <a class="btn primary" href="demo.html">Open demo</a>
-            <a class="btn secondary" href="#docs">Read docs</a>
+            <a class="btn secondary" href="#docs">Deploy guide</a>
+            <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos" target="_blank" rel="noreferrer">View source</a>
           </div>
-          <div class="tags">
-            <span class="tag mono">PHP + SQLite</span>
-            <span class="tag green mono">No SaaS lock-in</span>
-            <span class="tag mono">Shared hosting</span>
-            <span class="tag mono">Local data</span>
+          <div class="proofLine" aria-label="Product proof points">
+            <div><strong>Checkout first</strong><span>Search, scan, tap items, attach a customer, and place the order.</span></div>
+            <div><strong>Customer memory</strong><span>Orders update spend, recency, opt-in, coupons, and timelines.</span></div>
+            <div><strong>Local ownership</strong><span>One PHP file, one SQLite database, CSV exports, and backups.</span></div>
           </div>
-        </div>
-        <div class="terminal" aria-label="NeighbourPOS receipt preview">
-          <div class="terminalHead"><span><i class="dot"></i>NeighbourPOS demo</span><span class="mono">F2 Sale &nbsp; F7 Customers</span></div>
-          <div class="receipt mono">SALE #S000125   Today 12:42
-
-Customer: Maya / +14155550101
-
-#   Item                 Qty   Total
-1   Coffee Large          2    7.98
-2   Turkey Sandwich       1    8.99
-3   Coupon NP-WINBACK          -2.00
-
-Subtotal                      16.97
-Tax                            1.36
-<b>TOTAL                         16.33</b>
-
-CRM: order updates recency, spend,
-segments, timeline, and coupon redemption.</div>
         </div>
       </div>
-      <div class="wrap metrics">
-        <div class="metric"><strong>1</strong><span>PHP file</span></div>
-        <div class="metric"><strong>1</strong><span>SQLite DB</span></div>
-        <div class="metric"><strong>0</strong><span>build steps</span></div>
-        <div class="metric"><strong>12</strong><span>tiny features</span></div>
-        <div class="metric"><strong>CSV</strong><span>exports</span></div>
-        <div class="metric"><strong>100%</strong><span>yours to keep</span></div>
+    </section>
+
+    <section id="workflow">
+      <div class="wrap">
+        <div class="sectionHead">
+          <div>
+            <div class="micro mono">Store loop</div>
+            <h2>Built around the day a tiny shop actually repeats.</h2>
+            <p>Square, Shopify, Hishabee, and Lightspeed all lead with the operational loop: sell, track stock, know the customer, and act on the next visit. NeighbourPOS keeps that loop small enough to run from one local file.</p>
+          </div>
+        </div>
+        <div class="flowGrid">
+          <article class="flowCard">
+            <div>
+              <h3>Sell at the counter</h3>
+              <p>Use a cashier-first screen with search, categories, quick item cards, cart controls, coupon entry, payment status, order type, and ETA.</p>
+            </div>
+            <div class="miniUi" aria-hidden="true">
+              <div class="miniRow"><strong>Neighbour Blend Coffee</strong><span>$8.50</span></div>
+              <div class="miniRow"><strong>Sourdough Loaf</strong><span>$6.25</span></div>
+              <div class="miniRow good"><strong>Place order</strong><span>paid / cash</span></div>
+            </div>
+          </article>
+          <article class="flowCard">
+            <div>
+              <h3>Remember the regulars</h3>
+              <p>Attach a customer by phone during checkout. The app keeps spend, order count, last visit, marketing opt-in, and timeline activity together.</p>
+            </div>
+            <div class="miniUi" aria-hidden="true">
+              <div class="miniRow"><strong>Amina Rahman</strong><span>8 orders</span></div>
+              <div class="miniRow"><strong>Total spend</strong><span>$142.35</span></div>
+              <div class="miniRow good"><strong>Opt-in</strong><span>campaign ready</span></div>
+            </div>
+          </article>
+          <article class="flowCard">
+            <div>
+              <h3>Act before the next rush</h3>
+              <p>See low stock, export restock CSVs, queue simple campaigns, and download recipient lists without handing your customer file to a platform.</p>
+            </div>
+            <div class="miniUi" aria-hidden="true">
+              <div class="miniRow warn"><strong>Local Dairy Milk</strong><span>5 left</span></div>
+              <div class="miniRow"><strong>Winback campaign</strong><span>CSV ready</span></div>
+              <div class="miniRow"><strong>Backup</strong><span>SQLite file</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="compare" class="fit">
+      <div class="wrap">
+        <div class="sectionHead">
+          <div>
+            <div class="micro mono">Best fit</div>
+            <h2>Use NeighbourPOS when a full POS platform is more than the job needs.</h2>
+            <p>This is not a payment processor or hardware ecosystem. It is a small owner-controlled sales and customer loop for shops that already know how they take payment.</p>
+          </div>
+        </div>
+        <div class="fitGrid">
+          <article class="fitCard">
+            <h3>Good fit</h3>
+            <ul class="fitList">
+              <li>Tiny stores that need checkout, inventory, customer notes, and simple campaigns in one place.</li>
+              <li>Operators who want data backups, CSV exports, and inspectable code on ordinary PHP hosting.</li>
+              <li>Teams that record cash, card, or mobile payments instead of needing integrated processing.</li>
+              <li>Neighborhood shops that care more about repeat customers than omnichannel complexity.</li>
+            </ul>
+          </article>
+          <article class="fitCard">
+            <h3>Choose a platform when</h3>
+            <ul class="fitList avoid">
+              <li>You need certified card readers, payment disputes, payouts, and fraud tooling in the same contract.</li>
+              <li>You run multi-location retail with staff permissions, purchase orders, and warehouse workflows.</li>
+              <li>You need deep ecommerce sync, shipping, loyalty points, gift cards, or app-market integrations.</li>
+              <li>You prefer vendor-managed uptime and support over local ownership and low operating cost.</li>
+            </ul>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -176,13 +260,13 @@ segments, timeline, and coupon redemption.</div>
       <div class="wrap">
         <div class="sectionHead">
           <div>
-            <div class="sys mono">SYS - 01</div>
-            <h2>Set up in the next five minutes</h2>
-            <p>Upload the file, let it create the SQLite database, change the default admin, then start selling. The Vercel demo is static; production is designed for PHP hosting.</p>
+            <div class="micro mono">Setup</div>
+            <h2>Owner-friendly surface, operator-friendly install.</h2>
+            <p>Production stays deliberately boring: upload one PHP file, let SQLite initialize, change the default admin, and keep regular backups.</p>
           </div>
           <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Full setup</a>
         </div>
-        <div class="grid two">
+        <div class="setupGrid">
           <div class="codebox">
             <div class="codeHead"><span>Upload</span><span>Initialize</span><span>Harden</span></div>
             <pre><code># 1. Upload the app
@@ -197,38 +281,12 @@ admin@example.com / ChangeMe123!
 # 4. Optional cron
 ?action=cron_campaigns&amp;token=YOUR_TOKEN</code></pre>
           </div>
-          <div class="codebox">
-            <div class="codeHead"><span>Files</span><span>Data</span></div>
-            <pre><code>/public_html
-  |-- neighbourpos.php     # app + UI + API
-  |-- neighbourpos.db      # auto-created SQLite
-  |-- neighbourpos.log     # server errors
-  |-- SETUP.md
-  `-- SECURITY.md
-
-No package manager.
-No server process.
-No external database account.</code></pre>
+          <div class="ownershipBox">
+            <div class="ownRow"><strong>App</strong><span>One PHP file contains the staff UI, customer portal, API routes, reports, and campaign tools.</span></div>
+            <div class="ownRow"><strong>Data</strong><span>One SQLite database stores orders, customers, products, coupons, campaign recipients, and audit logs.</span></div>
+            <div class="ownRow"><strong>Exports</strong><span>Download campaign recipients, sales reports, low-stock lists, and database backups without a vendor gate.</span></div>
+            <div class="ownRow"><strong>Hosting</strong><span>Designed for shared PHP hosting. The Vercel site hosts only this landing page and static demo.</span></div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="flow">
-      <div class="wrap">
-        <div class="sectionHead">
-          <div>
-            <div class="sys mono">SYS - 02</div>
-            <h2>The whole loop, on one sheet</h2>
-            <p>NeighbourPOS is deliberately boring: take the order, enrich the customer profile, target the next visit, export the data you own.</p>
-          </div>
-        </div>
-        <div class="flow">
-          <div class="step"><div class="n mono">01 / sell</div><h3>POS</h3><p>Create pickup, dine-in, delivery, and walk-in orders from searchable inventory.</p></div>
-          <div class="step"><div class="n mono">02 / learn</div><h3>CRM</h3><p>Orders update last order, total spend, order count, tags, and timeline events.</p></div>
-          <div class="step"><div class="n mono">03 / target</div><h3>Segments</h3><p>Filter customers by recency, spend, order count, tags, category, or product.</p></div>
-          <div class="step"><div class="n mono">04 / act</div><h3>Campaigns</h3><p>Create presets, simulate value, queue recipients, export CSVs, and track coupons.</p></div>
-          <div class="step"><div class="n mono">05 / own</div><h3>Reports</h3><p>Download sales, low-stock, campaign, and database backups without a vendor gate.</p></div>
         </div>
       </div>
     </section>
@@ -237,73 +295,22 @@ No external database account.</code></pre>
       <div class="wrap">
         <div class="sectionHead">
           <div>
-            <div class="sys mono">SYS - 03</div>
-            <h2>Docs by surface</h2>
-            <p>Small enough to read, split by the jobs a store owner actually repeats.</p>
-          </div>
-        </div>
-        <div class="grid four">
-          <article class="card"><h3>POS + orders</h3><p>Build carts, capture phone or walk-in, record coupon codes, update status, print receipts, and search orders.</p></article>
-          <article class="card"><h3>Inventory</h3><p>Create/edit products, update stock, watch low-stock alerts, and export a restock CSV.</p></article>
-          <article class="card"><h3>CRM + campaigns</h3><p>Customer profiles, timelines, opt-in, reusable segments, campaign presets, coupons, and recipient exports.</p></article>
-          <article class="card"><h3>Admin + backup</h3><p>Audit log, password change/reset, cron hooks, security headers, and SQLite backup download.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section id="compare">
-      <div class="wrap">
-        <div class="sectionHead">
-          <div>
-            <div class="sys mono">SYS - 04</div>
-            <h2>Why use this instead of a POS platform?</h2>
-            <p>NeighbourPOS is not trying to be Square, Shopify, or Toast. It is for small operators who want one inspectable local tool.</p>
+            <div class="micro mono">Comparison</div>
+            <h2>Simple by design, not thin by accident.</h2>
+            <p>The trade is clear: fewer platform services, more local control. That is the point.</p>
           </div>
         </div>
         <table>
-          <thead><tr><th>Feature</th><th>NeighbourPOS</th><th>Spreadsheet / paper</th><th>SaaS POS</th></tr></thead>
+          <thead><tr><th>Need</th><th>NeighbourPOS</th><th>Spreadsheet / paper</th><th>SaaS POS</th></tr></thead>
           <tbody>
-            <tr><td>Hosting</td><td class="good">Any PHP shared hosting</td><td>Manual files</td><td class="bad">Vendor cloud</td></tr>
-            <tr><td>Database</td><td class="good">SQLite file you own</td><td>Sheets or notebooks</td><td class="bad">Cloud-only account</td></tr>
-            <tr><td>CRM loop</td><td class="good">Orders feed recency/spend/segments</td><td class="bad">Manual follow-up</td><td>Often paid tier</td></tr>
-            <tr><td>Campaign exports</td><td class="good">CSV recipients + coupons</td><td class="bad">Copy/paste</td><td>Provider-specific</td></tr>
-            <tr><td>Setup</td><td class="good">Upload one PHP file</td><td>Immediate but fragile</td><td class="bad">Signup, hardware, fees</td></tr>
-            <tr><td>Cost/control</td><td class="good">No monthly platform lock-in</td><td>Cheap but limited</td><td class="bad">Recurring per store/outlet</td></tr>
+            <tr><td>Counter checkout</td><td class="good">Search, categories, cart, coupon, tender record</td><td class="bad">Manual math and notes</td><td>Usually excellent</td></tr>
+            <tr><td>Customer memory</td><td class="good">Profiles, spend, recency, opt-in, timeline</td><td class="bad">Easy to lose</td><td>Often strong, sometimes paid tier</td></tr>
+            <tr><td>Inventory follow-up</td><td class="good">Stock counts, low-stock CSV, category reports</td><td>Manual updates</td><td>Strong in retail plans</td></tr>
+            <tr><td>Payment processing</td><td>Records status only</td><td>Separate payment flow</td><td class="good">Integrated readers and payouts</td></tr>
+            <tr><td>Data ownership</td><td class="good">SQLite file, CSV exports, backups</td><td>Local but fragile</td><td class="bad">Vendor account and export rules</td></tr>
+            <tr><td>Operating cost</td><td class="good">No POS platform subscription</td><td>Cheap but limited</td><td class="bad">Recurring fees and add-ons</td></tr>
           </tbody>
         </table>
-      </div>
-    </section>
-
-    <section>
-      <div class="wrap">
-        <div class="sectionHead">
-          <div>
-            <div class="sys mono">SYS - 05</div>
-            <h2>Architecture one-sheet</h2>
-            <p>The production app stays one file on purpose. Vercel hosts this landing page and static demo only.</p>
-          </div>
-        </div>
-        <div class="grid two">
-          <div class="arch">
-            <div class="diagram mono">
-              <div class="box">Browser<br><small>staff + portal UI</small></div>
-              <div class="arrow">&lt;-&gt;</div>
-              <div class="box">neighbourpos.php<br><small>routes + API + UI</small></div>
-              <div class="arrow">&lt;-&gt;</div>
-              <div class="box">SQLite<br><small>orders + CRM</small></div>
-            </div>
-          </div>
-          <div class="card">
-            <ul class="checklist">
-              <li>Single PHP application file</li>
-              <li>SQLite database auto-created on first run</li>
-              <li>Session auth, CSRF, CSP, and rate limits</li>
-              <li>CSV exports for campaigns, reports, and restocking</li>
-              <li>No background worker required; cron is optional</li>
-              <li>Vercel demo is static and safe to share</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -311,27 +318,39 @@ No external database account.</code></pre>
       <div class="wrap">
         <div class="sectionHead">
           <div>
-            <div class="sys mono">SYS - 06</div>
-            <h2>What it deliberately does not do</h2>
-            <p>Honest limits keep the tool tiny, auditable, and deployable on ordinary hosting.</p>
+            <div class="micro mono">Limits</div>
+            <h2>Clear boundaries keep the tool small and auditable.</h2>
+            <p>NeighbourPOS should feel trustworthy because it says what it does and what it does not do.</p>
           </div>
         </div>
-        <div class="grid three">
-          <article class="card"><h3>No payment processing</h3><p>NeighbourPOS records payment status only. Pair it with your existing cash, card, or online payment flow.</p></article>
-          <article class="card"><h3>No vendor messaging baked in</h3><p>SMS and email are placeholders so each store can choose Twilio, SendGrid, Mailgun, or simple CSV outreach.</p></article>
-          <article class="card"><h3>No high-scale claims</h3><p>SQLite is perfect for tiny stores and demos. Use Postgres/MySQL when concurrency and operations outgrow the file.</p></article>
+        <div class="limitGrid">
+          <article class="limitCard">
+            <h3>No payment processing</h3>
+            <p>Record cash, card, mobile, or online payment status. Processing, payouts, disputes, and card readers stay outside NeighbourPOS.</p>
+          </article>
+          <article class="limitCard">
+            <h3>No vendor messaging baked in</h3>
+            <p>Campaigns create opt-in recipient lists and coupon codes. Send through your chosen SMS, email, or manual outreach workflow.</p>
+          </article>
+          <article class="limitCard">
+            <h3>No high-scale promise</h3>
+            <p>SQLite is a great fit for tiny stores and simple hosting. Move to a larger database when concurrency and operations outgrow the file.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <section>
+    <section class="final">
       <div class="wrap">
         <div class="banner">
           <div>
-            <h2 style="margin:0;letter-spacing:-.04em">Try the demo</h2>
-            <p style="margin:6px 0 0;color:var(--muted)">Explore the app workflow in a static browser demo. No login, database, or setup required.</p>
+            <h2>Try the cashier station.</h2>
+            <p>Open the static demo, add items, attach a customer, mark payment status, and place an order without logging in.</p>
           </div>
-          <a class="btn primary" href="demo.html">Open demo</a>
+          <div class="cta" style="margin:0">
+            <a class="btn primary" href="demo.html">Open demo</a>
+            <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Read setup</a>
+          </div>
         </div>
       </div>
     </section>

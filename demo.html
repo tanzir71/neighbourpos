@@ -21,7 +21,7 @@
       --green:#177a3b;
       --red:#b42318;
       --amber:#946200;
-      --shadow:0 16px 42px rgba(24,31,44,.1);
+      --shadow:0 14px 34px rgba(24,31,44,.08);
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -29,7 +29,7 @@
     button{cursor:pointer}
     a{color:inherit}
     .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-    .shell{min-height:100vh;display:grid;grid-template-columns:220px 1fr}
+    .shell{min-height:100vh;display:grid;grid-template-columns:164px 1fr}
     .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:#fff;padding:18px 14px;display:flex;flex-direction:column;gap:18px}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
     .mark{width:34px;height:34px;border:1px solid var(--line2);border-radius:7px;display:grid;place-items:center;font-weight:900;background:#fff}
@@ -106,14 +106,66 @@
     .toast{position:fixed;right:18px;bottom:18px;z-index:20;max-width:340px;border:1px solid var(--line2);border-radius:8px;background:#fff;box-shadow:var(--shadow);padding:12px 14px;display:none;font-size:14px}
     .toast.show{display:block}
     .empty{padding:18px;border:1px dashed var(--line2);border-radius:8px;text-align:center;color:var(--muted);background:#fbfcff}
+    .checkoutShell{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+    .stationPanel,.cartPanel{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+    .stationPanel{padding:16px;min-width:0}
+    .cartPanel{position:sticky;top:80px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 104px);overflow:auto}
+    .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;align-items:center;margin-bottom:12px}
+    .saleSearch{height:44px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
+    .iconBtn{width:42px;height:42px;border:1px solid var(--line2);border-radius:7px;background:#fff;color:#1f2a3d;font-weight:900;display:grid;place-items:center}
+    .categoryTabs{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:auto;margin-bottom:14px;background:#fff}
+    .categoryTabs button{min-width:104px;height:40px;border:0;border-right:1px solid var(--line);background:#fff;color:var(--muted);font-weight:800}
+    .categoryTabs button:last-child{border-right:0}
+    .categoryTabs button.active{background:var(--blue);color:#fff}
+    .saleGrid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+    .product.saleTile{min-height:156px;padding:12px;align-content:space-between;text-align:left;transition:transform .12s ease,border-color .12s ease}
+    .product.saleTile:hover{border-color:#b7c3d6;transform:translateY(-1px)}
+    .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--blue);font-size:18px;font-weight:900}
+    .productMeta{display:grid;gap:4px;justify-items:start}
+    .stockText{font-size:12px;font-weight:800;color:var(--green)}
+    .stockText.low{color:var(--amber)}
+    .cartTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .cartTitle h2{font-size:18px}
+    .customerLookup{display:grid;gap:8px}
+    .customerChip{border:1px solid var(--line);border-radius:8px;background:#fbfcff;padding:10px;display:flex;gap:10px;align-items:center}
+    .avatar{width:38px;height:38px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+    .chipMain{min-width:0;flex:1}
+    .chipMain strong{display:block;font-size:14px}
+    .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+    .chipMeta{font-size:12px;font-weight:800;color:var(--green);white-space:nowrap}
+    .compactFields{display:grid;grid-template-columns:1fr 112px;gap:8px}
+    .cartLine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-top:1px solid var(--line);padding-top:10px}
+    .cartLine:first-child{border-top:0;padding-top:0}
+    .lineControls{display:flex;align-items:center;gap:5px}
+    .lineControls .mini{padding:0 8px}
+    .lineControls [data-note-prompt]{min-width:52px}
+    .noteText{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .couponRow{display:grid;grid-template-columns:1fr 82px;gap:8px}
+    .totals{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;display:grid;gap:8px}
+    .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
+    .totalRow strong{font-size:24px;color:var(--ink)}
+    .tipControl{display:flex;align-items:center;gap:6px}
+    .tipControl input{width:82px;text-align:right}
+    .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .segmented button{height:38px;border:1px solid var(--line2);border-radius:7px;background:#fff;font-weight:800;color:#445064}
+    .segmented button.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset;color:var(--blue);background:#f8fbff}
+    .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
+    .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800}
+    .switch{width:43px;height:24px;border-radius:999px;border:1px solid var(--line2);background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
+    .switch.on{background:var(--green);border-color:var(--green);justify-content:flex-end}
+    .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
+    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:800}
+    .tinyStatus span{white-space:nowrap}
+    .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--blue);margin-left:4px}
     @media (max-width:960px){
       .shell{grid-template-columns:1fr}
       .side{height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}
       .nav{grid-template-columns:repeat(3,1fr)}
       .sideNote{display:none}
       .top{position:static;height:auto;align-items:start;padding:16px}
-      .grid.two,.grid.three,.grid.four,.campaigns{grid-template-columns:1fr}
+      .grid.two,.grid.three,.grid.four,.campaigns,.checkoutShell{grid-template-columns:1fr}
       .products{grid-template-columns:1fr}
+      .cartPanel{position:static;max-height:none}
     }
     @media (max-width:620px){
       .content{padding:14px}
@@ -123,6 +175,9 @@
       table{font-size:12px}
       th,td{padding:8px 6px}
       .filters{grid-template-columns:1fr}
+      .saleToolbar,.couponRow,.tenderGrid,.compactFields{grid-template-columns:1fr}
+      .segmented{grid-template-columns:1fr}
+      .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
   </style>
 </head>
@@ -134,8 +189,8 @@
         <span><strong>NeighbourPOS</strong><span>Static browser demo</span></span>
       </a>
       <div class="nav" role="tablist" aria-label="Demo views">
-        <button class="active" data-view="dashboard">Dashboard</button>
-        <button data-view="pos">POS</button>
+        <button class="active" data-view="pos">POS</button>
+        <button data-view="dashboard">Dashboard</button>
         <button data-view="orders">Orders</button>
         <button data-view="customers">CRM</button>
         <button data-view="campaigns">Campaigns</button>
@@ -149,8 +204,8 @@
     <main class="main">
       <header class="top">
         <div>
-          <h1 id="viewTitle">Today snapshot</h1>
-          <p id="viewCopy">Revenue, active orders, stock alerts, and campaign queue health.</p>
+          <h1 id="viewTitle">Checkout</h1>
+          <p id="viewCopy">Search items, attach a customer, tender, and place the order.</p>
         </div>
         <div class="topActions">
           <span class="pill mono" id="clock">Demo store</span>
@@ -160,7 +215,7 @@
       </header>
 
       <div class="content">
-        <section class="view active" id="dashboard">
+        <section class="view" id="dashboard">
           <div class="grid four" id="stats"></div>
           <div class="grid two">
             <div class="panel">
@@ -179,32 +234,45 @@
           </div>
         </section>
 
-        <section class="view" id="pos">
-          <div class="grid two">
-            <div class="panel">
-              <div class="panelHead">
-                <div><h2>Quick sale</h2><p class="sub">Add items, attach a customer, apply a coupon, and place an order.</p></div>
+        <section class="view active" id="pos">
+          <div class="checkoutShell">
+            <div class="stationPanel">
+              <div class="saleToolbar">
+                <input class="saleSearch" id="saleSearch" placeholder="Search or scan">
+                <button class="iconBtn" title="Scan barcode" aria-label="Scan barcode">|||</button>
+                <button class="iconBtn" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">kbd</button>
               </div>
-              <div class="products" id="productList"></div>
+              <div class="categoryTabs" id="categoryTabs" aria-label="Product categories"></div>
+              <div class="products saleGrid" id="productList"></div>
+              <div class="tinyStatus" id="tinyStatus"></div>
             </div>
-            <div class="panel">
-              <div class="panelHead">
-                <div><h2>Cart</h2><p class="sub">The demo updates inventory and creates a real local order row.</p></div>
+            <aside class="cartPanel" aria-label="Current checkout">
+              <div class="cartTitle">
+                <h2>Cart</h2>
+                <span class="pill mono" id="cartCount">0 items</span>
               </div>
-              <div class="grid">
-                <div class="field">
-                  <label for="customerSelect">Customer</label>
-                  <select id="customerSelect"></select>
-                </div>
-                <div class="field">
-                  <label for="couponInput">Coupon</label>
-                  <input id="couponInput" placeholder="Try WINBACK10">
-                </div>
-                <div id="cartRows" class="cartRows"></div>
-                <div class="total"><span>Total</span><span id="cartTotal">$0.00</span></div>
-                <button class="btn good" id="placeOrder">Place order</button>
+              <div class="customerLookup" id="customerLookup"></div>
+              <div id="cartRows" class="cartRows"></div>
+              <div class="couponRow">
+                <input id="couponInput" placeholder="WINBACK10">
+                <button class="btn" id="applyCoupon">Apply</button>
               </div>
-            </div>
+              <div class="totals" id="cartTotals"></div>
+              <div class="segmented" id="paymentMethod" aria-label="Payment method"></div>
+              <div class="paidRow">
+                <span>Mark paid</span>
+                <button class="switch" id="markPaid" aria-label="Mark paid"><i></i></button>
+              </div>
+              <div class="tenderGrid">
+                <select id="orderType">
+                  <option value="pickup">Pickup</option>
+                  <option value="dine_in">Dine-in</option>
+                  <option value="delivery">Delivery</option>
+                </select>
+                <input id="etaInput" type="number" min="5" value="15" aria-label="ETA minutes">
+              </div>
+              <button class="btn primary" id="placeOrder">Place order</button>
+            </aside>
           </div>
         </section>
 
@@ -287,16 +355,35 @@
     const money = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"});
     const today = new Date().toISOString().slice(0,10);
     const state = {
-      view:"dashboard",
+      view:"pos",
       cart:{},
       selectedCustomer:1,
+      categoryFilter:"All",
+      saleSearch:"",
+      customerPhone:"555-0192",
+      customerLookupStatus:"found",
+      attachedCustomerId:1,
+      newCustomerName:"",
+      newCustomerOptIn:false,
+      coupon:"",
+      tip:0,
+      paymentMethod:"cash",
+      markPaid:false,
+      orderType:"pickup",
+      eta:15,
       products:[
         {id:1,sku:"COF-250",name:"Neighbour Blend Coffee",category:"Grocery",price:8.5,stock:18,low:6},
         {id:2,sku:"MLK-1L",name:"Local Dairy Milk",category:"Dairy",price:3.75,stock:5,low:8},
         {id:3,sku:"BRD-SD",name:"Sourdough Loaf",category:"Bakery",price:6.25,stock:9,low:5},
         {id:4,sku:"EGG-12",name:"Free Range Eggs",category:"Dairy",price:5.8,stock:4,low:7},
         {id:5,sku:"TEA-MNT",name:"Mint Tea Tin",category:"Grocery",price:7.2,stock:13,low:5},
-        {id:6,sku:"HNY-RAW",name:"Raw Honey Jar",category:"Pantry",price:11.4,stock:3,low:4}
+        {id:6,sku:"HNY-RAW",name:"Raw Honey Jar",category:"Pantry",price:11.4,stock:3,low:4},
+        {id:7,sku:"OAT-500",name:"Rolled Oats",category:"Pantry",price:4.95,stock:24,low:6},
+        {id:8,sku:"JAM-BRY",name:"Berry Jam",category:"Pantry",price:6.4,stock:7,low:5},
+        {id:9,sku:"CRS-BTR",name:"Butter Croissant",category:"Bakery",price:3.8,stock:16,low:8},
+        {id:10,sku:"YOG-PLN",name:"Plain Yogurt",category:"Dairy",price:4.2,stock:11,low:6},
+        {id:11,sku:"APL-BAG",name:"Apple Bag",category:"Grocery",price:5.5,stock:21,low:7},
+        {id:12,sku:"CKE-CHP",name:"Chocolate Cookies",category:"Bakery",price:4.75,stock:19,low:6}
       ],
       customers:[
         {id:1,name:"Amina Rahman",phone:"555-0192",email:"amina@example.test",optIn:true,spend:142.35,orders:8,last:"2026-07-03"},
@@ -318,7 +405,7 @@
     ];
     const titles = {
       dashboard:["Today snapshot","Revenue, active orders, stock alerts, and campaign queue health."],
-      pos:["Point of sale","Create a sample order and watch the local CRM data move."],
+      pos:["Checkout","Search items, attach a customer, tender, and place the order."],
       orders:["Order search","Find orders quickly and update the demo status."],
       customers:["Customer CRM","Spend, opt-in, order recency, and timeline in one compact view."],
       campaigns:["Campaign queue","Queue preset campaigns and export demo recipients."],
@@ -376,25 +463,126 @@
       document.getElementById("ordersTable").innerHTML=table(["Order","Customer","Items","Total","Status","Update"],rows);
       document.getElementById("recentOrders").innerHTML=table(["Order","Customer","Total","Status"],state.orders.slice(0,5).map(o=>`<tr><td>${o.code}</td><td>${customer(o.customerId).name}</td><td>${money.format(o.total)}</td><td><span class="status ${o.status==="ready"?"ready":""}">${o.status}</span></td></tr>`));
     }
-    function renderProducts(){
-      document.getElementById("productList").innerHTML=state.products.map(p=>`
-        <div class="product">
-          <div class="productTop"><strong>${p.name}</strong><span class="price">${money.format(p.price)}</span></div>
-          <span class="muted">${p.sku} / ${p.category} / ${p.stock} in stock</span>
-          <button class="btn" data-add="${p.id}" ${p.stock<1?"disabled":""}>Add</button>
-        </div>`).join("");
-      document.getElementById("customerSelect").innerHTML=state.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
-      document.getElementById("customerSelect").value=String(state.selectedCustomer);
-      const rows=Object.entries(state.cart).map(([id,qty])=>{
-        const p=product(Number(id));
-        return `<div class="cartRow"><span><strong>${p.name}</strong><br><span class="muted">${money.format(p.price)} each</span></span><span class="qty"><button class="mini" data-dec="${p.id}">-</button>${qty}<button class="mini" data-add="${p.id}">+</button></span></div>`;
+    function categoryList(){
+      return ["All",...new Set(state.products.map(p=>p.category).filter(Boolean))];
+    }
+    function visibleProducts(){
+      const q=state.saleSearch.trim().toLowerCase();
+      return state.products.filter(p=>{
+        const categoryOk=state.categoryFilter==="All" || p.category===state.categoryFilter;
+        const searchOk=!q || [p.name,p.sku,p.category].join(" ").toLowerCase().includes(q);
+        return categoryOk && searchOk;
       });
-      document.getElementById("cartRows").innerHTML=rows.length?rows.join(""):'<div class="empty">Cart is empty.</div>';
-      document.getElementById("cartTotal").textContent=money.format(cartTotal());
-      document.getElementById("placeOrder").disabled=cartTotal()<=0;
+    }
+    function cartEntries(){
+      return Object.entries(state.cart).map(([id,line])=>({product:product(Number(id)),line})).filter(x=>x.product);
+    }
+    function cartSubtotal(){
+      return cartEntries().reduce((sum,{product:p,line})=>sum+p.price*line.qty,0);
+    }
+    function discountAmount(){
+      return state.coupon.trim() ? cartSubtotal()*0.1 : 0;
     }
     function cartTotal(){
-      return Object.entries(state.cart).reduce((sum,[id,qty])=>sum+product(Number(id)).price*qty,0);
+      const subtotal=cartSubtotal();
+      const discount=discountAmount();
+      const tax=Math.max(0,(subtotal-discount)*0.05);
+      const tip=Math.max(0,Number(state.tip)||0);
+      return subtotal-discount+tax+tip;
+    }
+    function attachedCustomer(){
+      return customer(state.attachedCustomerId);
+    }
+    function normalizePhone(value){
+      return String(value || "").replace(/\D/g,"");
+    }
+    function lookupCustomerByPhone(value){
+      const needle=normalizePhone(value);
+      if(!needle) return null;
+      return state.customers.find(c=>normalizePhone(c.phone)===needle || normalizePhone(c.phone).endsWith(needle));
+    }
+    function syncCustomerLookup(){
+      const found=lookupCustomerByPhone(state.customerPhone);
+      state.attachedCustomerId=found ? found.id : null;
+      state.customerLookupStatus=found ? "found" : (state.customerPhone.trim() ? "new" : "walkin");
+    }
+    function renderProducts(){
+      document.getElementById("saleSearch").value=state.saleSearch;
+      document.getElementById("categoryTabs").innerHTML=categoryList().map(cat=>`
+        <button class="${state.categoryFilter===cat?"active":""}" data-category="${cat}">${cat}</button>
+      `).join("");
+      const products=visibleProducts();
+      document.getElementById("productList").innerHTML=products.length ? products.map(p=>`
+        <button class="product saleTile" data-add="${p.id}" ${p.stock<1?"disabled":""}>
+          <span class="productVisual">${p.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</span>
+          <span class="productMeta">
+            <strong>${p.name}</strong>
+            <span class="price">${money.format(p.price)}</span>
+            <span class="stockText ${p.stock<=p.low?"low":""}">In stock ${p.stock}</span>
+          </span>
+        </button>`).join("") : '<div class="empty">No matching products.</div>';
+      renderCart();
+      renderTinyStatus();
+    }
+    function renderCart(){
+      const c=attachedCustomer();
+      const entries=cartEntries();
+      const subtotal=cartSubtotal();
+      const discount=discountAmount();
+      const tax=Math.max(0,(subtotal-discount)*0.05);
+      const total=cartTotal();
+      const count=entries.reduce((sum,{line})=>sum+line.qty,0);
+      document.getElementById("cartCount").textContent=`${count} ${count===1?"item":"items"}`;
+      document.getElementById("customerLookup").innerHTML=`
+        <input id="customerPhone" placeholder="Enter phone number" value="${state.customerPhone}">
+        ${c ? `
+          <div class="customerChip">
+            <span class="avatar">${c.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</span>
+            <span class="chipMain"><strong>${c.name}</strong><span>${c.phone} / ${money.format(c.spend)} / ${c.orders} orders</span></span>
+            <span class="chipMeta">${c.optIn?"Opt-in":"No opt-in"}</span>
+          </div>` : `
+          <div class="compactFields">
+            <input id="newCustomerName" placeholder="${state.customerLookupStatus==="walkin"?"Walk-in name":"New customer name"}" value="${state.newCustomerName}">
+            <select id="newCustomerOptIn">
+              <option value="0" ${state.newCustomerOptIn?"":"selected"}>No opt-in</option>
+              <option value="1" ${state.newCustomerOptIn?"selected":""}>Opt-in</option>
+            </select>
+          </div>`}
+      `;
+      document.getElementById("cartRows").innerHTML=entries.length ? entries.map(({product:p,line})=>`
+        <div class="cartLine">
+          <div><strong>${p.name}</strong><br><span class="muted">${money.format(p.price)} each</span>${line.notes?`<span class="noteText">Note: ${line.notes}</span>`:""}</div>
+          <div class="lineControls">
+            <button class="mini" data-dec="${p.id}" aria-label="Decrease ${p.name}">-</button>
+            <span class="pill">${line.qty}</span>
+            <button class="mini" data-add="${p.id}" aria-label="Increase ${p.name}">+</button>
+            <button class="mini" data-note-prompt="${p.id}" aria-label="Add note for ${p.name}">Note</button>
+            <button class="mini" data-remove="${p.id}" aria-label="Remove ${p.name}">x</button>
+          </div>
+        </div>`).join("") : '<div class="empty">Cart is empty.</div>';
+      document.getElementById("cartTotals").innerHTML=`
+        <div class="totalRow"><span>Subtotal</span><span>${money.format(subtotal)}</span></div>
+        <div class="totalRow"><span>Discount</span><span>-${money.format(discount)}</span></div>
+        <div class="totalRow"><span>Tax</span><span>${money.format(tax)}</span></div>
+        <div class="totalRow"><span>Tip</span><span class="tipControl"><input id="tipInput" type="number" min="0" step="0.01" value="${Number(state.tip).toFixed(2)}"></span></div>
+        <div class="totalRow"><span>Total</span><strong>${money.format(total)}</strong></div>
+      `;
+      document.getElementById("paymentMethod").innerHTML=["cash","card","online"].map(method=>`
+        <button class="${state.paymentMethod===method?"active":""}" data-pay="${method}">${method[0].toUpperCase()+method.slice(1)}</button>
+      `).join("");
+      document.getElementById("markPaid").classList.toggle("on",state.markPaid);
+      document.getElementById("orderType").value=state.orderType;
+      document.getElementById("etaInput").value=state.eta;
+      document.getElementById("placeOrder").disabled=count<=0;
+    }
+    function renderTinyStatus(){
+      const active=state.orders.filter(o=>o.status!=="paid").length;
+      const low=state.products.filter(p=>p.stock<=p.low);
+      document.getElementById("tinyStatus").innerHTML=[
+        `<span>Active orders <b>${active}</b></span>`,
+        `<span>Low stock <b>${low.length}</b></span>`,
+        ...low.slice(0,3).map(p=>`<span>${p.name} (${p.stock} left)</span>`)
+      ].join("");
     }
     function renderCustomers(){
       const q=(document.getElementById("customerSearch")?.value||"").toLowerCase();
@@ -446,32 +634,47 @@
     function addToCart(id){
       const p=product(id);
       if(!p || p.stock<=0) return;
-      state.cart[id]=(state.cart[id]||0)+1;
+      if(!state.cart[id]) state.cart[id]={qty:0,notes:""};
+      state.cart[id].qty+=1;
       p.stock-=1;
       renderProducts();
     }
     function decCart(id){
       if(!state.cart[id]) return;
-      state.cart[id]-=1;
+      state.cart[id].qty-=1;
       product(id).stock+=1;
-      if(state.cart[id]<=0) delete state.cart[id];
+      if(state.cart[id].qty<=0) delete state.cart[id];
+      renderProducts();
+    }
+    function removeCart(id){
+      const line=state.cart[id];
+      if(!line) return;
+      product(id).stock+=line.qty;
+      delete state.cart[id];
       renderProducts();
     }
     function placeOrder(){
       const entries=Object.entries(state.cart);
       if(!entries.length) return;
       const id=1000+state.orders.length+8;
-      const c=Number(document.getElementById("customerSelect").value);
-      const coupon=document.getElementById("couponInput").value.trim().toUpperCase();
-      const items=entries.map(([pid,qty])=>[product(Number(pid)).name,qty]);
-      const total=cartTotal()*(coupon?0.9:1);
-      state.orders.unshift({id,code:`NP-${id}`,customerId:c,status:"open",date:today,total,items,coupon});
-      const cust=customer(c);
+      let cust=attachedCustomer();
+      if(!cust){
+        const nextId=Math.max(...state.customers.map(c=>c.id))+1;
+        cust={id:nextId,name:state.newCustomerName.trim() || "Walk-in guest",phone:state.customerPhone.trim() || "walk-in",email:"",optIn:state.newCustomerOptIn,spend:0,orders:0,last:""};
+        state.customers.push(cust);
+        state.attachedCustomerId=nextId;
+      }
+      const coupon=state.coupon.trim().toUpperCase();
+      const items=entries.map(([pid,line])=>[product(Number(pid)).name,line.qty,line.notes||""]);
+      const total=cartTotal();
+      state.orders.unshift({id,code:`NP-${id}`,customerId:cust.id,status:state.markPaid?"paid":"open",date:today,total,items,coupon,paymentMethod:state.paymentMethod,orderType:state.orderType,eta:state.eta});
       cust.spend+=total;
       cust.orders+=1;
       cust.last=today;
+      state.selectedCustomer=cust.id;
       state.cart={};
-      document.getElementById("couponInput").value="";
+      state.coupon="";
+      state.tip=0;
       showToast(`Created order NP-${id}`);
       setView("orders");
     }
@@ -505,6 +708,16 @@
       if(button.dataset.jump) setView(button.dataset.jump);
       if(button.dataset.add) addToCart(Number(button.dataset.add));
       if(button.dataset.dec) decCart(Number(button.dataset.dec));
+      if(button.dataset.remove) removeCart(Number(button.dataset.remove));
+      if(button.dataset.notePrompt){
+        const line=state.cart[button.dataset.notePrompt];
+        if(line){
+          const next=prompt("Item note",line.notes||"");
+          if(next!==null){line.notes=next.trim();renderCart();}
+        }
+      }
+      if(button.dataset.category){state.categoryFilter=button.dataset.category;renderProducts();}
+      if(button.dataset.pay){state.paymentMethod=button.dataset.pay;renderCart();}
       if(button.dataset.customer){state.selectedCustomer=Number(button.dataset.customer);renderCustomers();}
       if(button.dataset.queue) queueCampaign(button.dataset.queue);
       if(button.dataset.status){
@@ -512,9 +725,28 @@
         const order=state.orders.find(o=>o.id===Number(id));
         if(order){order.status=status;showToast(`${order.code} marked ${status}`);render();}
       }
+      if(button.id==="markPaid"){state.markPaid=!state.markPaid;renderCart();}
+      if(button.id==="applyCoupon"){state.coupon=document.getElementById("couponInput").value.trim().toUpperCase();renderCart();}
     });
-    document.getElementById("placeOrder").addEventListener("click",placeOrder);
-    document.getElementById("customerSelect").addEventListener("change",e=>{state.selectedCustomer=Number(e.target.value);});
+    document.addEventListener("input",e=>{
+      if(e.target.id==="saleSearch"){state.saleSearch=e.target.value;renderProducts();}
+      if(e.target.id==="customerPhone"){state.customerPhone=e.target.value;syncCustomerLookup();renderCart();}
+      if(e.target.id==="newCustomerName"){state.newCustomerName=e.target.value;}
+      if(e.target.id==="couponInput"){state.coupon=e.target.value.trim().toUpperCase();renderCart();}
+      if(e.target.id==="tipInput"){state.tip=Number(e.target.value)||0;renderCart();}
+      if(e.target.dataset.note){
+        const line=state.cart[e.target.dataset.note];
+        if(line) line.notes=e.target.value;
+      }
+    });
+    document.addEventListener("change",e=>{
+      if(e.target.id==="newCustomerOptIn"){state.newCustomerOptIn=e.target.value==="1";}
+      if(e.target.id==="orderType"){state.orderType=e.target.value;}
+      if(e.target.id==="etaInput"){state.eta=Math.max(5,Number(e.target.value)||15);}
+    });
+    document.addEventListener("click",e=>{
+      if(e.target.id==="placeOrder") placeOrder();
+    });
     document.getElementById("orderSearch").addEventListener("input",renderOrders);
     document.getElementById("statusFilter").addEventListener("change",renderOrders);
     document.getElementById("customerSearch").addEventListener("input",renderCustomers);
