@@ -50,13 +50,11 @@
     .btn.primary:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
     .btn.secondary{border:1px solid var(--line-strong);background:#fff;color:var(--ink)}
     .btn.secondary:hover{border-color:#aab3c0;background:var(--panel)}
-    .hero{position:relative;isolation:isolate;min-height:clamp(560px,calc(100vh - 170px),700px);overflow:hidden;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff 0%,#f8fafc 100%)}
-    .heroInner{padding:76px 0 72px;display:grid;grid-template-columns:minmax(0,760px) minmax(230px,360px);gap:clamp(42px,8vw,120px);align-items:center;min-height:inherit}
+    .hero{position:relative;isolation:isolate;min-height:clamp(520px,calc(100vh - 220px),640px);overflow:hidden;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff 0%,#f8fafc 100%)}
+    .heroInner{padding:74px 0 66px;display:block}
     .heroCopy{max-width:760px}
     .heroLogo{width:88px;height:88px;border-radius:8px;font-size:32px;margin-bottom:26px}
     .heroLogo::after{right:12px;top:14px;width:7px;height:58px}
-    .heroPanel{justify-self:end;width:min(32vw,360px);height:auto;aspect-ratio:1;border-radius:8px;font-size:clamp(74px,9vw,118px);box-shadow:0 28px 60px rgba(9,11,16,.2)}
-    .heroPanel::after{right:32px;top:34px;width:12px;height:calc(100% - 68px)}
     h1{margin:0;font-size:clamp(48px,8vw,88px);line-height:.95;letter-spacing:-.07em;font-weight:900}
     .subhead{margin:18px 0 0;max-width:590px;font-size:clamp(17px,2vw,21px);line-height:1.65;color:#343944}
     .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
@@ -122,8 +120,7 @@
       nav{justify-content:flex-start}
       .brandTag{display:none}
       .hero{height:auto}
-      .heroInner{display:block;min-height:auto;padding:24px 0 30px}
-      .heroPanel{display:none}
+      .heroInner{min-height:auto;padding:24px 0 30px}
       .sectionHead{display:block}
       table{display:block;overflow-x:auto}
       .ownRow{grid-template-columns:1fr}
@@ -174,7 +171,6 @@
             <div><strong>Local ownership</strong><span>One PHP file, one SQLite database, CSV exports, and backups.</span></div>
           </div>
         </div>
-        <div class="heroPanel brandMark mono" aria-hidden="true"><span>NP</span></div>
       </div>
     </section>
 
