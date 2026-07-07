@@ -2452,6 +2452,10 @@ $csrf = csrf_token();
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
+    .pageHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+    .pageHeader .h1{font-size:18px;line-height:1.2}
+    .pageHeader .muted{max-width:680px}
+    .pageActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;flex-wrap:wrap}
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-sm)}
     .h1{font-size:14px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
@@ -2497,6 +2501,11 @@ $csrf = csrf_token();
     .appShell.navCollapsed .sideToggle span{transform:rotate(180deg)}
 
     .list{display:flex;flex-direction:column;gap:0;margin-top:10px}
+    .emptyState{border:1px dashed var(--line2);border-radius:var(--radius-card);background:#fff;padding:16px;display:grid;gap:8px;color:var(--muted)}
+    .emptyIcon{width:36px;height:36px;border-radius:var(--radius-card);background:var(--wash);color:var(--accent);display:grid;place-items:center}
+    .emptyIcon .icon{width:18px;height:18px}
+    .emptyTitle{color:var(--txt);font-size:15px;font-weight:700}
+    .emptyActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
     .item{padding:12px 0;border-radius:0;border:0;background:#fff}
     .item + .item{border-top:1px solid var(--line2)}
     .item .name{font-weight:500;font-size:13px}
@@ -2583,6 +2592,8 @@ $csrf = csrf_token();
     @media(max-width:620px){
       .app{padding:12px}
       .topbar{display:grid}
+      .pageHeader{display:grid}
+      .pageActions{justify-content:flex-start}
       .navin{grid-template-columns:repeat(2,minmax(0,1fr))}
       .saleToolbar,.compactFields,.tenderGrid{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
@@ -2708,6 +2719,20 @@ $csrf = csrf_token();
   function qsa(sel, el=document){ return [...el.querySelectorAll(sel)] }
   function esc(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])) }
   function icon(id){ return `<svg class="icon" aria-hidden="true"><use href="#i-${id}"></use></svg>` }
+  function pageHeader(title, description, actionHtml=''){
+    return `<div class="pageHeader">
+      <div><div class="h1">${esc(title)}</div><div class="muted">${esc(description)}</div></div>
+      ${actionHtml ? `<div class="pageActions">${actionHtml}</div>` : ''}
+    </div>`
+  }
+  function emptyState(iconId, title, body, actionHtml=''){
+    return `<div class="emptyState">
+      <span class="emptyIcon">${icon(iconId)}</span>
+      <div class="emptyTitle">${esc(title)}</div>
+      <div>${esc(body)}</div>
+      ${actionHtml ? `<div class="emptyActions">${actionHtml}</div>` : ''}
+    </div>`
+  }
   function setAppSidebarCollapsed(collapsed){
     const shell = qs('#appShell')
     const toggle = qs('#navToggle')
@@ -2853,6 +2878,7 @@ $csrf = csrf_token();
   function renderDashboard(){
     const d = state.dashboard || {}
     return `
+      ${pageHeader('Dashboard', 'Today at a glance across checkout, orders, stock, and campaign queues.', `<button class="btn primary" data-go="pos">New order</button>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Today snapshot dashboard</div>
@@ -2963,6 +2989,7 @@ $csrf = csrf_token();
     const count = state.cart.reduce((sum,it)=>sum+it.qty,0)
 
     return `
+      ${pageHeader('Checkout', 'Search or scan items, attach a customer, tender payment, and place the order.', `<button class="btn primary" data-focus="#pos_q">Find item</button>`)}
       <div class="checkoutShell">
         <div class="stationPanel">
           <div class="saleToolbar">
@@ -2978,7 +3005,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="saleGrid" id="pos_products">
-            ${products.length === 0 ? `<div class="muted">No matching products.</div>` : products.map(p=>`
+            ${products.length === 0 ? emptyState('search', 'No matching products', 'Try another search or add the first product in Inventory.', `<button class="btn small primary" data-go="inventory">Add product</button>`) : products.map(p=>`
               <button class="item saleTile" type="button" data-add="${p.id}" ${Number(p.stock_qty) <= 0 ? 'disabled' : ''}>
                 <span class="productVisual">${esc(productInitials(p.name))}</span>
                 <span class="productMeta">
@@ -3005,7 +3032,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="list">
-            ${state.cart.length === 0 ? `<div class="muted">Cart empty. Add items from inventory.</div>` : state.cart.map(it=>`
+            ${state.cart.length === 0 ? emptyState('pos', 'Cart empty', 'Add items from the product grid to start a sale.') : state.cart.map(it=>`
               <div class="cartLine">
                 <div><strong>${esc(it.name)}</strong><br><span class="muted">${money(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
                 <div class="lineControls">
@@ -3068,6 +3095,7 @@ $csrf = csrf_token();
 
   function renderOrders(){
     return `
+      ${pageHeader('Orders', 'Search, open receipts, and move active orders through fulfillment.', `<button class="btn primary" data-go="pos">New order</button>`)}
       <div class="card">
         <div class="row" style="align-items:flex-start">
           <div>
@@ -3099,7 +3127,7 @@ $csrf = csrf_token();
             <button class="btn small primary" id="order_search_btn">Search</button>
           </div>
           <div class="list">
-            ${state.orderSearch.length===0 ? `<div class="muted" style="margin-top:8px">Search recent orders by code, phone, status, or date.</div>` : state.orderSearch.map(o=>`
+            ${state.orderSearch.length===0 ? emptyState('search', 'Search recent orders', 'Use code, phone, status, or date filters to find an order.') : state.orderSearch.map(o=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3120,7 +3148,7 @@ $csrf = csrf_token();
         </div>
 
         <div class="list">
-          ${state.orders.length===0 ? `<div class="muted" style="margin-top:8px">No orders.</div>` : state.orders.map(o=>`
+          ${state.orders.length===0 ? emptyState('orders', 'No active orders', 'New checkout orders will appear here for fulfillment.', `<button class="btn small primary" data-go="pos">Start checkout</button>`) : state.orders.map(o=>`
             <div class="item">
               <div class="row" style="align-items:flex-start">
                 <div style="flex:1">
@@ -3146,6 +3174,7 @@ $csrf = csrf_token();
 
   function renderInventory(){
     return `
+      ${pageHeader('Inventory', 'Maintain products, stock counts, categories, and low-stock restock exports.', `<button class="btn primary" data-focus="#prod_name">Add product</button>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Inventory</div>
@@ -3174,7 +3203,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="list">
-            ${state.products.map(p=>`
+            ${state.products.length===0 ? emptyState('inventory', 'No products yet', 'Add your first product or load sample data from Admin.', `<button class="btn small primary" data-focus="#prod_name">Add product</button>`) : state.products.map(p=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3204,7 +3233,7 @@ $csrf = csrf_token();
           <button class="btn small" id="low_refresh">Refresh</button>
           <a class="btn small ghost" href="?action=inventory_low_stock_export">Export low-stock CSV</a>
           <div class="list">
-            ${state.lowStock.length===0 ? `<div class="muted" style="margin-top:8px">No low-stock products.</div>` : state.lowStock.map(p=>`
+            ${state.lowStock.length===0 ? emptyState('alert', 'Stock looks healthy', 'Products under the low-stock threshold will appear here.') : state.lowStock.map(p=>`
               <div class="item">
                 <div class="name">${esc(p.name)}</div>
                 <div class="meta">${esc(p.category || '')} • Stock: <b>${esc(p.stock_qty)}</b></div>
@@ -3225,6 +3254,7 @@ $csrf = csrf_token();
     const orders = state.selectedCustomer?.orders || []
     const ltv = cust?.ltv_estimate ? Number(cust.ltv_estimate).toFixed(2) : '0.00'
     return `
+      ${pageHeader('CRM', 'Find customers by phone, maintain consent, and review purchase history.', `<button class="btn primary" data-focus="#crm_q">Find customer</button>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Customers (CRM)</div>
@@ -3236,7 +3266,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="list">
-            ${state.customerSearch.length===0 ? `<div class="muted">Search to find customers (limit 50).</div>` : state.customerSearch.map(c=>`
+            ${state.customerSearch.length===0 ? emptyState('user', 'Search customers', 'Type at least two characters to find customers by phone, name, email, or tag.') : state.customerSearch.map(c=>`
               <div class="item" data-cust="${c.id}">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3256,7 +3286,7 @@ $csrf = csrf_token();
 
         <div class="card">
           <div class="h1">Profile</div>
-          ${!cust ? `<div class="muted" style="margin-top:8px">Select a customer to view details and edit opt-in/tags.</div>` : `
+          ${!cust ? emptyState('user', 'No customer selected', 'Open a customer to view details, consent, order history, and timeline.') : `
             <div class="kpi">
               <div class="k"><div class="v">${money(cust.total_spent_cents)}</div><div class="l">Total spent</div></div>
               <div class="k"><div class="v">${esc(cust.order_count)}</div><div class="l">Orders</div></div>
@@ -3304,7 +3334,7 @@ $csrf = csrf_token();
             <div style="margin-top:12px">
               <div class="h1">Recent orders</div>
               <div class="list">
-                ${orders.length===0 ? `<div class="muted" style="margin-top:8px">No orders yet.</div>` : orders.map(o=>`
+                ${orders.length===0 ? emptyState('orders', 'No orders yet', 'This customer has not placed an order yet.') : orders.map(o=>`
                   <div class="item">
                     <div class="row" style="align-items:flex-start">
                       <div style="flex:1">
@@ -3324,7 +3354,7 @@ $csrf = csrf_token();
             <div style="margin-top:12px">
               <div class="h1">Timeline</div>
               <div class="list">
-                ${state.customerTimeline.length===0 ? `<div class="muted" style="margin-top:8px">No timeline events yet.</div>` : state.customerTimeline.map(ev=>`
+                ${state.customerTimeline.length===0 ? emptyState('reports', 'No timeline events yet', 'Orders, campaigns, and consent changes will appear here.') : state.customerTimeline.map(ev=>`
                   <div class="item">
                     <div class="name">${esc(ev.type)} • ${esc(ev.label)}</div>
                     <div class="meta">${esc(ev.ts)} ${ev.amount_cents ? '• '+money(ev.amount_cents) : ''} ${ev.meta ? '• '+esc(ev.meta) : ''}</div>
@@ -3341,6 +3371,7 @@ $csrf = csrf_token();
 
   function renderCampaigns(){
     return `
+      ${pageHeader('Campaigns', 'Build opted-in segments, queue campaigns, and export sending lists.', `<button class="btn primary" data-focus="#seg_name">New segment</button>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Segments</div>
@@ -3385,7 +3416,7 @@ $csrf = csrf_token();
           <div id="seg_msg"></div>
 
           <div class="list">
-            ${state.segments.length===0 ? `<div class="muted" style="margin-top:8px">No segments yet.</div>` : state.segments.map(s=>`
+            ${state.segments.length===0 ? emptyState('crm', 'No segments yet', 'Create a saved filter for customers you want to reach later.', `<button class="btn small primary" data-focus="#seg_name">Create segment</button>`) : state.segments.map(s=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3482,7 +3513,7 @@ $csrf = csrf_token();
           <div style="margin-top:12px">
             <div class="h1">Past campaigns</div>
             <div class="list">
-              ${state.campaigns.length===0 ? `<div class="muted" style="margin-top:8px">No campaigns yet.</div>` : state.campaigns.map(c=>`
+              ${state.campaigns.length===0 ? emptyState('campaigns', 'No campaigns yet', 'Create a campaign from a segment, then queue recipients for export.', `<button class="btn small primary" data-focus="#camp_msg">Write campaign</button>`) : state.campaigns.map(c=>`
                 <div class="item">
                   <div class="row" style="align-items:flex-start">
                     <div style="flex:1">
@@ -3509,6 +3540,7 @@ $csrf = csrf_token();
     const r = state.report || { summary:{}, top_products:[], category_mix:[] }
     const exportHref = `?action=sales_report_export&from=${encodeURIComponent(state.reportFrom || '')}&to=${encodeURIComponent(state.reportTo || '')}`
     return `
+      ${pageHeader('Reports', 'Review completed-order revenue and export owner-friendly CSV reports.', `<a class="btn primary" href="${exportHref}">Export CSV</a>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Sales reports</div>
@@ -3529,13 +3561,13 @@ $csrf = csrf_token();
         <div class="card">
           <div class="h1">Top products</div>
           <div class="list">
-            ${(r.top_products || []).length===0 ? `<div class="muted">No completed sales in this window.</div>` : r.top_products.map(p=>`
+            ${(r.top_products || []).length===0 ? emptyState('reports', 'No completed sales', 'Completed orders in the selected window will appear here.') : r.top_products.map(p=>`
               <div class="item"><div class="name">${esc(p.product_name)}</div><div class="meta">${esc(p.category)} • Qty ${esc(p.qty)} • ${money(p.revenue_cents)}</div></div>
             `).join('')}
           </div>
           <div class="h1" style="margin-top:12px">Category mix</div>
           <div class="list">
-            ${(r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} • ${money(c.revenue_cents)}</div></div>`).join('')}
+            ${(r.category_mix || []).length===0 ? emptyState('reports', 'No category mix yet', 'Category totals appear after completed sales in this report window.') : (r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} - ${money(c.revenue_cents)}</div></div>`).join('')}
           </div>
         </div>
       </div>
@@ -3545,6 +3577,7 @@ $csrf = csrf_token();
   function renderAdmin(){
     const isAdmin = state.me?.role === 'admin'
     return `
+      ${pageHeader('Admin', 'Change passwords, download backups, and inspect audited staff actions.', isAdmin ? `<a class="btn primary" href="?action=database_backup">Download backup</a>` : `<button class="btn primary" data-focus="#pw_current">Change password</button>`)}
       <div class="grid">
         <div class="card">
           <div class="h1">Change password</div>
@@ -3572,7 +3605,7 @@ $csrf = csrf_token();
             <div class="field"><label>Filter</label><input id="audit_q" placeholder="action, email, payload"></div>
             <button class="btn small" id="audit_refresh">Refresh</button>
             <div class="list">
-              ${state.auditLogs.length===0 ? `<div class="muted">No audit rows loaded.</div>` : state.auditLogs.map(a=>`
+              ${state.auditLogs.length===0 ? emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.') : state.auditLogs.map(a=>`
                 <div class="item">
                   <div class="name">${esc(a.action)}</div>
                   <div class="meta">${esc(a.ts)} • ${esc(a.user_email || 'system')}</div>
@@ -3580,7 +3613,7 @@ $csrf = csrf_token();
                 </div>
               `).join('')}
             </div>
-          ` : `<div class="muted">Audit log is admin only.</div>`}
+          ` : emptyState('admin', 'Audit log is admin only', 'Sign in as an admin to review audit history.')}
         </div>
       </div>
     `
@@ -3610,6 +3643,10 @@ $csrf = csrf_token();
     if (navToggle) navToggle.onclick = () => setAppSidebarCollapsed(!qs('#appShell').classList.contains('navCollapsed'))
     qsa('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
     qsa('[data-go]').forEach(b=>b.onclick=()=>setTab(b.dataset.go).catch(e=>msg('pos_msg','err', e.message || 'Tab load failed')))
+    qsa('[data-focus]').forEach(b=>b.onclick=()=>{
+      const target = qs(b.dataset.focus || '')
+      if (target) target.focus()
+    })
 
     const posQ = qs('#pos_q')
     if (posQ) posQ.oninput = async () => {
