@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P4.1] Added the customer credit ledger with on-credit POS tendering, customer balances, payment recording, debtor segments, outstanding-credit dashboard KPI, and debtor reminder exports with `{balance}`.
 - [P3.7] Added provider-specific export documentation with CSV headers, examples, import click paths, consent notes, and links from README plus the app export panels.
 - [P3.6] Added saved segment live counts, duplicate segment workflow, direct tag filter support, and a hidden has-balance filter hook for the future credit ledger.
 - [P3.5] Added CRM customer exports for saved segments or current search filters using the same provider CSV profiles, opt-in defaults, audited override, and Excel-friendly downloads.

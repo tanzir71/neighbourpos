@@ -464,6 +464,7 @@ function campaign_render_message(array $camp, array $r, string $storeName = ''):
   $name = campaign_row_name($r);
   [$first] = split_customer_name($name);
   $coupon = campaign_recipient_coupon($r);
+  $balance = (string)($payload['balance'] ?? ($r['balance'] ?? ''));
 
   return strtr($message, [
     '{{coupon}}' => $coupon,
@@ -471,6 +472,7 @@ function campaign_render_message(array $camp, array $r, string $storeName = ''):
     '{name}' => $name,
     '{first_name}' => $first,
     '{store_name}' => $storeName,
+    '{balance}' => $balance,
   ]);
 }
 
@@ -654,9 +656,11 @@ function campaign_export_preview_summary(string $format, array $camp, array $row
   return $summary;
 }
 
-function customer_rows_to_export_recipients(array $rows, string $messageTemplate = ''): array {
+function customer_rows_to_export_recipients(array $rows, string $messageTemplate = '', ?array $store = null): array {
   $out = [];
   foreach ($rows as $c) {
+    $balanceCents = (int)($c['balance_cents'] ?? 0);
+    $balance = $store ? money_fmt($store, $balanceCents) : number_format($balanceCents / 100, 2, '.', ',');
     $out[] = [
       'customer_id' => $c['id'] ?? null,
       'phone' => (string)($c['phone'] ?? ''),
@@ -666,7 +670,7 @@ function customer_rows_to_export_recipients(array $rows, string $messageTemplate
       'redeemed_order_id' => '',
       'redeemed_at' => '',
       'status' => '',
-      'payload_json' => json_encode(['message' => $messageTemplate, 'coupon_code' => ''], JSON_UNESCAPED_SLASHES),
+      'payload_json' => json_encode(['message' => $messageTemplate, 'coupon_code' => '', 'balance' => $balance], JSON_UNESCAPED_SLASHES),
       'customer_name' => (string)($c['name'] ?? ''),
       'customer_email' => (string)($c['email'] ?? ''),
       'tags_text' => (string)($c['tags_text'] ?? ''),
@@ -674,6 +678,8 @@ function customer_rows_to_export_recipients(array $rows, string $messageTemplate
       'total_spent_cents' => $c['total_spent_cents'] ?? '',
       'order_count' => $c['order_count'] ?? '',
       'last_order_at' => $c['last_order_at'] ?? '',
+      'balance_cents' => $balanceCents,
+      'balance' => $balance,
     ];
   }
   return $out;
@@ -869,6 +875,19 @@ function init_db(PDO $pdo): void {
   ");
 
   $pdo->exec("
+    CREATE TABLE IF NOT EXISTS ledger_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL,
+      order_id INTEGER,
+      type TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      note TEXT,
+      created_by INTEGER,
+      created_at TEXT NOT NULL
+    );
+  ");
+
+  $pdo->exec("
     CREATE TABLE IF NOT EXISTS segments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -944,6 +963,8 @@ function init_db(PDO $pdo): void {
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_customers_spent ON customers(total_spent_cents);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_order_items_category ON order_items(category);");
+  $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ledger_customer ON ledger_entries(customer_id);");
+  $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ledger_order ON ledger_entries(order_id);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_campaign_recipients_campaign ON campaign_recipients(campaign_id);");
   ensure_column($pdo, 'orders', 'coupon_code_text', 'TEXT');
   ensure_column($pdo, 'stores', 'default_country_code', "TEXT NOT NULL DEFAULT '+1'");
@@ -974,6 +995,55 @@ function ensure_default_admin(PDO $pdo, array $CONFIG): void {
 function audit(PDO $pdo, ?int $userId, string $action, array $payload): void {
   $st = $pdo->prepare("INSERT INTO audit_log(user_id, action, payload_json, ts) VALUES(?,?,?,?)");
   $st->execute([$userId, $action, json_encode($payload, JSON_UNESCAPED_SLASHES), now_iso()]);
+}
+
+function ledger_balance_expr(string $customerExpr = 'c.id'): string {
+  return "(SELECT COALESCE(SUM(CASE WHEN le.type = 'credit' THEN le.amount_cents ELSE -le.amount_cents END), 0) FROM ledger_entries le WHERE le.customer_id = {$customerExpr})";
+}
+
+function ledger_balance_cents(PDO $pdo, int $customerId): int {
+  $st = $pdo->prepare("
+    SELECT COALESCE(SUM(CASE WHEN type = 'credit' THEN amount_cents ELSE -amount_cents END), 0) AS balance
+    FROM ledger_entries
+    WHERE customer_id = ?
+  ");
+  $st->execute([$customerId]);
+  return (int)$st->fetchColumn();
+}
+
+function ledger_entries_for_customer(PDO $pdo, int $customerId, int $limit = 20): array {
+  $st = $pdo->prepare("
+    SELECT le.id, le.customer_id, le.order_id, le.type, le.amount_cents, le.note, le.created_by, le.created_at, o.order_code
+    FROM ledger_entries le
+    LEFT JOIN orders o ON o.id = le.order_id
+    WHERE le.customer_id = ?
+    ORDER BY le.created_at DESC, le.id DESC
+    LIMIT ?
+  ");
+  $st->execute([$customerId, max(1, min(100, $limit))]);
+  return $st->fetchAll();
+}
+
+function ledger_outstanding_credit_cents(PDO $pdo): int {
+  $st = $pdo->query("
+    SELECT COALESCE(SUM(balance), 0) AS total
+    FROM (
+      SELECT customer_id, SUM(CASE WHEN type = 'credit' THEN amount_cents ELSE -amount_cents END) AS balance
+      FROM ledger_entries
+      GROUP BY customer_id
+      HAVING balance > 0
+    )
+  ");
+  return (int)$st->fetchColumn();
+}
+
+function ledger_insert(PDO $pdo, int $customerId, ?int $orderId, string $type, int $amountCents, string $note, ?int $createdBy, string $createdAt): int {
+  if (!in_array($type, ['credit', 'payment'], true)) throw new InvalidArgumentException('Invalid ledger type');
+  if ($customerId <= 0 || $amountCents <= 0) throw new InvalidArgumentException('Invalid ledger entry');
+  $note = trim($note);
+  $ins = $pdo->prepare("INSERT INTO ledger_entries(customer_id, order_id, type, amount_cents, note, created_by, created_at) VALUES(?,?,?,?,?,?,?)");
+  $ins->execute([$customerId, $orderId, $type, $amountCents, $note !== '' ? $note : null, $createdBy, $createdAt]);
+  return (int)$pdo->lastInsertId();
 }
 
 /* =========================
@@ -1106,18 +1176,10 @@ function segment_query(PDO $pdo, array $filters, int $limit, int $offset = 0): a
   }
 
   if (!empty($filters['has_balance'])) {
-    if (db_table_exists($pdo, 'ledger_entries')) {
-      $where[] = "(
-        SELECT COALESCE(SUM(CASE WHEN le.type = 'credit' THEN le.amount_cents ELSE -le.amount_cents END), 0)
-        FROM ledger_entries le
-        WHERE le.customer_id = c.id
-      ) > 0";
-    } else {
-      $where[] = "0 = 1";
-    }
+    $where[] = ledger_balance_expr('c.id') . " > 0";
   }
 
-  $sql = "SELECT c.* FROM customers c {$joins}";
+  $sql = "SELECT c.*, " . ledger_balance_expr('c.id') . " AS balance_cents FROM customers c {$joins}";
   if ($where) $sql .= " WHERE " . implode(' AND ', $where);
   if ($groupBy) $sql .= $groupBy;
   $sql .= " ORDER BY COALESCE(c.last_order_at, c.created_at) DESC LIMIT ? OFFSET ?";
@@ -1496,6 +1558,7 @@ if ($action === 'campaign_export') {
   $format = strtolower(trim((string)($_GET['format'] ?? 'full')));
   if ($format === '') $format = 'full';
   $bom = !empty($_GET['bom']);
+  $includeBalance = !empty($_GET['include_balance']) ? 1 : 0;
 
   if ($id <= 0) {
     http_response_code(400);
@@ -1543,7 +1606,8 @@ if ($action === 'campaign_export') {
       cust.marketing_opt_in,
       cust.total_spent_cents,
       cust.order_count,
-      cust.last_order_at
+      cust.last_order_at,
+      ".ledger_balance_expr('cust.id')." AS balance_cents
     FROM campaign_recipients cr
     LEFT JOIN customers cust ON cust.id = cr.customer_id
     WHERE cr.campaign_id = ?
@@ -1590,7 +1654,7 @@ if ($action === 'campaign_export') {
     exit;
   }
 
-  fputcsv($out, [
+  $headers = [
     'campaign_id',
     'campaign_name',
     'segment_name',
@@ -1611,7 +1675,9 @@ if ($action === 'campaign_export') {
     'sent_at',
     'redeemed_order_id',
     'redeemed_at',
-  ]);
+  ];
+  if ($includeBalance) $headers[] = 'balance';
+  fputcsv($out, $headers);
 
   foreach ($rows as $r) {
     $payload = json_decode((string)$r['payload_json'], true);
@@ -1646,6 +1712,7 @@ if ($action === 'campaign_export') {
       'redeemed_order_id' => csv_safe_cell($r['redeemed_order_id'] ?? ''),
       'redeemed_at' => csv_safe_cell($r['redeemed_at'] ?? ''),
     ];
+    if ($includeBalance) $csvRow['balance'] = csv_safe_cell(money_fmt($store, (int)($r['balance_cents'] ?? 0)));
     fputcsv($out, array_values($csvRow));
   }
 
@@ -1673,10 +1740,15 @@ if ($action === 'customer_export') {
   $overrideOptIn = !empty($_GET['override_opt_in']) ? 1 : 0;
   $bom = !empty($_GET['bom']);
   $messageTemplate = trim((string)($_GET['message_template'] ?? ''));
+  $debtorsOnly = !empty($_GET['debtors']) ? 1 : 0;
+  $includeBalance = !empty($_GET['include_balance']) ? 1 : 0;
   $filters = [];
   $exportName = 'customer-export';
 
-  if ($segmentId > 0) {
+  if ($debtorsOnly) {
+    $filters = ['has_balance' => true];
+    $exportName = 'debtors';
+  } elseif ($segmentId > 0) {
     $segSt = $pdo->prepare("SELECT * FROM segments WHERE id = ?");
     $segSt->execute([$segmentId]);
     $seg = $segSt->fetch();
@@ -1697,7 +1769,7 @@ if ($action === 'customer_export') {
     $filters['marketing_opt_in_only'] = true;
   }
 
-  if ($segmentId <= 0 && $q !== '') {
+  if (!$debtorsOnly && $segmentId <= 0 && $q !== '') {
     $phone = normalize_phone($q);
     $where = "(phone LIKE ? OR name LIKE ? OR email LIKE ? OR tags_text LIKE ?)";
     $params = ['%'.$q.'%', '%'.$q.'%', '%'.$q.'%', '%'.$q.'%'];
@@ -1706,7 +1778,7 @@ if ($action === 'customer_export') {
       $params[] = $phone;
     }
     if ($optInOnly) $where .= " AND marketing_opt_in = 1";
-    $st = $pdo->prepare("SELECT * FROM customers WHERE {$where} ORDER BY COALESCE(last_order_at, created_at) DESC LIMIT 5000");
+    $st = $pdo->prepare("SELECT c.*, ".ledger_balance_expr('c.id')." AS balance_cents FROM customers c WHERE {$where} ORDER BY COALESCE(last_order_at, created_at) DESC LIMIT 5000");
     $st->execute($params);
     $customers = $st->fetchAll();
   } else {
@@ -1727,7 +1799,6 @@ if ($action === 'customer_export') {
     'message_template' => $messageTemplate,
     'include_campaign_tag' => false,
   ];
-  $rows = customer_rows_to_export_recipients($customers, $messageTemplate);
 
   audit($pdo, $uid, 'customers.export', [
     'segment_id' => $segmentId ?: null,
@@ -1735,6 +1806,7 @@ if ($action === 'customer_export') {
     'format' => $format,
     'count' => count($customers),
     'override_opt_in' => $overrideOptIn,
+    'debtors_only' => $debtorsOnly,
   ]);
 
   header('Content-Type: text/csv; charset=utf-8');
@@ -1744,9 +1816,11 @@ if ($action === 'customer_export') {
   if ($bom) fwrite($out, "\xEF\xBB\xBF");
 
   if ($format === 'full') {
-    fputcsv($out, ['customer_id', 'name', 'phone', 'email', 'marketing_opt_in', 'total_spent_cents', 'order_count', 'last_order_at', 'tags']);
+    $headers = ['customer_id', 'name', 'phone', 'email', 'marketing_opt_in', 'total_spent_cents', 'order_count', 'last_order_at', 'tags'];
+    if ($includeBalance) $headers[] = 'balance';
+    fputcsv($out, $headers);
     foreach ($customers as $c) {
-      fputcsv($out, [
+      $csvRow = [
         csv_safe_cell($c['id'] ?? ''),
         csv_safe_cell($c['name'] ?? ''),
         csv_safe_cell($c['phone'] ?? ''),
@@ -1756,7 +1830,9 @@ if ($action === 'customer_export') {
         csv_safe_cell($c['order_count'] ?? ''),
         csv_safe_cell($c['last_order_at'] ?? ''),
         csv_safe_cell(trim(str_replace(',', ' ', (string)($c['tags_text'] ?? '')))),
-      ]);
+      ];
+      if ($includeBalance) $csvRow[] = csv_safe_cell(money_fmt($store, (int)($c['balance_cents'] ?? 0)));
+      fputcsv($out, $csvRow);
     }
     fclose($out);
     exit;
@@ -1765,7 +1841,7 @@ if ($action === 'customer_export') {
   [$headers, $profileRows] = campaign_export_profile(
     $format,
     $camp,
-    $rows,
+    customer_rows_to_export_recipients($customers, $messageTemplate, $store),
     (string)($store['default_country_code'] ?? '+1'),
     (string)($store['name'] ?? '')
   );
@@ -2012,12 +2088,14 @@ if (str_starts_with($action, 'api_')) {
     $low->execute([$threshold]);
     $campaigns = (int)$pdo->query("SELECT COUNT(DISTINCT campaign_id) AS c FROM campaign_recipients WHERE status IN ('pending','queued')")->fetch()['c'];
     $recipients = (int)$pdo->query("SELECT COUNT(*) AS c FROM campaign_recipients WHERE status IN ('pending','queued')")->fetch()['c'];
+    $outstandingCredit = ledger_outstanding_credit_cents($pdo);
     json_out(['ok' => true, 'data' => [
       'today_order_count' => (int)$t['c'],
       'today_revenue_cents' => (int)$t['revenue'],
       'today_completed_revenue_cents' => (int)$done['revenue'],
       'active_orders_count' => $active,
       'unpaid_orders_count' => $unpaid,
+      'outstanding_credit_cents' => $outstandingCredit,
       'low_stock_count' => (int)$low->fetch()['c'],
       'queued_campaigns_count' => $campaigns,
       'queued_recipients_count' => $recipients,
@@ -2139,27 +2217,33 @@ if (str_starts_with($action, 'api_')) {
     $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
     rate_limit_or_fail($pdo, 'api_read:ip:'.client_ip(), (int)($rl['limit'] ?? 120) * 2, (int)($rl['window_seconds'] ?? 300), true);
     $q = trim((string)($_GET['q'] ?? ''));
+    $owes = !empty($_GET['owes']);
     $phone = normalize_phone($q);
-    if ($q === '' && $phone === '') json_out(['ok' => true, 'data' => []]);
+    if ($q === '' && $phone === '' && !$owes) json_out(['ok' => true, 'data' => []]);
 
     $params = [];
     $where = '';
     if ($q === '' && $phone !== '') {
-      $where = "WHERE phone = ?";
+      $where = "WHERE c.phone = ?";
       $params[] = $phone;
-    } else {
-      $where = "WHERE (phone LIKE ? OR name LIKE ? OR email LIKE ?";
+    } elseif ($q !== '') {
+      $where = "WHERE (c.phone LIKE ? OR c.name LIKE ? OR c.email LIKE ?";
       $params[] = '%'.$q.'%';
       $params[] = '%'.$q.'%';
       $params[] = '%'.$q.'%';
       if ($phone !== '') {
-        $where .= " OR phone = ?";
+        $where .= " OR c.phone = ?";
         $params[] = $phone;
       }
       $where .= ")";
+    } else {
+      $where = "WHERE 1=1";
+    }
+    if ($owes) {
+      $where .= " AND " . ledger_balance_expr('c.id') . " > 0";
     }
 
-    $st = $pdo->prepare("SELECT id, phone, name, marketing_opt_in, last_order_at, total_spent_cents, order_count, tags_text, created_at FROM customers {$where} ORDER BY COALESCE(last_order_at, created_at) DESC LIMIT 50");
+    $st = $pdo->prepare("SELECT c.id, c.phone, c.name, c.marketing_opt_in, c.last_order_at, c.total_spent_cents, c.order_count, c.tags_text, c.created_at, ".ledger_balance_expr('c.id')." AS balance_cents FROM customers c {$where} ORDER BY COALESCE(c.last_order_at, c.created_at) DESC LIMIT 50");
     $st->execute($params);
     $rows = $st->fetchAll();
     json_out(['ok' => true, 'data' => $rows]);
@@ -2179,12 +2263,13 @@ if (str_starts_with($action, 'api_')) {
     }
     $cust = $st->fetch();
     if (!$cust) json_out(['ok' => false, 'error' => 'Not found'], 404);
+    $cust['balance_cents'] = ledger_balance_cents($pdo, (int)$cust['id']);
 
     $o = $pdo->prepare("SELECT id, order_code, order_type, status, total_cents, created_at FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 20");
     $o->execute([(int)$cust['id']]);
 
     $cust['ltv_estimate'] = calc_customer_ltv($CONFIG, $cust);
-    json_out(['ok' => true, 'data' => ['customer' => $cust, 'orders' => $o->fetchAll()]]);
+    json_out(['ok' => true, 'data' => ['customer' => $cust, 'orders' => $o->fetchAll(), 'ledger_entries' => ledger_entries_for_customer($pdo, (int)$cust['id'])]]);
   }
 
   if ($action === 'api_customer_timeline') {
@@ -2232,8 +2317,43 @@ if (str_starts_with($action, 'api_')) {
       }
     }
 
+    foreach (ledger_entries_for_customer($pdo, $id, 20) as $le) {
+      $events[] = [
+        'ts' => (string)$le['created_at'],
+        'type' => (string)($le['type'] === 'payment' ? 'ledger_payment' : 'ledger_credit'),
+        'label' => (string)($le['type'] === 'payment' ? 'Payment recorded' : 'Credit added'),
+        'amount_cents' => (int)$le['amount_cents'],
+        'meta' => trim((string)(($le['order_code'] ? 'order '.$le['order_code'].' ' : '') . ($le['note'] ?? ''))),
+      ];
+    }
+
     usort($events, fn($a, $b) => strcmp((string)$b['ts'], (string)$a['ts']));
     json_out(['ok' => true, 'data' => array_slice($events, 0, 30)]);
+  }
+
+  if ($action === 'api_ledger_payment') {
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+    $customerId = (int)($body['customer_id'] ?? 0);
+    $amount = (int)($body['amount_cents'] ?? 0);
+    $note = trim((string)($body['note'] ?? ''));
+    if ($customerId <= 0) json_out(['ok' => false, 'error' => 'Customer required'], 400);
+    if ($amount <= 0) json_out(['ok' => false, 'error' => 'Payment amount must be positive'], 400);
+
+    $st = $pdo->prepare("SELECT id, phone, name FROM customers WHERE id = ?");
+    $st->execute([$customerId]);
+    $cust = $st->fetch();
+    if (!$cust) json_out(['ok' => false, 'error' => 'Customer not found'], 404);
+
+    $balance = ledger_balance_cents($pdo, $customerId);
+    if ($balance <= 0) json_out(['ok' => false, 'error' => 'Customer has no outstanding balance'], 400);
+    if ($amount > $balance) json_out(['ok' => false, 'error' => 'Payment exceeds outstanding balance'], 400);
+
+    $ts = now_iso();
+    $entryId = ledger_insert($pdo, $customerId, null, 'payment', $amount, $note, $uid, $ts);
+    $nextBalance = ledger_balance_cents($pdo, $customerId);
+    audit($pdo, $uid, 'ledger.payment', ['entry_id' => $entryId, 'customer_id' => $customerId, 'amount_cents' => $amount, 'balance_cents' => $nextBalance]);
+    json_out(['ok' => true, 'data' => ['entry_id' => $entryId, 'balance_cents' => $nextBalance]]);
   }
 
   if ($action === 'api_customer_upsert') {
@@ -2365,8 +2485,12 @@ if (str_starts_with($action, 'api_')) {
 
     $eta = (int)max(5, (int)($body['expected_eta_minutes'] ?? 15));
     $paymentMethod = (string)($body['payment_method'] ?? 'cash');
-    if (!in_array($paymentMethod, ['cash','card','online'], true)) $paymentMethod = 'cash';
+    if (!in_array($paymentMethod, ['cash','card','online','credit'], true)) $paymentMethod = 'cash';
+    if ($paymentMethod === 'credit' && ($walkin === 1 || !$custId)) {
+      json_out(['ok' => false, 'error' => 'On-credit orders require a customer phone'], 400);
+    }
     $paid = !empty($body['payment_received']) ? 1 : 0;
+    if ($paymentMethod === 'credit') $paid = 0;
     $couponCode = strtoupper(trim((string)($body['coupon_code'] ?? '')));
     $couponCode = substr((string)preg_replace('/[^A-Z0-9\-]/', '', $couponCode), 0, 40);
 
@@ -2427,6 +2551,11 @@ if (str_starts_with($action, 'api_')) {
           ->execute([$orderId, $ts, (int)$couponRow['id']]);
         audit($pdo, $uid, 'coupon.redeemed', ['order_id' => $orderId, 'coupon_code' => $couponCode, 'campaign_recipient_id' => (int)$couponRow['id']]);
       }
+    }
+
+    if ($paymentMethod === 'credit' && $custId) {
+      $entryId = ledger_insert($pdo, $custId, $orderId, 'credit', $total, 'Order '.$orderCode, $uid, $ts);
+      audit($pdo, $uid, 'ledger.credit', ['entry_id' => $entryId, 'customer_id' => $custId, 'order_id' => $orderId, 'amount_cents' => $total]);
     }
 
     audit($pdo, $uid, 'orders.create', ['order_id' => $orderId, 'order_code' => $orderCode, 'total_cents' => $total, 'ip' => client_ip()]);
@@ -3552,6 +3681,7 @@ $csrf = csrf_token();
     orderSearch: [],
     selectedOrder: null,
     customerSearch: [],
+    customerOwesOnly: false,
     selectedCustomer: null,
     customerOrders: [],
     customerTimeline: [],
@@ -3938,7 +4068,7 @@ $csrf = csrf_token();
 
   async function loadCustomerSearch(q='', options={}){
     return withRegionLoad('customerSearch', async ()=>{
-      state.customerSearch = await api('api_customers_search', { params: { q }})
+      state.customerSearch = await api('api_customers_search', { params: { q, owes: state.customerOwesOnly ? 1 : 0 }})
     }, options)
   }
 
@@ -4074,6 +4204,16 @@ $csrf = csrf_token();
     return `?${params.toString()}`
   }
 
+  function debtorReminderHref(){
+    const params = new URLSearchParams({
+      action: 'customer_export',
+      format: 'sms',
+      debtors: '1',
+      message_template: 'Hi {first_name}, you owe {balance}. Please pay when convenient.'
+    })
+    return `?${params.toString()}`
+  }
+
   function attentionItem(iconId, title, body, value, tone, goTab){
     return `<div class="attentionItem">
       <span class="attentionIcon ${esc(tone)}">${icon(iconId)}</span>
@@ -4101,6 +4241,7 @@ $csrf = csrf_token();
             ${dashboardKpi('pos', fmtMoney(d.today_completed_revenue_cents || 0), 'Completed revenue', deltas.today_completed_revenue_cents, 'money')}
             ${dashboardKpi('orders', esc(d.today_order_count || 0), 'Today orders', deltas.today_order_count)}
             ${dashboardKpi('dashboard', esc(d.active_orders_count || 0), 'Active orders', deltas.active_orders_count)}
+            ${dashboardKpi('crm', fmtMoney(d.outstanding_credit_cents || 0), 'Outstanding credit', 0, 'money')}
           </div>
           ${salesTrendSparkline(trend)}
           <div class="row" style="margin-top:12px;flex-wrap:wrap">
@@ -4302,8 +4443,8 @@ $csrf = csrf_token();
           </div>
 
           <div class="segmented" id="pos_paymethod" aria-label="Payment method">
-            ${['cash','card','online'].map(method=>`
-              <button type="button" class="${state.pos.payMethod === method ? 'active' : ''}" data-paymethod="${method}">${method[0].toUpperCase()+method.slice(1)}</button>
+            ${[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'online',label:'Online'},{id:'credit',label:'On credit'}].map(method=>`
+              <button type="button" class="${state.pos.payMethod === method.id ? 'active' : ''}" data-paymethod="${method.id}">${method.label}</button>
             `).join('')}
           </div>
 
@@ -4318,8 +4459,8 @@ $csrf = csrf_token();
           ` : ``}
 
           <div class="paidRow">
-            <span>Mark payment received</span>
-            <button type="button" class="switch ${state.pos.paid ? 'on' : ''}" id="pos_paid" aria-label="Mark payment received"><i></i></button>
+            <span>${state.pos.payMethod === 'credit' ? 'Add to customer credit tab' : 'Mark payment received'}</span>
+            <button type="button" class="switch ${state.pos.paid && state.pos.payMethod !== 'credit' ? 'on' : ''}" id="pos_paid" aria-label="Mark payment received" ${state.pos.payMethod === 'credit' ? 'disabled' : ''}><i></i></button>
           </div>
 
           <div class="tenderGrid">
@@ -4516,6 +4657,10 @@ $csrf = csrf_token();
             <label>Search by phone/name/email</label>
             <input id="crm_q" placeholder="e.g., +1415..., Maya, vip">
           </div>
+          <label class="checkRow" style="margin:8px 0 12px">
+            <input type="checkbox" id="crm_owes" ${state.customerOwesOnly ? 'checked' : ''}>
+            <span>Owes money</span>
+          </label>
 
           <div class="exportPanel">
             <div class="h1">Export customers</div>
@@ -4547,17 +4692,19 @@ $csrf = csrf_token();
                 <span>Include non-opted-in (audited)</span>
               </label>
               <a class="btn small primary" href="${customerExportHref()}">Download customers</a>
+              <a class="btn small" href="${debtorReminderHref()}">Debtor reminders</a>
             </div>
           </div>
 
           ${customerSearchStatus || dataTable(
-            [{label:'Customer'}, {label:'Phone'}, {label:'Orders', className:'num'}, {label:'Spent', className:'num'}, {label:'Consent'}, {label:'Action', className:'actions'}],
+            [{label:'Customer'}, {label:'Phone'}, {label:'Orders', className:'num'}, {label:'Spent', className:'num'}, {label:'Balance', className:'num'}, {label:'Consent'}, {label:'Action', className:'actions'}],
             state.customerSearch.map(c=>`
               <tr>
                 <td><div class="dataTitle">${esc(c.name || c.phone)}</div><div class="dataMeta">${esc((c.tags_text||'').replaceAll(',',' ').trim())}</div></td>
                 <td>${esc(c.phone)}</td>
                 <td class="num">${esc(c.order_count)}</td>
                 <td class="num">${fmtMoney(c.total_spent_cents)}</td>
+                <td class="num">${Number(c.balance_cents || 0) > 0 ? `<span class="statusBadge b-prep">${fmtMoney(c.balance_cents)}</span>` : fmtMoney(0)}</td>
                 <td>${c.marketing_opt_in ? '<span class="statusBadge b-ready">Yes</span>' : '<span class="statusBadge b-done">No</span>'}</td>
                 <td class="actions"><button class="btn small" data-open="${c.id}">Open</button></td>
               </tr>
@@ -4572,6 +4719,7 @@ $csrf = csrf_token();
           ${profileStatus || (!cust ? emptyState('user', 'No customer selected', 'Open a customer to view details, consent, order history, and timeline.') : `
             <div class="kpi">
               <div class="k"><div class="v">${fmtMoney(cust.total_spent_cents)}</div><div class="l">Total spent</div></div>
+              <div class="k"><div class="v">${fmtMoney(cust.balance_cents || 0)}</div><div class="l">Balance</div></div>
               <div class="k"><div class="v">${esc(cust.order_count)}</div><div class="l">Orders</div></div>
               <div class="k"><div class="v">${fmtDate(cust.last_order_at)}</div><div class="l">Last order</div></div>
               <div class="k"><div class="v">${fmtMoney(ltvCents)}</div><div class="l">LTV estimate</div></div>
@@ -4612,6 +4760,24 @@ $csrf = csrf_token();
 
             <div class="warnbox">
               Consent: store should keep proof (timestamp + source). This app stores opt-in timestamp when toggled from No->Yes.
+            </div>
+
+            <div class="item" style="margin-top:12px">
+              <div class="h1">Credit ledger</div>
+              <div class="muted">Running balance for on-credit sales and customer payments.</div>
+              <div class="row" style="align-items:flex-end;flex-wrap:wrap">
+                <div class="field"><label>Payment amount</label><input id="ledger_payment_amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+                <div class="field"><label>Note</label><input id="ledger_payment_note" placeholder="cash payment"></div>
+                <button class="btn small primary" id="ledger_pay">Record payment</button>
+              </div>
+              <div class="list tight">
+                ${((state.selectedCustomer?.ledger_entries)||[]).length===0 ? '<div class="empty">No ledger entries yet.</div>' : (state.selectedCustomer.ledger_entries||[]).map(le=>`
+                  <div class="item">
+                    <div class="name">${le.type === 'payment' ? 'Payment' : 'Credit'} ${fmtMoney(le.amount_cents)}</div>
+                    <div class="meta">${fmtDate(le.created_at)} ${le.order_code ? ' - '+esc(le.order_code) : ''} ${le.note ? ' - '+esc(le.note) : ''}</div>
+                  </div>
+                `).join('')}
+              </div>
             </div>
 
             <div style="margin-top:12px">
@@ -4692,6 +4858,10 @@ $csrf = csrf_token();
               <input id="seg_tags" placeholder="vip,nearby">
             </div>
           </div>
+          <label class="checkRow" style="margin:8px 0 12px">
+            <input type="checkbox" id="seg_has_balance">
+            <span>Has outstanding balance</span>
+          </label>
 
           <button class="btn small primary" id="seg_create">Save segment</button>
           <button class="btn small" id="seg_preview">Preview</button>
@@ -5023,7 +5193,7 @@ $csrf = csrf_token();
         tip_cents: parseInt(state.pos.tipCents||'0',10)||0,
         coupon_code: state.pos.coupon || '',
         payment_method: state.pos.payMethod || 'cash',
-        payment_received: state.pos.paid ? 1 : 0,
+        payment_received: state.pos.payMethod === 'credit' ? 0 : (state.pos.paid ? 1 : 0),
         walkin,
         phone: state.pos.phone || '',
         customer_name: state.pos.name || '',
@@ -5077,6 +5247,7 @@ $csrf = csrf_token();
 
     qsa('[data-paymethod]').forEach(b=>b.onclick=()=>{
       state.pos.payMethod = b.dataset.paymethod || 'cash'
+      if (state.pos.payMethod === 'credit') state.pos.paid = false
       render()
     })
 
@@ -5264,8 +5435,19 @@ $csrf = csrf_token();
     if (crmQ) crmQ.oninput = async ()=>{
       const q = crmQ.value.trim()
       state.customerExport.q = q
-      if (q.length < 2) { state.customerSearch = []; render(); return }
+      if (q.length < 2 && !state.customerOwesOnly) { state.customerSearch = []; render(); return }
       await loadCustomerSearch(q, {renderStart:false})
+      render()
+    }
+    const crmOwes = qs('#crm_owes')
+    if (crmOwes) crmOwes.onchange = async ()=>{
+      state.customerOwesOnly = !!crmOwes.checked
+      const q = qs('#crm_q')?.value?.trim() || ''
+      if (q.length < 2 && !state.customerOwesOnly) {
+        state.customerSearch = []
+      } else {
+        await loadCustomerSearch(q, {renderStart:false})
+      }
       render()
     }
 
@@ -5307,6 +5489,26 @@ $csrf = csrf_token();
         render()
       }catch(e){
         msg('cust_msg','err', e.message || 'Save failed')
+      }
+    }
+
+    const ledgerPay = qs('#ledger_pay')
+    if (ledgerPay) ledgerPay.onclick = async ()=>{
+      try{
+        const customerId = Number(state.selectedCustomer?.customer?.id || 0)
+        const amount = centsFromAmount(qs('#ledger_payment_amount')?.value || '')
+        await api('api_ledger_payment', { method:'POST', body: {
+          customer_id: customerId,
+          amount_cents: amount,
+          note: qs('#ledger_payment_note')?.value || ''
+        }})
+        msg('cust_msg','ok','Payment recorded')
+        await loadCustomerProfile(customerId)
+        await loadCustomerSearch(qs('#crm_q')?.value?.trim() || '', {renderStart:false})
+        await loadDashboard()
+        render()
+      }catch(e){
+        msg('cust_msg','err', e.message || 'Payment failed')
       }
     }
 
@@ -5525,6 +5727,7 @@ $csrf = csrf_token();
     if (!isNaN(order_count_min) && order_count_min > 0) f.order_count_min = order_count_min
     if (purchased_category) f.purchased_category = purchased_category
     if (tag_any.length) f.tag_any = tag_any
+    if (qs('#seg_has_balance')?.checked) f.has_balance = true
     return f
   }
 

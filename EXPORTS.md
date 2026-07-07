@@ -8,7 +8,7 @@ By default, campaign and customer exports include only opted-in contacts. If a s
 
 - File type: UTF-8 CSV. Use the Excel-friendly option if the file will be opened in Excel before importing.
 - Phone format: NeighbourPOS attempts to normalize phones to E.164, such as `+15550100001`, using the store default country code.
-- Message fields: campaign exports render `{name}`, `{first_name}`, `{coupon_code}`, and `{store_name}` before writing CSV rows.
+- Message fields: campaign exports render `{name}`, `{first_name}`, `{coupon_code}`, and `{store_name}` before writing CSV rows. Debtor reminder exports also render `{balance}`.
 - Deduping: profiles dedupe on the identifier the destination expects, such as email for Mailchimp and phone for SMS/WhatsApp.
 - Safety: CSV cells are escaped to reduce spreadsheet formula injection risk.
 
@@ -140,3 +140,5 @@ Reference: [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934).
 The CRM `Export customers` panel uses the same profiles without requiring a campaign. Use it for a clean opted-in phone book, a saved segment, or a provider-ready backup of customers you are allowed to contact.
 
 The same consent rule applies: opted-in contacts only by default; overrides are audited; compliance remains the merchant's responsibility.
+
+For customer credit tabs, use the CRM `Debtor reminders` export. It downloads an SMS-profile CSV for customers with an outstanding balance and renders `{balance}` in currency units, for example `Hi Maya, you owe $24.00.`
