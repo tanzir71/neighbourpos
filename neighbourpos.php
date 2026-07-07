@@ -1031,6 +1031,12 @@ function estimate_distance_km(float $lat1, float $lng1, float $lat2, float $lng2
   return $R * $c;
 }
 
+function db_table_exists(PDO $pdo, string $table): bool {
+  $st = $pdo->prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1");
+  $st->execute([$table]);
+  return (bool)$st->fetchColumn();
+}
+
 function segment_query(PDO $pdo, array $filters, int $limit, int $offset = 0): array {
   $where = [];
   $params = [];
@@ -1081,15 +1087,34 @@ function segment_query(PDO $pdo, array $filters, int $limit, int $offset = 0): a
     $groupBy = " GROUP BY c.id ";
   }
 
+  $tagFilters = [];
+  if (!empty($filters['tag']) && is_string($filters['tag'])) {
+    $tagFilters[] = $filters['tag'];
+  }
   if (!empty($filters['tag_any']) && is_array($filters['tag_any'])) {
+    $tagFilters = array_merge($tagFilters, $filters['tag_any']);
+  }
+  if ($tagFilters) {
     $tagW = [];
-    foreach ($filters['tag_any'] as $t) {
+    foreach ($tagFilters as $t) {
       $t = strtolower(preg_replace('/[^a-z0-9_\-]/', '', (string)$t));
       if ($t === '') continue;
       $tagW[] = "c.tags_text LIKE ?";
       $params[] = '%,' . $t . ',%';
     }
     if ($tagW) $where[] = '(' . implode(' OR ', $tagW) . ')';
+  }
+
+  if (!empty($filters['has_balance'])) {
+    if (db_table_exists($pdo, 'ledger_entries')) {
+      $where[] = "(
+        SELECT COALESCE(SUM(CASE WHEN le.type = 'credit' THEN le.amount_cents ELSE -le.amount_cents END), 0)
+        FROM ledger_entries le
+        WHERE le.customer_id = c.id
+      ) > 0";
+    } else {
+      $where[] = "0 = 1";
+    }
   }
 
   $sql = "SELECT c.* FROM customers c {$joins}";
@@ -2492,6 +2517,10 @@ if (str_starts_with($action, 'api_')) {
 
   if ($action === 'api_segments_list') {
     $rows = $pdo->query("SELECT id, name, filters_json, last_run_at FROM segments ORDER BY id DESC LIMIT 50")->fetchAll();
+    foreach ($rows as &$row) {
+      $row['count'] = segment_count($pdo, parse_filters((string)$row['filters_json']));
+    }
+    unset($row);
     json_out(['ok' => true, 'data' => $rows]);
   }
 
@@ -2508,6 +2537,24 @@ if (str_starts_with($action, 'api_')) {
     audit($pdo, $uid, 'segments.create', ['name' => $name]);
 
     json_out(['ok' => true, 'data' => ['id' => $segmentId]]);
+  }
+
+  if ($action === 'api_segment_duplicate') {
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+    $id = (int)($body['id'] ?? 0);
+    if ($id <= 0) json_out(['ok' => false, 'error' => 'Segment id required'], 400);
+    $segSt = $pdo->prepare("SELECT * FROM segments WHERE id = ?");
+    $segSt->execute([$id]);
+    $seg = $segSt->fetch();
+    if (!$seg) json_out(['ok' => false, 'error' => 'Segment not found'], 404);
+
+    $copyName = trim((string)$seg['name']).' copy';
+    $st = $pdo->prepare("INSERT INTO segments(name, filters_json, last_run_at) VALUES(?,?,NULL)");
+    $st->execute([$copyName, (string)$seg['filters_json']]);
+    $newId = (int)$pdo->lastInsertId();
+    audit($pdo, $uid, 'segments.duplicate', ['id' => $id, 'new_id' => $newId]);
+    json_out(['ok' => true, 'data' => ['id' => $newId]]);
   }
 
   if ($action === 'api_segment_preview') {
@@ -4654,13 +4701,14 @@ $csrf = csrf_token();
           <div class="list">
             ${segmentsStatus || (state.segments.length===0 ? emptyState('crm', 'No segments yet', 'Create a saved filter for customers you want to reach later.', `<button class="btn small primary" data-focus="#seg_name">Create segment</button>`) : state.segments.map(s=>`
               <div class="item">
-                <div class="row" style="align-items:flex-start">
+                <div class="row" style="align-items:flex-start;flex-wrap:wrap">
                   <div style="flex:1">
-                    <div class="name">#${s.id} ${esc(s.name)}</div>
+                    <div class="name">#${s.id} ${esc(s.name)} <span class="pill">${Number(s.count || 0).toLocaleString()} customers</span></div>
                     <div class="meta">${esc(s.filters_json)}</div>
                   </div>
-                  <div style="flex:0;display:flex;gap:6px">
+                  <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap">
                     <button class="btn small" data-use-seg="${s.id}">Use</button>
+                    <button class="btn small" data-dup-seg="${s.id}">Duplicate</button>
                   </div>
                 </div>
               </div>
@@ -5290,6 +5338,17 @@ $csrf = csrf_token();
     qsa('[data-use-seg]').forEach(b=>b.onclick=()=>{
       qs('#camp_seg').value = b.dataset.useSeg
       msg('camp_msgbox','ok',`Selected segment #${b.dataset.useSeg}`)
+    })
+
+    qsa('[data-dup-seg]').forEach(b=>b.onclick=async ()=>{
+      try{
+        const out = await api('api_segment_duplicate', { method:'POST', body: { id: Number(b.dataset.dupSeg || '0') }})
+        msg('seg_msg','ok',`Duplicated segment #${out.id}`)
+        await loadSegments()
+        render()
+      }catch(e){
+        msg('seg_msg','err', e.message || 'Duplicate failed')
+      }
     })
 
     qsa('[data-preset]').forEach(b=>b.onclick=async ()=>{

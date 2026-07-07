@@ -364,6 +364,38 @@ try {
   Assert-True ($customerSmsRows.Count -eq [int]$customerPreview.count) "Customer SMS export should match segment preview count, got $($customerSmsRows.Count) vs $($customerPreview.count)"
   Assert-True (($customerSmsRows | Where-Object { $_.phone -notmatch '^\+[1-9][0-9]{6,14}$' }).Count -eq 0) 'Customer SMS export included an invalid phone'
 
+  $tagFilters = @{ marketing_opt_in_only = $true; tag_any = @('vip') }
+  $tagSegment = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_segment_create' `
+    -Body @{ name = 'VIP Tag Segment'; filters = $tagFilters }
+  $tagPreview = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_segment_preview' `
+    -Body @{ segment_id = [int]$tagSegment.id; filters = $tagFilters }
+  Assert-True ($tagPreview.count -gt 0) 'VIP tag segment should return at least one customer'
+  Assert-True (@($tagPreview.sample | Where-Object { $_.tags_text -notmatch ',vip,' }).Count -eq 0) 'VIP tag segment returned a customer without the vip tag'
+  $segmentsList = Invoke-WebRequest -Uri "${baseUrl}?action=api_segments_list" -WebSession $session -Headers @{ 'Accept' = 'application/json' } -UseBasicParsing
+  $segmentsPayload = $segmentsList.Content | ConvertFrom-Json
+  $listedTagSegment = @(($segmentsPayload.data) | Where-Object { [int]$_.id -eq [int]$tagSegment.id })[0]
+  Assert-True ($null -ne $listedTagSegment) 'Tag segment was not returned by api_segments_list'
+  Assert-True ([int]$listedTagSegment.count -eq [int]$tagPreview.count) "Saved segment live count should be $($tagPreview.count), got $($listedTagSegment.count)"
+  $duplicateSegment = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_segment_duplicate' `
+    -Body @{ id = [int]$tagSegment.id }
+  Assert-True ([int]$duplicateSegment.id -gt 0 -and [int]$duplicateSegment.id -ne [int]$tagSegment.id) 'Duplicate segment did not return a new id'
+  $segmentsListAfterDuplicate = Invoke-WebRequest -Uri "${baseUrl}?action=api_segments_list" -WebSession $session -Headers @{ 'Accept' = 'application/json' } -UseBasicParsing
+  $duplicateListed = @((($segmentsListAfterDuplicate.Content | ConvertFrom-Json).data) | Where-Object { [int]$_.id -eq [int]$duplicateSegment.id })[0]
+  Assert-True ($duplicateListed.name -match 'copy') 'Duplicated segment name should indicate it is a copy'
+  Assert-True ([int]$duplicateListed.count -eq [int]$tagPreview.count) 'Duplicated segment live count should match the original segment count'
+
   Write-Host "campaign_export_test passed with $rowCount full recipient(s) and profile exports verified."
 } finally {
   if ($server -and -not $server.HasExited) {

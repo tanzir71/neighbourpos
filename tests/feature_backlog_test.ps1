@@ -73,6 +73,9 @@ Assert-SourceContains $source "Works with: Mailchimp / Brevo / any SMS tool / Wh
 Assert-SourceContains $source "customer_export" 'Customer export route is missing'
 Assert-SourceContains $source "crm_export_format" 'CRM customer export format control is missing'
 Assert-SourceContains $source "Download customers" 'CRM customer export download control is missing'
+Assert-SourceContains $source "api_segment_duplicate" 'Segment duplicate API is missing'
+Assert-SourceContains $source "data-dup-seg" 'Segment duplicate control is missing'
+Assert-SourceContains $source "has_balance" 'Segment has_balance filter hook is missing'
 Assert-SourceContains $source "portal_opt_in_update" 'Customer portal opt-in update route is missing'
 Assert-SourceContains $source "database_backup" 'Database backup route is missing'
 
