@@ -2454,26 +2454,49 @@ if (str_starts_with($action, 'api_')) {
       $qty = max(1, (int)($line['qty'] ?? 1));
       $notes = trim((string)($line['notes'] ?? ''));
 
-      $stp = $pdo->prepare("SELECT id,name,price_cents,category,stock_qty,active FROM products WHERE id = ?");
-      $stp->execute([$pid]);
-      $p = $stp->fetch();
-      if (!$p || (int)$p['active'] !== 1) continue;
+      if ($pid > 0) {
+        $stp = $pdo->prepare("SELECT id,name,price_cents,category,stock_qty,active FROM products WHERE id = ?");
+        $stp->execute([$pid]);
+        $p = $stp->fetch();
+        if (!$p || (int)$p['active'] !== 1) continue;
 
-      $price = (int)$p['price_cents'];
+        $price = (int)$p['price_cents'];
+        $lineTotal = $price * $qty;
+        $subtotal += $lineTotal;
+
+        $itemsOut[] = [
+          'product_id' => (int)$p['id'],
+          'name' => (string)$p['name'],
+          'qty' => $qty,
+          'price_cents' => $price,
+          'notes' => $notes,
+          'line_total_cents' => $lineTotal,
+          'category' => (string)($p['category'] ?? ''),
+        ];
+
+        $itemsForDb[] = [$pid, (string)$p['name'], (string)($p['category'] ?? ''), $qty, $price, $notes];
+        continue;
+      }
+
+      $price = (int)max(0, (int)($line['price_cents'] ?? $line['amount_cents'] ?? 0));
+      if ($price <= 0) continue;
+      $name = trim((string)($line['name'] ?? $line['label'] ?? ''));
+      $name = substr($name !== '' ? $name : 'Quick sale', 0, 120);
+      $category = '(quick sale)';
       $lineTotal = $price * $qty;
       $subtotal += $lineTotal;
 
       $itemsOut[] = [
-        'product_id' => (int)$p['id'],
-        'name' => (string)$p['name'],
+        'product_id' => null,
+        'name' => $name,
         'qty' => $qty,
         'price_cents' => $price,
         'notes' => $notes,
         'line_total_cents' => $lineTotal,
-        'category' => (string)($p['category'] ?? ''),
+        'category' => $category,
       ];
 
-      $itemsForDb[] = [$pid, (string)$p['name'], (string)($p['category'] ?? ''), $qty, $price, $notes];
+      $itemsForDb[] = [null, $name, $category, $qty, $price, $notes];
     }
 
     if (count($itemsOut) === 0) json_out(['ok' => false, 'error' => 'No valid items'], 400);
@@ -3487,7 +3510,10 @@ $csrf = csrf_token();
     .saleTile{min-height:150px;padding:12px;align-content:space-between;text-align:left;border:1px solid var(--line);border-radius:var(--radius-card);background:#fff;box-shadow:var(--shadow-sm);transition:background .12s ease,transform .12s ease,box-shadow .12s ease}
     .saleTile:hover{background:var(--blueWash);transform:translateY(-1px);box-shadow:var(--shadow-md)}
     .saleTile:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
+    .quickSaleTile{border-color:color-mix(in srgb,var(--accent) 24%,var(--line));background:var(--blueWash)}
+    .quickSaleTile .productVisual{background:#090b10;color:#fff}
     .productVisual{width:48px;height:48px;border-radius:var(--radius-card);display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:700}
+    .productVisual .icon{width:19px;height:19px}
     .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
     .stockText{font-size:12px;font-weight:500;color:var(--good)}
     .stockText.low{color:var(--warn)}
@@ -3676,6 +3702,7 @@ $csrf = csrf_token();
       eta: 15
     },
     lastTouchedProductId: null,
+    lastTouchedLineId: null,
     lowStock: [],
     orders: [],
     orderSearch: [],
@@ -3831,6 +3858,42 @@ $csrf = csrf_token();
       input.select()
     })
   }
+  function uiQuickAmount(){
+    const root = qs('#modalRoot')
+    if (!root) return Promise.resolve(null)
+    root.innerHTML = `<div class="modalBackdrop" data-modal-cancel></div>
+      <div class="modalCard" role="dialog" aria-modal="true" aria-label="Quick amount">
+        <div class="h1">Quick amount</div>
+        <div class="muted">Enter an amount for a custom sale line. Add a label if it helps the receipt.</div>
+        <div class="field">
+          <label>Amount</label>
+          <input id="quickAmountInput" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Label</label>
+          <input id="quickLabelInput" placeholder="Quick sale">
+        </div>
+        <div class="modalActions">
+          <button class="btn" type="button" data-modal-cancel>Cancel</button>
+          <button class="btn primary" type="button" data-modal-ok>Add line</button>
+        </div>
+      </div>`
+    root.classList.add('open')
+    root.setAttribute('aria-hidden', 'false')
+    return new Promise(resolve=>{
+      root._resolve = resolve
+      const amount = qs('#quickAmountInput', root)
+      const label = qs('#quickLabelInput', root)
+      const submit = () => closeModal({ amount: amount.value, label: label.value })
+      qsa('[data-modal-cancel]', root).forEach(el=>el.onclick=()=>closeModal(null))
+      qs('[data-modal-ok]', root).onclick=submit
+      ;[amount, label].forEach(input=>input.onkeydown = e => {
+        if (e.key === 'Enter') submit()
+        if (e.key === 'Escape') closeModal(null)
+      })
+      amount.focus()
+    })
+  }
   function setAppSidebarCollapsed(collapsed){
     const shell = qs('#appShell')
     const toggle = qs('#navToggle')
@@ -3947,29 +4010,68 @@ $csrf = csrf_token();
     render()
   }
 
+  function newCartLineId(prefix='q'){
+    return `${prefix}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2,8)}`
+  }
+  function cartLineId(it){
+    if (!it.line_id) it.line_id = it.product_id ? `p:${it.product_id}` : newCartLineId('q')
+    return it.line_id
+  }
+  function cartLineById(lineId){
+    return state.cart.find(x=>cartLineId(x) === lineId)
+  }
   function cartAdd(p){
-    const found = state.cart.find(x=>x.product_id===p.id)
+    const productId = Number(p.id)
+    const found = state.cart.find(x=>Number(x.product_id)===productId)
     if (found) found.qty += 1
-    else state.cart.push({ product_id:p.id, name:p.name, price_cents:p.price_cents, qty:1, notes:'' })
-    state.lastTouchedProductId = p.id
+    else state.cart.push({ line_id:`p:${productId}`, product_id:productId, name:p.name, price_cents:p.price_cents, qty:1, notes:'', category:p.category || '' })
+    state.lastTouchedProductId = productId
+    state.lastTouchedLineId = `p:${productId}`
     render()
   }
-  function cartQty(pid, delta){
-    const it = state.cart.find(x=>x.product_id===pid)
+  async function addQuickSaleLine(){
+    const quick = await uiQuickAmount()
+    if (!quick) return
+    const price = centsFromAmount(quick.amount)
+    if (price <= 0) {
+      toast('Enter an amount greater than zero.', 'error')
+      return
+    }
+    const label = String(quick.label || '').trim() || 'Quick sale'
+    const line = {
+      line_id: newCartLineId('q'),
+      product_id: null,
+      name: label,
+      price_cents: price,
+      qty: 1,
+      notes: '',
+      category: '(quick sale)',
+      quick_sale: true
+    }
+    state.cart.push(line)
+    state.lastTouchedProductId = null
+    state.lastTouchedLineId = line.line_id
+    render()
+  }
+  function cartQty(lineId, delta){
+    const it = cartLineById(lineId)
     if (!it) return
     it.qty = Math.max(1, it.qty + delta)
-    state.lastTouchedProductId = pid
+    state.lastTouchedProductId = it.product_id || null
+    state.lastTouchedLineId = cartLineId(it)
     render()
   }
-  function cartRemove(pid){
-    state.cart = state.cart.filter(x=>x.product_id!==pid)
-    state.lastTouchedProductId = state.cart.length ? state.cart[state.cart.length - 1].product_id : null
+  function cartRemove(lineId){
+    state.cart = state.cart.filter(x=>cartLineId(x)!==lineId)
+    const last = state.cart.length ? state.cart[state.cart.length - 1] : null
+    state.lastTouchedProductId = last ? (last.product_id || null) : null
+    state.lastTouchedLineId = last ? cartLineId(last) : null
     render()
   }
   function adjustLastTouchedLine(delta){
-    const it = state.cart.find(x=>x.product_id===state.lastTouchedProductId) || state.cart[state.cart.length - 1]
+    const it = cartLineById(state.lastTouchedLineId) || state.cart[state.cart.length - 1]
     if (!it) return
-    cartQty(it.product_id, delta)
+    cartQty(cartLineId(it), delta)
   }
 
   function cartTotals(){
@@ -4389,6 +4491,14 @@ $csrf = csrf_token();
           </div>
 
           <div class="saleGrid" id="pos_products">
+            <button class="item saleTile quickSaleTile" type="button" id="quick_amount_tile" data-quick-amount="1">
+              <span class="productVisual">${icon('plus')}</span>
+              <span class="productMeta">
+                <span class="name">Quick amount</span>
+                <span>Custom sale line</span>
+                <span class="stockText">No product needed</span>
+              </span>
+            </button>
             ${productGridStatus || (products.length === 0 ? emptyState('search', 'No matching products', 'Try another search or add the first product in Inventory.', `<button class="btn small primary" data-go="inventory">Add product</button>`) : products.map(p=>`
               <button class="item saleTile" type="button" data-add="${p.id}" ${Number(p.stock_qty) <= 0 ? 'disabled' : ''}>
                 <span class="productVisual">${esc(productInitials(p.name))}</span>
@@ -4420,11 +4530,11 @@ $csrf = csrf_token();
               <div class="cartLine">
                 <div><strong>${esc(it.name)}</strong><br><span class="muted">${fmtMoney(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
                 <div class="lineControls">
-                  <button class="btn small" data-qtyminus="${it.product_id}" aria-label="Decrease ${esc(it.name)} quantity">${icon('minus')}</button>
+                  <button class="btn small" data-qtyminus="${esc(cartLineId(it))}" aria-label="Decrease ${esc(it.name)} quantity">${icon('minus')}</button>
                   <span class="pill">${esc(it.qty)}</span>
-                  <button class="btn small" data-qtyplus="${it.product_id}" aria-label="Increase ${esc(it.name)} quantity">${icon('plus')}</button>
-                  <button class="btn small" data-note-prompt="${it.product_id}" aria-label="Add note for ${esc(it.name)}">${icon('note')}</button>
-                  <button class="btn small danger" data-remove="${it.product_id}" aria-label="Remove ${esc(it.name)}">${icon('trash')}</button>
+                  <button class="btn small" data-qtyplus="${esc(cartLineId(it))}" aria-label="Increase ${esc(it.name)} quantity">${icon('plus')}</button>
+                  <button class="btn small" data-note-prompt="${esc(cartLineId(it))}" aria-label="Add note for ${esc(it.name)}">${icon('note')}</button>
+                  <button class="btn small danger" data-remove="${esc(cartLineId(it))}" aria-label="Remove ${esc(it.name)}">${icon('trash')}</button>
                 </div>
               </div>
             `).join('')}
@@ -5187,7 +5297,14 @@ $csrf = csrf_token();
     try{
       const walkin = state.pos.walkin ? 1 : 0
       const payload = {
-        items: state.cart.map(it=>({ product_id: it.product_id, qty: it.qty, notes: it.notes })),
+        items: state.cart.map(it=>({
+          product_id: it.product_id ?? null,
+          name: it.name || 'Quick sale',
+          price_cents: it.price_cents || 0,
+          category: it.category || (it.product_id ? '' : '(quick sale)'),
+          qty: it.qty,
+          notes: it.notes
+        })),
         order_type: state.pos.type || 'pickup',
         expected_eta_minutes: parseInt(state.pos.eta||'15',10)||15,
         tip_cents: parseInt(state.pos.tipCents||'0',10)||0,
@@ -5203,6 +5320,7 @@ $csrf = csrf_token();
       const out = await api('api_orders_create', { method:'POST', body: payload })
       state.cart = []
       state.lastTouchedProductId = null
+      state.lastTouchedLineId = null
       state.pos.coupon = ''
       state.pos.tipCents = 0
       state.pos.amountTenderedCents = 0
@@ -5303,18 +5421,17 @@ $csrf = csrf_token();
       const p = state.products.find(x=>Number(x.id)===id)
       if (p) cartAdd(p)
     })
+    qsa('[data-quick-amount]').forEach(b=>b.onclick=addQuickSaleLine)
 
-    qsa('[data-qtyminus]').forEach(b=>b.onclick=()=>cartQty(Number(b.dataset.qtyminus), -1))
-    qsa('[data-qtyplus]').forEach(b=>b.onclick=()=>cartQty(Number(b.dataset.qtyplus), +1))
-    qsa('[data-remove]').forEach(b=>b.onclick=()=>cartRemove(Number(b.dataset.remove)))
+    qsa('[data-qtyminus]').forEach(b=>b.onclick=()=>cartQty(b.dataset.qtyminus, -1))
+    qsa('[data-qtyplus]').forEach(b=>b.onclick=()=>cartQty(b.dataset.qtyplus, +1))
+    qsa('[data-remove]').forEach(b=>b.onclick=()=>cartRemove(b.dataset.remove))
     qsa('[data-notes]').forEach(inp=>inp.oninput=()=>{
-      const pid = Number(inp.dataset.notes)
-      const it = state.cart.find(x=>x.product_id===pid)
+      const it = cartLineById(inp.dataset.notes)
       if (it) it.notes = inp.value
     })
     qsa('[data-note-prompt]').forEach(b=>b.onclick=async ()=>{
-      const pid = Number(b.dataset.notePrompt)
-      const it = state.cart.find(x=>x.product_id===pid)
+      const it = cartLineById(b.dataset.notePrompt)
       if (!it) return
       const next = await uiPrompt('Item note', `Add a note for ${it.name}.`, it.notes || '')
       if (next !== null) {
