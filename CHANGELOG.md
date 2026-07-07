@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P2.4] Upgraded the static demo with a reset/hosting banner, SVG icon chrome, preserved 12-item catalog and sample customers, and a receipt modal after checkout.
 - [P2.3] Added landing-page credibility signals: synced version badge, changelog/security links, last-updated and license notes, and OpenGraph/Twitter metadata.
 - [P2.2] Rewrote the landing page narrative around owned POS + customer data, cash-first workflows, export-based campaigns, limits, FAQ, and live-demo CTAs.
 - [P2.1] Added handcrafted landing-page product mockups for checkout and campaign export, including a hero checkout preview and Mailchimp CSV export preview.

@@ -36,6 +36,8 @@
     button{cursor:pointer}
     a{color:inherit}
     .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .iconSprite{position:absolute;width:0;height:0;overflow:hidden}
+    .icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
     .shell{min-height:100vh;display:grid;grid-template-columns:214px minmax(0,1fr);transition:grid-template-columns .18s ease}
     .shell.navCollapsed{grid-template-columns:72px minmax(0,1fr)}
     .side{position:sticky;top:0;height:100vh;background:#fff;padding:14px 10px;display:flex;flex-direction:column;gap:14px}
@@ -57,7 +59,8 @@
     .nav button[data-view="customers"]{--nav-bg:var(--violetWash);--nav-color:#6d35c9}
     .nav button[data-view="campaigns"]{--nav-bg:#e9f7f7;--nav-color:#0f766e}
     .nav button[data-view="reports"]{--nav-bg:var(--redWash);--nav-color:var(--red)}
-    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0}
+    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center}
+    .navIcon .icon{width:17px;height:17px}
     .nav button:hover,.nav button.active{background:var(--nav-bg);color:var(--nav-color)}
     .nav button.active .navIcon{background:#fff}
     .sideNote{margin-top:auto;border-radius:8px;padding:12px;background:var(--wash);color:var(--muted);font-size:12px;line-height:1.55}
@@ -67,7 +70,10 @@
     .shell.navCollapsed .nav button{width:44px;grid-template-columns:1fr;justify-items:center;padding:6px}
     .shell.navCollapsed .sideToggle span{transform:rotate(180deg)}
     .main{min-width:0}
-    .top{height:62px;background:rgba(246,248,252,.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 22px;position:sticky;top:0;z-index:5}
+    .demoBanner{position:sticky;top:0;z-index:8;min-height:42px;background:#090b10;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 22px;font-size:13px}
+    .demoBanner a{color:#fff;text-decoration:none;background:rgba(255,255,255,.12);border-radius:7px;padding:7px 10px;white-space:nowrap}
+    .demoBanner a:hover{background:rgba(255,255,255,.18)}
+    .top{height:62px;background:rgba(246,248,252,.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 22px;position:sticky;top:42px;z-index:5}
     .top h1{margin:0;font-size:20px;letter-spacing:0}
     .top p{margin:3px 0 0;color:var(--muted);font-size:13px}
     .topActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
@@ -133,11 +139,25 @@
     .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--green))}
     .toast{position:fixed;right:18px;bottom:18px;z-index:20;max-width:340px;border:0;border-radius:8px;background:#090b10;color:#fff;box-shadow:none;padding:12px 14px;display:none;font-size:14px}
     .toast.show{display:block}
+    .modalRoot{position:fixed;inset:0;z-index:30;background:rgba(9,11,16,.36);display:grid;place-items:center;padding:18px}
+    .modalRoot[hidden]{display:none}
+    .receiptModal{width:min(460px,100%);max-height:calc(100vh - 36px);overflow:auto;background:#fff;border-radius:8px;padding:16px;border:1px solid var(--line2)}
+    .receiptHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+    .receiptHead h2{font-size:20px}
+    .receiptCode{border-radius:7px;background:var(--blueWash);color:var(--blue);padding:6px 8px;font-size:12px;font-weight:600}
+    .receiptLines{display:grid;gap:0;margin-top:12px}
+    .receiptLine{display:grid;grid-template-columns:1fr auto;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+    .receiptLine:first-child{border-top:0}
+    .receiptLine span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .receiptTotal{display:grid;gap:7px;border-radius:8px;background:var(--blueWash);padding:11px;margin-top:12px}
+    .receiptTotal div{display:flex;justify-content:space-between;gap:12px}
+    .receiptTotal strong{font-size:20px}
+    .receiptActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
     .empty{padding:18px;border:0;border-radius:8px;text-align:center;color:var(--muted);background:var(--wash)}
     .checkoutShell{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
     .stationPanel,.cartPanel{background:#fff;border:0;border-radius:8px;box-shadow:none}
     .stationPanel{padding:16px;min-width:0}
-    .cartPanel{position:sticky;top:80px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 104px);overflow:auto}
+    .cartPanel{position:sticky;top:122px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 146px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;align-items:center;margin-bottom:12px}
     .saleSearch{height:42px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
     .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:700;display:grid;place-items:center}
@@ -198,6 +218,7 @@
       .shell.navCollapsed .brandText,.shell.navCollapsed .navLabel{display:block}
       .sideNote{display:none}
       .top{position:static;height:auto;align-items:start;padding:16px}
+      .demoBanner{position:sticky;top:0}
       .grid.two,.grid.three,.grid.four,.campaigns,.checkoutShell{grid-template-columns:1fr}
       .products{grid-template-columns:1fr}
       .cartPanel{position:static;max-height:none}
@@ -205,6 +226,7 @@
     @media (max-width:620px){
       .content{padding:14px}
       .top{display:grid}
+      .demoBanner{display:grid;padding:10px 14px}
       .topActions{justify-content:start}
       .nav{grid-template-columns:repeat(2,1fr)}
       table{font-size:12px}
@@ -217,6 +239,17 @@
   </style>
 </head>
 <body>
+  <svg class="iconSprite" aria-hidden="true" focusable="false">
+    <symbol id="i-pos" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8"/><path d="M8 13h3"/><path d="M15 13h1"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13h6V5H4z"/><path d="M14 19h6V5h-6z"/><path d="M4 19h6v-2H4z"/></symbol>
+    <symbol id="i-orders" viewBox="0 0 24 24"><path d="M7 4h10v16H7z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/></symbol>
+    <symbol id="i-crm" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-campaigns" viewBox="0 0 24 24"><path d="M4 14l12-6v10z"/><path d="M16 10h4"/><path d="M6 15l2 5"/></symbol>
+    <symbol id="i-reports" viewBox="0 0 24 24"><path d="M5 19V5"/><path d="M5 19h14"/><path d="M9 16v-5"/><path d="M13 16V8"/><path d="M17 16v-3"/></symbol>
+    <symbol id="i-barcode" viewBox="0 0 24 24"><path d="M4 5v14"/><path d="M8 5v14"/><path d="M11 5v14"/><path d="M16 5v14"/><path d="M20 5v14"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M7 10h.01"/><path d="M10 10h.01"/><path d="M13 10h.01"/><path d="M16 10h.01"/><path d="M8 14h8"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  </svg>
   <div class="shell">
     <aside class="side">
       <div class="sideTop">
@@ -224,15 +257,15 @@
           <span class="brandMark mono" aria-hidden="true"><span>NP</span></span>
           <span class="brandText"><strong>NeighbourPOS</strong><span class="brandKicker">Static browser demo</span></span>
         </a>
-        <button class="sideToggle" id="sideToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true">&lt;</span></button>
+        <button class="sideToggle" id="sideToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true"><svg class="icon"><use href="#i-chevron-left"></use></svg></span></button>
       </div>
       <div class="nav" role="tablist" aria-label="Demo views">
-        <button class="active" data-view="pos"><span class="navIcon" aria-hidden="true">POS</span><span class="navLabel">POS</span></button>
-        <button data-view="dashboard"><span class="navIcon" aria-hidden="true">D</span><span class="navLabel">Dashboard</span></button>
-        <button data-view="orders"><span class="navIcon" aria-hidden="true">O</span><span class="navLabel">Orders</span></button>
-        <button data-view="customers"><span class="navIcon" aria-hidden="true">C</span><span class="navLabel">CRM</span></button>
-        <button data-view="campaigns"><span class="navIcon" aria-hidden="true">M</span><span class="navLabel">Campaigns</span></button>
-        <button data-view="reports"><span class="navIcon" aria-hidden="true">R</span><span class="navLabel">Reports</span></button>
+        <button class="active" data-view="pos"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-pos"></use></svg></span><span class="navLabel">POS</span></button>
+        <button data-view="dashboard"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-dashboard"></use></svg></span><span class="navLabel">Dashboard</span></button>
+        <button data-view="orders"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-orders"></use></svg></span><span class="navLabel">Orders</span></button>
+        <button data-view="customers"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-crm"></use></svg></span><span class="navLabel">CRM</span></button>
+        <button data-view="campaigns"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-campaigns"></use></svg></span><span class="navLabel">Campaigns</span></button>
+        <button data-view="reports"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-reports"></use></svg></span><span class="navLabel">Reports</span></button>
       </div>
       <div class="sideNote">
         This is a static Vercel demo with sample data and in-browser state. The production app is <span class="mono">neighbourpos.php</span> plus SQLite.
@@ -240,6 +273,10 @@
     </aside>
 
     <main class="main">
+      <div class="demoBanner">
+        <span>Static demo - data resets on refresh; the real app runs on your hosting.</span>
+        <a href="index.html#docs">Deploy the real app</a>
+      </div>
       <header class="top">
         <div>
           <h1 id="viewTitle">Checkout</h1>
@@ -277,8 +314,8 @@
             <div class="stationPanel">
               <div class="saleToolbar">
                 <input class="saleSearch" id="saleSearch" placeholder="Search or scan">
-                <button class="iconBtn" title="Scan barcode" aria-label="Scan barcode">|||</button>
-                <button class="iconBtn" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">kbd</button>
+                <button class="iconBtn" title="Scan barcode" aria-label="Scan barcode"><svg class="icon"><use href="#i-barcode"></use></svg></button>
+                <button class="iconBtn" title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><svg class="icon"><use href="#i-keyboard"></use></svg></button>
               </div>
               <div class="categoryTabs" id="categoryTabs" aria-label="Product categories"></div>
               <div class="products saleGrid" id="productList"></div>
@@ -388,6 +425,7 @@
     </main>
   </div>
   <div class="toast" id="toast"></div>
+  <div class="modalRoot" id="receiptRoot" hidden></div>
 
   <script>
     const money = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"});
@@ -434,7 +472,8 @@
         {id:1006,code:"NP-1006",customerId:3,status:"paid",date:"2026-07-03",total:31.05,items:[["Raw Honey Jar",1],["Free Range Eggs",2],["Local Dairy Milk",1]],coupon:"VIP15"},
         {id:1005,code:"NP-1005",customerId:2,status:"ready",date:"2026-07-03",total:13.0,items:[["Sourdough Loaf",1],["Local Dairy Milk",1]],coupon:""}
       ],
-      recipients:[]
+      recipients:[],
+      lastReceipt:null
     };
     const presets = [
       {id:"winback",name:"Winback",segment:"No order in 30 days",channel:"sms",coupon:"WINBACK10",message:"We saved 10% for your next neighbourhood run.",score:84},
@@ -468,6 +507,49 @@
       toast.classList.add("show");
       clearTimeout(showToast.timer);
       showToast.timer=setTimeout(()=>toast.classList.remove("show"),2400);
+    }
+    function esc(value){
+      return String(value ?? "").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));
+    }
+    function showReceiptModal(receipt){
+      state.lastReceipt=receipt;
+      const root=document.getElementById("receiptRoot");
+      root.hidden=false;
+      root.innerHTML=`
+        <section class="receiptModal" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
+          <div class="receiptHead">
+            <div>
+              <h2 id="receiptTitle">Receipt ready</h2>
+              <p class="sub">${esc(receipt.customer.name)} / ${esc(receipt.order.paymentMethod)} / ${esc(receipt.order.orderType)}</p>
+            </div>
+            <span class="receiptCode mono">${esc(receipt.order.code)}</span>
+          </div>
+          <div class="receiptLines">
+            ${receipt.lines.map(line=>`
+              <div class="receiptLine">
+                <div><strong>${esc(line.qty)} x ${esc(line.name)}</strong>${line.notes?`<span>${esc(line.notes)}</span>`:""}</div>
+                <strong>${money.format(line.price*line.qty)}</strong>
+              </div>`).join("")}
+          </div>
+          <div class="receiptTotal">
+            <div><span>Subtotal</span><span>${money.format(receipt.subtotal)}</span></div>
+            <div><span>Discount</span><span>-${money.format(receipt.discount)}</span></div>
+            <div><span>Tax</span><span>${money.format(receipt.tax)}</span></div>
+            <div><span>Tip</span><span>${money.format(receipt.tip)}</span></div>
+            <div><strong>Total</strong><strong>${money.format(receipt.total)}</strong></div>
+          </div>
+          <div class="receiptActions">
+            <button class="btn" type="button" data-close-receipt>Keep selling</button>
+            <button class="btn primary" type="button" data-view-orders>View orders</button>
+          </div>
+        </section>
+      `;
+      root.querySelector("[data-close-receipt]")?.focus();
+    }
+    function closeReceiptModal(){
+      const root=document.getElementById("receiptRoot");
+      root.hidden=true;
+      root.innerHTML="";
     }
     function setView(view){
       state.view=view;
@@ -714,18 +796,29 @@
         state.attachedCustomerId=nextId;
       }
       const coupon=state.coupon.trim().toUpperCase();
-      const items=entries.map(([pid,line])=>[product(Number(pid)).name,line.qty,line.notes||""]);
+      const receiptLines=entries.map(([pid,line])=>{
+        const p=product(Number(pid));
+        return {name:p.name,qty:line.qty,price:p.price,notes:line.notes||""};
+      });
+      const items=receiptLines.map(line=>[line.name,line.qty,line.notes]);
+      const subtotal=cartSubtotal();
+      const discount=discountAmount();
+      const tax=Math.max(0,(subtotal-discount)*0.05);
+      const tip=Math.max(0,Number(state.tip)||0);
       const total=cartTotal();
-      state.orders.unshift({id,code:`NP-${id}`,customerId:cust.id,status:state.markPaid?"paid":"open",date:today,total,items,coupon,paymentMethod:state.paymentMethod,orderType:state.orderType,eta:state.eta});
+      const order={id,code:`NP-${id}`,customerId:cust.id,status:state.markPaid?"paid":"open",date:today,total,items,coupon,paymentMethod:state.paymentMethod,orderType:state.orderType,eta:state.eta};
+      state.orders.unshift(order);
       cust.spend+=total;
       cust.orders+=1;
       cust.last=today;
       state.selectedCustomer=cust.id;
+      const receipt={order,customer:{...cust},lines:receiptLines,subtotal,discount,tax,tip,total};
       state.cart={};
       state.coupon="";
       state.tip=0;
       showToast(`Created order NP-${id}`);
-      setView("orders");
+      render();
+      showReceiptModal(receipt);
     }
     function queueCampaign(id){
       const p=presets.find(x=>x.id===id);
@@ -775,6 +868,8 @@
         const order=state.orders.find(o=>o.id===Number(id));
         if(order){order.status=status;showToast(`${order.code} marked ${status}`);render();}
       }
+      if(button.dataset.closeReceipt!==undefined) closeReceiptModal();
+      if(button.dataset.viewOrders!==undefined){closeReceiptModal();setView("orders");}
       if(button.id==="markPaid"){state.markPaid=!state.markPaid;renderCart();}
       if(button.id==="applyCoupon"){state.coupon=document.getElementById("couponInput").value.trim().toUpperCase();renderCart();}
     });
@@ -796,6 +891,12 @@
     });
     document.addEventListener("click",e=>{
       if(e.target.id==="placeOrder") placeOrder();
+    });
+    document.getElementById("receiptRoot").addEventListener("click",e=>{
+      if(e.target.id==="receiptRoot") closeReceiptModal();
+    });
+    document.addEventListener("keydown",e=>{
+      if(e.key==="Escape" && !document.getElementById("receiptRoot").hidden) closeReceiptModal();
     });
     document.getElementById("orderSearch").addEventListener("input",renderOrders);
     document.getElementById("statusFilter").addEventListener("change",renderOrders);

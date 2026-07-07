@@ -37,6 +37,11 @@ if ($phpVersionMatch.Groups[1].Value -ne $landingVersionMatch.Groups[1].Value) {
   throw "Landing version badge does not match production APP_VERSION"
 }
 
+$demoProductSeedCount = ([regex]::Matches($demo, 'sku:"[^"]+"')).Count
+$demoCustomerSeedCount = ([regex]::Matches($demo, 'phone:"555-')).Count
+if ($demoProductSeedCount -lt 12) { throw 'Static demo should seed at least 12 realistic catalog items' }
+if ($demoCustomerSeedCount -lt 3) { throw 'Static demo should seed at least 3 sample customers' }
+
 Assert-SourceContains $source 'inventory_low_stock_export' 'Low-stock CSV export route is missing'
 Assert-SourceContains $source 'function renderDashboard' 'Today snapshot dashboard UI is missing'
 Assert-SourceContains $source "api_today_snapshot" 'Today snapshot API is missing'
@@ -78,6 +83,13 @@ Assert-SourceContains $demo 'navCollapsed' 'Static demo collapsible sidebar stat
 Assert-SourceContains $demo 'sideToggle' 'Static demo sidebar collapse toggle is missing'
 Assert-SourceContains $demo 'navIcon' 'Static demo icon rail labels are missing'
 Assert-SourceContains $demo 'rel="icon" type="image/svg\+xml"' 'Static demo SVG favicon is missing'
+Assert-SourceContains $demo 'Static demo - data resets on refresh' 'Static demo reset/hosting banner is missing'
+Assert-SourceContains $demo '<use href="#i-pos">' 'Static demo POS SVG nav icon is missing'
+Assert-SourceContains $demo '<use href="#i-barcode">' 'Static demo barcode icon button is missing'
+Assert-SourceContains $demo 'receiptModal' 'Static demo receipt modal styling is missing'
+Assert-SourceContains $demo 'showReceiptModal' 'Static demo receipt modal renderer is missing'
+Assert-SourceContains $demo 'receiptRoot' 'Static demo receipt modal root is missing'
+Assert-SourceContains $demo 'data-view-orders' 'Static demo receipt view-orders action is missing'
 
 Assert-SourceContains $source 'checkoutShell' 'Production cashier station shell is missing'
 Assert-SourceContains $source 'pos_category' 'Production checkout category filter is missing'
