@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P3.5] Added CRM customer exports for saved segments or current search filters using the same provider CSV profiles, opt-in defaults, audited override, and Excel-friendly downloads.
 - [P3.4] Replaced campaign row exports with a provider-format panel, preview-count API, Excel-friendly BOM option, and slugged dated filenames for explicit exports.
 - [P3.3] Added campaign merge-field rendering for customer name, first name, coupon code, and store name across exports and simulator preview messages.
 - [P3.2] Added Mailchimp, Brevo, SMS, and WhatsApp campaign export profiles with E.164 phone normalization, provider-specific headers, dedupe, and rendered coupon messages.

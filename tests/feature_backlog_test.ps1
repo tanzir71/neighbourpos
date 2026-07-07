@@ -70,6 +70,9 @@ Assert-SourceContains $source "api_campaign_export_preview" 'Campaign export pre
 Assert-SourceContains $source "data-export-preview" 'Campaign export preview control is missing'
 Assert-SourceContains $source "Excel-friendly" 'Campaign export BOM toggle is missing'
 Assert-SourceContains $source "Works with: Mailchimp / Brevo / any SMS tool / WhatsApp manual" 'Campaign export helper copy is missing'
+Assert-SourceContains $source "customer_export" 'Customer export route is missing'
+Assert-SourceContains $source "crm_export_format" 'CRM customer export format control is missing'
+Assert-SourceContains $source "Download customers" 'CRM customer export download control is missing'
 Assert-SourceContains $source "portal_opt_in_update" 'Customer portal opt-in update route is missing'
 Assert-SourceContains $source "database_backup" 'Database backup route is missing'
 

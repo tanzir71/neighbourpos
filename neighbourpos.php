@@ -513,7 +513,10 @@ function campaign_export_profile(string $format, array $camp, array $rows, strin
     if ($format === 'mailchimp') {
       if ($email === '' || isset($seen[$emailKey])) continue;
       $seen[$emailKey] = true;
-      $tags = array_merge(['campaign:'.(string)$camp['name']], customer_tags_from_text((string)($r['tags_text'] ?? '')));
+      $tags = customer_tags_from_text((string)($r['tags_text'] ?? ''));
+      if (($camp['include_campaign_tag'] ?? true) !== false && trim((string)($camp['name'] ?? '')) !== '') {
+        array_unshift($tags, 'campaign:'.(string)$camp['name']);
+      }
       $out[] = [
         csv_safe_cell($email),
         csv_safe_cell($first),
@@ -649,6 +652,31 @@ function campaign_export_preview_summary(string $format, array $camp, array $row
   }
 
   return $summary;
+}
+
+function customer_rows_to_export_recipients(array $rows, string $messageTemplate = ''): array {
+  $out = [];
+  foreach ($rows as $c) {
+    $out[] = [
+      'customer_id' => $c['id'] ?? null,
+      'phone' => (string)($c['phone'] ?? ''),
+      'recipient_email' => (string)($c['email'] ?? ''),
+      'coupon_code' => '',
+      'sent_at' => '',
+      'redeemed_order_id' => '',
+      'redeemed_at' => '',
+      'status' => '',
+      'payload_json' => json_encode(['message' => $messageTemplate, 'coupon_code' => ''], JSON_UNESCAPED_SLASHES),
+      'customer_name' => (string)($c['name'] ?? ''),
+      'customer_email' => (string)($c['email'] ?? ''),
+      'tags_text' => (string)($c['tags_text'] ?? ''),
+      'marketing_opt_in' => $c['marketing_opt_in'] ?? null,
+      'total_spent_cents' => $c['total_spent_cents'] ?? '',
+      'order_count' => $c['order_count'] ?? '',
+      'last_order_at' => $c['last_order_at'] ?? '',
+    ];
+  }
+  return $out;
 }
 
 function rand_code(int $len): string {
@@ -1596,6 +1624,130 @@ if ($action === 'campaign_export') {
     fputcsv($out, array_values($csvRow));
   }
 
+  fclose($out);
+  exit;
+}
+
+if ($action === 'customer_export') {
+  require_login();
+  $uid = (int)($_SESSION['uid'] ?? 0);
+  $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+  rate_limit_or_fail($pdo, 'customer_export:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), false);
+
+  $format = strtolower(trim((string)($_GET['format'] ?? 'sms')));
+  if ($format === '') $format = 'sms';
+  if (!campaign_export_allowed_format($format)) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Invalid export format";
+    exit;
+  }
+
+  $segmentId = (int)($_GET['segment_id'] ?? 0);
+  $q = trim((string)($_GET['q'] ?? ''));
+  $overrideOptIn = !empty($_GET['override_opt_in']) ? 1 : 0;
+  $bom = !empty($_GET['bom']);
+  $messageTemplate = trim((string)($_GET['message_template'] ?? ''));
+  $filters = [];
+  $exportName = 'customer-export';
+
+  if ($segmentId > 0) {
+    $segSt = $pdo->prepare("SELECT * FROM segments WHERE id = ?");
+    $segSt->execute([$segmentId]);
+    $seg = $segSt->fetch();
+    if (!$seg) {
+      http_response_code(404);
+      header('Content-Type: text/plain; charset=utf-8');
+      echo "Segment not found";
+      exit;
+    }
+    $filters = parse_filters((string)$seg['filters_json']);
+    $exportName = (string)($seg['name'] ?? $exportName);
+  } elseif ($q !== '') {
+    $exportName = 'customer-search';
+  }
+
+  $optInOnly = (bool)(($CONFIG['REQUIRE_MARKETING_OPT_IN'] ?? true) && !$overrideOptIn);
+  if ($optInOnly) {
+    $filters['marketing_opt_in_only'] = true;
+  }
+
+  if ($segmentId <= 0 && $q !== '') {
+    $phone = normalize_phone($q);
+    $where = "(phone LIKE ? OR name LIKE ? OR email LIKE ? OR tags_text LIKE ?)";
+    $params = ['%'.$q.'%', '%'.$q.'%', '%'.$q.'%', '%'.$q.'%'];
+    if ($phone !== '') {
+      $where = "(".$where." OR phone = ?)";
+      $params[] = $phone;
+    }
+    if ($optInOnly) $where .= " AND marketing_opt_in = 1";
+    $st = $pdo->prepare("SELECT * FROM customers WHERE {$where} ORDER BY COALESCE(last_order_at, created_at) DESC LIMIT 5000");
+    $st->execute($params);
+    $customers = $st->fetchAll();
+  } else {
+    $customers = segment_query($pdo, $filters, 5000, 0);
+  }
+  if (!$customers) {
+    http_response_code(409);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "No matching customers to export.";
+    exit;
+  }
+
+  $store = current_store($pdo, $CONFIG);
+  $camp = [
+    'id' => 0,
+    'name' => $exportName,
+    'channel' => 'export',
+    'message_template' => $messageTemplate,
+    'include_campaign_tag' => false,
+  ];
+  $rows = customer_rows_to_export_recipients($customers, $messageTemplate);
+
+  audit($pdo, $uid, 'customers.export', [
+    'segment_id' => $segmentId ?: null,
+    'q' => $q,
+    'format' => $format,
+    'count' => count($customers),
+    'override_opt_in' => $overrideOptIn,
+  ]);
+
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="'.campaign_export_filename($camp, $format, false).'"');
+  header('Cache-Control: no-store');
+  $out = fopen('php://output', 'w');
+  if ($bom) fwrite($out, "\xEF\xBB\xBF");
+
+  if ($format === 'full') {
+    fputcsv($out, ['customer_id', 'name', 'phone', 'email', 'marketing_opt_in', 'total_spent_cents', 'order_count', 'last_order_at', 'tags']);
+    foreach ($customers as $c) {
+      fputcsv($out, [
+        csv_safe_cell($c['id'] ?? ''),
+        csv_safe_cell($c['name'] ?? ''),
+        csv_safe_cell($c['phone'] ?? ''),
+        csv_safe_cell($c['email'] ?? ''),
+        csv_safe_cell((string)(int)($c['marketing_opt_in'] ?? 0)),
+        csv_safe_cell($c['total_spent_cents'] ?? ''),
+        csv_safe_cell($c['order_count'] ?? ''),
+        csv_safe_cell($c['last_order_at'] ?? ''),
+        csv_safe_cell(trim(str_replace(',', ' ', (string)($c['tags_text'] ?? '')))),
+      ]);
+    }
+    fclose($out);
+    exit;
+  }
+
+  [$headers, $profileRows] = campaign_export_profile(
+    $format,
+    $camp,
+    $rows,
+    (string)($store['default_country_code'] ?? '+1'),
+    (string)($store['name'] ?? '')
+  );
+  fwrite($out, implode(',', $headers)."\n");
+  foreach ($profileRows as $profileRow) {
+    fputcsv($out, $profileRow);
+  }
   fclose($out);
   exit;
 }
@@ -3360,6 +3512,7 @@ $csrf = csrf_token();
     campaigns: [],
     auditLogs: [],
     campaignExport: {},
+    customerExport: { format: 'sms', segmentId: '', q: '', bom: false, override: false },
     loading: {},
     errors: {},
     lastCustomerId: null,
@@ -3610,6 +3763,7 @@ $csrf = csrf_token();
     if (tab === 'pos') { await Promise.all([loadProducts(state.pos.q || '', false), loadOrders('active'), loadLowStock()]); clearConnectionIfHealthy(['products','orders','lowStock']) }
     if (tab === 'inventory') { await Promise.all([loadProducts('', true), loadLowStock()]); clearConnectionIfHealthy(['products','lowStock']) }
     if (tab === 'orders') { await loadOrders('active'); clearConnectionIfHealthy(['orders']) }
+    if (tab === 'crm') { await loadSegments(); clearConnectionIfHealthy(['segments']) }
     if (tab === 'campaigns') { await Promise.all([loadSegments(), loadCampaigns()]); clearConnectionIfHealthy(['segments','campaigns']) }
     if (tab === 'reports') { await loadSalesReport(); clearConnectionIfHealthy(['report']) }
     if (tab === 'admin') { await loadAuditLog(''); clearConnectionIfHealthy(['audit']) }
@@ -3861,6 +4015,16 @@ $csrf = csrf_token();
         ` : ``}
       </div>
     `
+  }
+
+  function customerExportHref(){
+    const ex = state.customerExport || {}
+    const params = new URLSearchParams({ action: 'customer_export', format: ex.format || 'sms' })
+    if (ex.segmentId) params.set('segment_id', String(ex.segmentId))
+    else if ((ex.q || '').trim().length >= 2) params.set('q', (ex.q || '').trim())
+    if (ex.bom) params.set('bom', '1')
+    if (ex.override) params.set('override_opt_in', '1')
+    return `?${params.toString()}`
   }
 
   function attentionItem(iconId, title, body, value, tone, goTab){
@@ -4304,6 +4468,39 @@ $csrf = csrf_token();
           <div class="field">
             <label>Search by phone/name/email</label>
             <input id="crm_q" placeholder="e.g., +1415..., Maya, vip">
+          </div>
+
+          <div class="exportPanel">
+            <div class="h1">Export customers</div>
+            <div class="meta">Download the opted-in phone book or a saved segment using the same provider-ready formats as campaigns.</div>
+            <div class="row" style="align-items:flex-end">
+              <div class="field">
+                <label>Segment</label>
+                <select id="crm_export_segment">
+                  <option value="">All opted-in customers</option>
+                  ${state.loading.segments ? `<option value="" disabled>Loading segments...</option>` : state.segments.map(s=>`<option value="${s.id}" ${String(state.customerExport.segmentId || '') === String(s.id) ? 'selected' : ''}>#${s.id} ${esc(s.name)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <label>Format</label>
+                <select id="crm_export_format">
+                  <option value="sms" ${state.customerExport.format === 'sms' ? 'selected' : ''}>SMS</option>
+                  <option value="whatsapp" ${state.customerExport.format === 'whatsapp' ? 'selected' : ''}>WhatsApp</option>
+                  <option value="mailchimp" ${state.customerExport.format === 'mailchimp' ? 'selected' : ''}>Mailchimp</option>
+                  <option value="brevo" ${state.customerExport.format === 'brevo' ? 'selected' : ''}>Brevo</option>
+                  <option value="full" ${state.customerExport.format === 'full' ? 'selected' : ''}>Full archive</option>
+                </select>
+              </div>
+              <label class="checkRow">
+                <input type="checkbox" id="crm_export_bom" ${state.customerExport.bom ? 'checked' : ''}>
+                <span>Excel-friendly</span>
+              </label>
+              <label class="checkRow">
+                <input type="checkbox" id="crm_export_override" ${state.customerExport.override ? 'checked' : ''}>
+                <span>Include non-opted-in (audited)</span>
+              </label>
+              <a class="btn small primary" href="${customerExportHref()}">Download customers</a>
+            </div>
           </div>
 
           ${customerSearchStatus || dataTable(
@@ -5018,10 +5215,20 @@ $csrf = csrf_token();
     const crmQ = qs('#crm_q')
     if (crmQ) crmQ.oninput = async ()=>{
       const q = crmQ.value.trim()
+      state.customerExport.q = q
       if (q.length < 2) { state.customerSearch = []; render(); return }
       await loadCustomerSearch(q, {renderStart:false})
       render()
     }
+
+    const crmExportSegment = qs('#crm_export_segment')
+    if (crmExportSegment) crmExportSegment.onchange = ()=>{ state.customerExport.segmentId = crmExportSegment.value; render() }
+    const crmExportFormat = qs('#crm_export_format')
+    if (crmExportFormat) crmExportFormat.onchange = ()=>{ state.customerExport.format = crmExportFormat.value || 'sms'; render() }
+    const crmExportBom = qs('#crm_export_bom')
+    if (crmExportBom) crmExportBom.onchange = ()=>{ state.customerExport.bom = !!crmExportBom.checked; render() }
+    const crmExportOverride = qs('#crm_export_override')
+    if (crmExportOverride) crmExportOverride.onchange = ()=>{ state.customerExport.override = !!crmExportOverride.checked; render() }
 
     qsa('[data-open]').forEach(b=>b.onclick=async ()=>{
       const id = Number(b.dataset.open)

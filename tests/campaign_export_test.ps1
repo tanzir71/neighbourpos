@@ -85,6 +85,7 @@ if ($env:NEIGHBOURPOS_PHP_EXT_DIR) {
 
 Assert-True ($source -match "function csv_safe_cell") 'CSV spreadsheet-safety helper is missing'
 Assert-True ($source -match 'if \(\$action === ''campaign_export''\)') 'campaign_export route is missing'
+Assert-True ($source -match 'if \(\$action === ''customer_export''\)') 'customer_export route is missing'
 Assert-True ($source -match "function campaign_export_filename") 'CSV filename helper is missing'
 Assert-True ($source -match "recipients\.csv") 'Legacy full CSV download filename is missing'
 Assert-True ($source -match "gmdate\('Ymd'\)") 'Profile CSV download filename date stamp is missing'
@@ -100,6 +101,7 @@ Assert-True ($source -match 'data-export-preview') 'Campaign export preview cont
 Assert-True ($source -match 'Download CSV') 'Campaign list download control is missing'
 Assert-True ($source -match 'Excel-friendly') 'Campaign export BOM toggle is missing'
 Assert-True ($source -match 'Works with: Mailchimp / Brevo / any SMS tool / WhatsApp manual') 'Campaign export format helper copy is missing'
+Assert-True ($source -match 'Download customers') 'Customer list export control is missing'
 Assert-True ($source -match 'Queue first') 'Campaign list empty-state export control is missing'
 
 $phpModules = & $phpCommand @phpArgs -m
@@ -340,6 +342,27 @@ try {
   $firstWhatsApp = $whatsappRows[0]
   $decodedWhatsAppText = [uri]::UnescapeDataString(($firstWhatsApp.wa_link -split 'text=', 2)[1])
   Assert-True ($decodedWhatsAppText -eq $firstWhatsApp.message) 'WhatsApp wa.me link text did not match the rendered message'
+
+  $customerSegmentFilters = @{ marketing_opt_in_only = $true; total_spent_min_cents = 1 }
+  $customerSegment = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_segment_create' `
+    -Body @{ name = 'Spend Export Segment'; filters = $customerSegmentFilters }
+  $customerPreview = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_segment_preview' `
+    -Body @{ segment_id = [int]$customerSegment.id; filters = $customerSegmentFilters }
+  Assert-True ($customerPreview.count -gt 0) 'Customer export segment preview should include spend customers'
+  $customerSms = Invoke-WebRequest -Uri "${baseUrl}?action=customer_export&segment_id=$($customerSegment.id)&format=sms" -WebSession $session -UseBasicParsing
+  Assert-True ([string]$customerSms.Headers['Content-Disposition'] -match 'spend-export-segment-sms-\d{8}\.csv') 'Customer export filename should use segment slug, format, and date'
+  Assert-True ((Get-CsvHeader $customerSms.Content) -eq 'phone,name,coupon_code,message') 'Customer SMS export header row is incorrect'
+  $customerSmsRows = @($customerSms.Content | ConvertFrom-Csv)
+  Assert-True ($customerSmsRows.Count -eq [int]$customerPreview.count) "Customer SMS export should match segment preview count, got $($customerSmsRows.Count) vs $($customerPreview.count)"
+  Assert-True (($customerSmsRows | Where-Object { $_.phone -notmatch '^\+[1-9][0-9]{6,14}$' }).Count -eq 0) 'Customer SMS export included an invalid phone'
 
   Write-Host "campaign_export_test passed with $rowCount full recipient(s) and profile exports verified."
 } finally {
