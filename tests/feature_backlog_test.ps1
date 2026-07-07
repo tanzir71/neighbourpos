@@ -114,6 +114,11 @@ Assert-SourceContains $source 'function sparklinePath' 'Dashboard sparkline path
 Assert-SourceContains $source 'unpaid_orders_count' 'Dashboard unpaid-orders attention count is missing'
 Assert-SourceContains $source 'COUNT\(DISTINCT campaign_id\)' 'Dashboard queued campaign attention count is missing'
 Assert-SourceContains $source 'deltas' 'Dashboard KPI deltas are missing'
+Assert-SourceContains $source 'function dataTable' 'Shared data table helper is missing'
+Assert-SourceContains $source 'dataTableWrap' 'Shared data table wrapper class is missing'
+Assert-SourceContains $source 'position:sticky;top:0' 'Shared data table sticky header is missing'
+Assert-SourceContains $source 'className:''num''' 'Shared data table numeric alignment is missing from render paths'
+Assert-SourceContains $source 'statusBadge' 'Shared status badge component/class is missing'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'

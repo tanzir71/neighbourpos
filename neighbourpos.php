@@ -2617,8 +2617,8 @@ $csrf = csrf_token();
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-sm);min-width:0}
     .h1{font-size:14px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
-    .row{display:flex;gap:10px;align-items:center}
-    .row > *{flex:1}
+    .row{display:flex;gap:10px;align-items:center;min-width:0}
+    .row > *{flex:1;min-width:0}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
     .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:var(--radius-control);border:0;background:var(--wash);color:var(--txt);font-size:13px;outline:none}
     .field textarea{min-height:70px;resize:vertical}
@@ -2682,7 +2682,17 @@ $csrf = csrf_token();
     .item + .item{border-top:1px solid var(--line2)}
     .item .name{font-weight:500;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
-    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:500}
+    .dataTableWrap{max-width:100%;overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius-card);background:#fff}
+    .dataTable{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;font-size:13px}
+    .dataTable th{position:sticky;top:0;z-index:1;background:#f8fafc;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+    .dataTable td{min-height:54px;padding:10px 12px;border-top:1px solid var(--line2);vertical-align:middle}
+    .dataTable tbody tr:first-child td{border-top:0}
+    .dataTable tbody tr:hover{background:#f8fafc}
+    .dataTable .num{text-align:right;font-variant-numeric:tabular-nums}
+    .dataTable .actions{text-align:right;white-space:nowrap}
+    .dataTitle{font-weight:600;color:var(--txt)}
+    .dataMeta{color:var(--muted);font-size:12px;margin-top:3px;line-height:1.35}
+    .statusBadge,.badge{display:inline-flex;align-items:center;min-height:23px;font-size:11px;padding:0 8px;border-radius:999px;border:0;color:#445064;white-space:nowrap;font-weight:600}
     .b-new{background:var(--blueWash)}
     .b-prep{background:var(--amberWash)}
     .b-ready{background:var(--greenWash)}
@@ -2806,8 +2816,10 @@ $csrf = csrf_token();
       .topbar{display:grid}
       .pageHeader{display:grid}
       .pageActions{justify-content:flex-start}
+      .row{flex-wrap:wrap}
       .navin{grid-template-columns:repeat(2,minmax(0,1fr))}
       .kpi{grid-template-columns:1fr}
+      .dataTable{min-width:640px}
       .saleToolbar,.compactFields,.tenderGrid,.cashTender{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
       .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -3159,7 +3171,17 @@ $csrf = csrf_token();
       'new':'b-new','preparing':'b-prep','ready_for_pickup':'b-ready','out_for_delivery':'b-out',
       'completed':'b-done','cancelled':'b-done'
     }[status] || 'b-new'
-    return `<span class="badge ${cls}">${esc(status)}</span>`
+    return `<span class="statusBadge ${cls}">${esc(status)}</span>`
+  }
+
+  function dataTable(headers, bodyHtml, emptyHtml=''){
+    if (!bodyHtml) return emptyHtml
+    return `<div class="dataTableWrap">
+      <table class="dataTable">
+        <thead><tr>${headers.map(h=>`<th class="${esc(h.className || '')}">${esc(h.label || h)}</th>`).join('')}</tr></thead>
+        <tbody>${bodyHtml}</tbody>
+      </table>
+    </div>`
   }
 
   async function setTab(tab){
@@ -3640,7 +3662,7 @@ $csrf = csrf_token();
             <div class="h1">Active Orders</div>
             <div class="muted">Fast status updates: new -> preparing -> ready/out -> completed/cancelled.</div>
           </div>
-          <div style="flex:0;display:flex;gap:8px">
+          <div style="flex:1 1 220px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
             <button class="btn small" id="orders_refresh">Refresh</button>
             <select class="btn small" id="orders_filter" style="padding:8px 10px">
               <option value="active">active</option>
@@ -3664,19 +3686,19 @@ $csrf = csrf_token();
             <div class="field"><label>To</label><input id="order_to" type="date"></div>
             <button class="btn small primary" id="order_search_btn">Search</button>
           </div>
-          <div class="list">
-            ${orderSearchStatus || (state.orderSearch.length===0 ? emptyState('search', 'Search recent orders', 'Use code, phone, status, or date filters to find an order.') : state.orderSearch.map(o=>`
-              <div class="item">
-                <div class="row" style="align-items:flex-start">
-                  <div style="flex:1">
-                    <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                    <div class="meta">${esc(o.phone_text || '')}  -  ${fmtMoney(o.total_cents)}  -  ${fmtDate(o.created_at)}</div>
-                  </div>
-                  <button class="btn small" data-open-order="${o.id}" style="flex:0">Open</button>
-                </div>
-              </div>
-            `).join(''))}
-          </div>
+          ${orderSearchStatus || dataTable(
+            [{label:'Order'}, {label:'Customer'}, {label:'Total', className:'num'}, {label:'Created'}, {label:'Action', className:'actions'}],
+            state.orderSearch.map(o=>`
+              <tr>
+                <td><div class="dataTitle">${esc(o.order_code)}</div><div class="dataMeta">${badge(o.status)} ${esc(o.order_type || '')}</div></td>
+                <td>${esc(o.phone_text || '')}</td>
+                <td class="num">${fmtMoney(o.total_cents)}</td>
+                <td>${fmtDate(o.created_at)}</td>
+                <td class="actions"><button class="btn small" data-open-order="${o.id}">Open</button></td>
+              </tr>
+            `).join(''),
+            emptyState('search', 'Search recent orders', 'Use code, phone, status, or date filters to find an order.')
+          )}
           ${state.selectedOrder ? `
             <div class="okbox">
               <b>${esc(state.selectedOrder.order_code)}</b> ${badge(state.selectedOrder.status)}<br>
@@ -3685,26 +3707,26 @@ $csrf = csrf_token();
           ` : ``}
         </div>
 
-        <div class="list">
-          ${ordersStatus || (state.orders.length===0 ? emptyState('orders', 'No active orders', 'New checkout orders will appear here for fulfillment.', `<button class="btn small primary" data-go="pos">Start checkout</button>`) : state.orders.map(o=>`
-            <div class="item">
-              <div class="row" style="align-items:flex-start">
-                <div style="flex:1">
-                  <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                  <div class="meta">${esc(o.order_type)}  -  ${fmtMoney(o.total_cents)}  -  ${esc(o.phone_text || '')}</div>
-                  <div class="meta">${fmtDate(o.created_at)}  -  Payment: ${esc(o.payment_method)}  -  ${o.payment_received ? 'received' : 'pending'}</div>
-                </div>
-                <div style="flex:0;display:flex;flex-direction:column;gap:6px;align-items:stretch">
-                  <a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a>
-                  <button class="btn small" data-st="${o.id}" data-next="preparing">Preparing</button>
-                  <button class="btn small" data-st="${o.id}" data-next="${o.order_type==='delivery'?'out_for_delivery':'ready_for_pickup'}">${o.order_type==='delivery'?'Out for delivery':'Ready'}</button>
-                  <button class="btn small primary" data-st="${o.id}" data-next="completed">Complete</button>
-                  <button class="btn small danger" data-st="${o.id}" data-next="cancelled">Cancel</button>
-                </div>
-              </div>
-            </div>
-          `).join(''))}
-        </div>
+        ${ordersStatus || dataTable(
+          [{label:'Order'}, {label:'Type'}, {label:'Customer'}, {label:'Total', className:'num'}, {label:'Payment'}, {label:'Actions', className:'actions'}],
+          state.orders.map(o=>`
+            <tr>
+              <td><div class="dataTitle">${esc(o.order_code)}</div><div class="dataMeta">${badge(o.status)} ${fmtDate(o.created_at)}</div></td>
+              <td>${esc(o.order_type)}</td>
+              <td>${esc(o.phone_text || '')}</td>
+              <td class="num">${fmtMoney(o.total_cents)}</td>
+              <td><div class="dataTitle">${esc(o.payment_method)}</div><div class="dataMeta">${o.payment_received ? 'received' : 'pending'}</div></td>
+              <td class="actions">
+                <a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a>
+                <button class="btn small" data-st="${o.id}" data-next="preparing">Preparing</button>
+                <button class="btn small" data-st="${o.id}" data-next="${o.order_type==='delivery'?'out_for_delivery':'ready_for_pickup'}">${o.order_type==='delivery'?'Out':'Ready'}</button>
+                <button class="btn small primary" data-st="${o.id}" data-next="completed">Complete</button>
+                <button class="btn small danger" data-st="${o.id}" data-next="cancelled">Cancel</button>
+              </td>
+            </tr>
+          `).join(''),
+          emptyState('orders', 'No active orders', 'New checkout orders will appear here for fulfillment.', `<button class="btn small primary" data-go="pos">Start checkout</button>`)
+        )}
         <div id="orders_msg"></div>
       </div>
     `
@@ -3742,26 +3764,19 @@ $csrf = csrf_token();
             <button class="btn small ghost" id="prod_clear">Clear</button>
           </div>
 
-          <div class="list">
-            ${productsStatus || (state.products.length===0 ? emptyState('inventory', 'No products yet', 'Add your first product or load sample data from Admin.', `<button class="btn small primary" data-focus="#prod_name">Add product</button>`) : state.products.map(p=>`
-              <div class="item">
-                <div class="row" style="align-items:flex-start">
-                  <div style="flex:1">
-                    <div class="name">${esc(p.name)}</div>
-                    <div class="meta">${esc(p.category || 'Uncategorized')}  -  ${fmtMoney(p.price_cents)}  -  ID ${p.id}</div>
-                  </div>
-                  <div style="flex:0;min-width:140px">
-                    <div class="field" style="margin-top:-6px">
-                      <label>Stock</label>
-                      <input data-stock="${p.id}" type="number" value="${esc(p.stock_qty)}">
-                    </div>
-                    <button class="btn small" data-saveprod="${p.id}">Save</button>
-                    <button class="btn small ghost" data-editprod="${p.id}">Edit</button>
-                  </div>
-                </div>
-              </div>
-            `).join(''))}
-          </div>
+          ${productsStatus || dataTable(
+            [{label:'Product'}, {label:'Category'}, {label:'Price', className:'num'}, {label:'Stock', className:'num'}, {label:'Actions', className:'actions'}],
+            state.products.map(p=>`
+              <tr>
+                <td><div class="dataTitle">${esc(p.name)}</div><div class="dataMeta">SKU ${esc(p.sku || '')} - ID ${esc(p.id)}</div></td>
+                <td>${esc(p.category || 'Uncategorized')}</td>
+                <td class="num">${fmtMoney(p.price_cents)}</td>
+                <td class="num"><input data-stock="${p.id}" type="number" value="${esc(p.stock_qty)}" style="width:84px;text-align:right"></td>
+                <td class="actions"><button class="btn small" data-saveprod="${p.id}">Save</button> <button class="btn small ghost" data-editprod="${p.id}">Edit</button></td>
+              </tr>
+            `).join(''),
+            emptyState('inventory', 'No products yet', 'Add your first product or load sample data from Admin.', `<button class="btn small primary" data-focus="#prod_name">Add product</button>`)
+          )}
 
           <div id="inv_msg"></div>
         </div>
@@ -3807,22 +3822,20 @@ $csrf = csrf_token();
             <input id="crm_q" placeholder="e.g., +1415..., Maya, vip">
           </div>
 
-          <div class="list">
-            ${customerSearchStatus || (state.customerSearch.length===0 ? emptyState('user', 'Search customers', 'Type at least two characters to find customers by phone, name, email, or tag.') : state.customerSearch.map(c=>`
-              <div class="item" data-cust="${c.id}">
-                <div class="row" style="align-items:flex-start">
-                  <div style="flex:1">
-                    <div class="name">${esc(c.name || c.phone)}</div>
-                    <div class="meta">${esc(c.phone)}  -  Orders: ${esc(c.order_count)}  -  Spent: ${fmtMoney(c.total_spent_cents)}</div>
-                    <div class="meta">Opt-in: ${c.marketing_opt_in ? 'Yes' : 'No'}  -  Tags: ${esc((c.tags_text||'').replaceAll(',',' ').trim())}</div>
-                  </div>
-                  <div style="flex:0">
-                    <button class="btn small" data-open="${c.id}">Open</button>
-                  </div>
-                </div>
-              </div>
-            `).join(''))}
-          </div>
+          ${customerSearchStatus || dataTable(
+            [{label:'Customer'}, {label:'Phone'}, {label:'Orders', className:'num'}, {label:'Spent', className:'num'}, {label:'Consent'}, {label:'Action', className:'actions'}],
+            state.customerSearch.map(c=>`
+              <tr>
+                <td><div class="dataTitle">${esc(c.name || c.phone)}</div><div class="dataMeta">${esc((c.tags_text||'').replaceAll(',',' ').trim())}</div></td>
+                <td>${esc(c.phone)}</td>
+                <td class="num">${esc(c.order_count)}</td>
+                <td class="num">${fmtMoney(c.total_spent_cents)}</td>
+                <td>${c.marketing_opt_in ? '<span class="statusBadge b-ready">Yes</span>' : '<span class="statusBadge b-done">No</span>'}</td>
+                <td class="actions"><button class="btn small" data-open="${c.id}">Open</button></td>
+              </tr>
+            `).join(''),
+            emptyState('user', 'Search customers', 'Type at least two characters to find customers by phone, name, email, or tag.')
+          )}
           <div id="crm_msg"></div>
         </div>
 
@@ -3875,21 +3888,19 @@ $csrf = csrf_token();
 
             <div style="margin-top:12px">
               <div class="h1">Recent orders</div>
-              <div class="list">
-                ${orders.length===0 ? emptyState('orders', 'No orders yet', 'This customer has not placed an order yet.') : orders.map(o=>`
-                  <div class="item">
-                    <div class="row" style="align-items:flex-start">
-                      <div style="flex:1">
-                        <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                        <div class="meta">${esc(o.order_type)}  -  ${fmtMoney(o.total_cents)}  -  ${fmtDate(o.created_at)}</div>
-                      </div>
-                      <div style="flex:0">
-                        <a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+              ${dataTable(
+                [{label:'Order'}, {label:'Type'}, {label:'Total', className:'num'}, {label:'Created'}, {label:'Action', className:'actions'}],
+                orders.map(o=>`
+                  <tr>
+                    <td><div class="dataTitle">${esc(o.order_code)}</div><div class="dataMeta">${badge(o.status)}</div></td>
+                    <td>${esc(o.order_type)}</td>
+                    <td class="num">${fmtMoney(o.total_cents)}</td>
+                    <td>${fmtDate(o.created_at)}</td>
+                    <td class="actions"><a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a></td>
+                  </tr>
+                `).join(''),
+                emptyState('orders', 'No orders yet', 'This customer has not placed an order yet.')
+              )}
             </div>
           `)}
           ${!profileStatus && cust ? `
@@ -4167,15 +4178,18 @@ $csrf = csrf_token();
           ${isAdmin ? `
             <div class="field"><label>Filter</label><input id="audit_q" placeholder="action, email, payload"></div>
             <button class="btn small" id="audit_refresh">Refresh</button>
-            <div class="list">
-              ${auditStatus || (state.auditLogs.length===0 ? emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.') : state.auditLogs.map(a=>`
-                <div class="item">
-                  <div class="name">${esc(a.action)}</div>
-                  <div class="meta">${fmtDate(a.ts)}  -  ${esc(a.user_email || 'system')}</div>
-                  <div class="meta">${esc(a.payload_json || '')}</div>
-                </div>
-              `).join(''))}
-            </div>
+            ${auditStatus || dataTable(
+              [{label:'Action'}, {label:'User'}, {label:'Time'}, {label:'Payload'}],
+              state.auditLogs.map(a=>`
+                <tr>
+                  <td><div class="dataTitle">${esc(a.action)}</div></td>
+                  <td>${esc(a.user_email || 'system')}</td>
+                  <td>${fmtDate(a.ts)}</td>
+                  <td><div class="dataMeta">${esc(a.payload_json || '')}</div></td>
+                </tr>
+              `).join(''),
+              emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.')
+            )}
           ` : emptyState('admin', 'Audit log is admin only', 'Sign in as an admin to review audit history.')}
         </div>
       </div>
