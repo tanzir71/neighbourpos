@@ -146,7 +146,7 @@ Goal: "Download → import into your sending tool → send" with zero manual CSV
 ## Phase 5 — Hardening & release
 
 - [x] **P5.1 Self-test endpoint.** `?action=api_dev_selftest` (admin-only): runs the E.164 assertions, a segment-filter matrix on fixture data in a temp in-memory SQLite, and export-profile header checks; returns JSON pass/fail list. Wire into Verification step 5. Acceptance: returns all-pass on clean checkout.
-- [ ] **P5.2 Backup/restore round-trip doc + guard.** Verify `database_backup` streams a consistent snapshot (use SQLite backup API or `VACUUM INTO` temp file, not raw fread of a live db). Document restore in SETUP.md. Acceptance: backup taken during concurrent writes opens clean (`PRAGMA integrity_check` = ok).
+- [x] **P5.2 Backup/restore round-trip doc + guard.** Verify `database_backup` streams a consistent snapshot (use SQLite backup API or `VACUUM INTO` temp file, not raw fread of a live db). Document restore in SETUP.md. Acceptance: backup taken during concurrent writes opens clean (`PRAGMA integrity_check` = ok).
 - [ ] **P5.3 Final sweep.** Update README (feature list incl. ledger + export profiles), bump `APP_VERSION`, re-run Lighthouse on both static pages, fresh-install walkthrough following SETUP.md verbatim on a clean PHP 8.1 environment. Acceptance: all Verification steps + P5.1 selftest pass; README screenshots/claims match reality.
 
 ---

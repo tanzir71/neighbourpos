@@ -948,6 +948,20 @@ function db(array $CONFIG): PDO {
   return $pdo;
 }
 
+function database_backup_snapshot(PDO $pdo): string {
+  $tmp = tempnam(sys_get_temp_dir(), 'neighbourpos-backup-');
+  if ($tmp === false) {
+    throw new RuntimeException('Could not create backup temp file');
+  }
+  if (is_file($tmp)) @unlink($tmp);
+  $pdo->exec('VACUUM INTO '.$pdo->quote($tmp));
+  if (!is_file($tmp) || filesize($tmp) === 0) {
+    @unlink($tmp);
+    throw new RuntimeException('Backup snapshot failed');
+  }
+  return $tmp;
+}
+
 function ensure_column(PDO $pdo, string $table, string $column, string $definition): void {
   $st = $pdo->query("PRAGMA table_info({$table})");
   foreach ($st->fetchAll() as $row) {
@@ -2252,11 +2266,20 @@ if ($action === 'database_backup') {
     exit;
   }
   audit($pdo, (int)($_SESSION['uid'] ?? 0), 'database.backup_download', ['ip' => client_ip()]);
+  try {
+    $backupPath = database_backup_snapshot($pdo);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Backup failed";
+    exit;
+  }
   header('Content-Type: application/octet-stream');
   header('Content-Disposition: attachment; filename="neighbourpos-backup-'.gmdate('Ymd-His').'.db"');
-  header('Content-Length: '.filesize($dbPath));
+  header('Content-Length: '.filesize($backupPath));
   header('Cache-Control: no-store');
-  readfile($dbPath);
+  readfile($backupPath);
+  @unlink($backupPath);
   exit;
 }
 

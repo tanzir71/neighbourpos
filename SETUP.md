@@ -7,7 +7,7 @@
 5) Log in with `admin@example.com` / `ChangeMe123!` and change credentials immediately.
 6) Optional: open DevTools Console and run `loadSample()` to load demo products/customers/orders (admin only).
 7) Create `.env` from `.env.example`, set `CRON_TOKEN` and rotate default admin password.
-8) Backups: download `neighbourpos.db` regularly (cPanel backups / FTP).
+8) Backups: use Admin -> Download backup regularly, plus hosting/cPanel backups.
 
 ## File permissions
 - Typical safe permissions: files `0644`, folders `0755`.
@@ -23,6 +23,15 @@ Use a long random `CRON_TOKEN` in `.env`. Add cPanel cron jobs:
 
 If cPanel cron supports CLI PHP, you can call:
 `php /home/USER/public_html/neighbourpos.php action=cron_campaigns token=YOUR_CRON_TOKEN`
+
+## Backup and restore
+
+- Download backups from Admin -> Download backup. The app streams a SQLite snapshot, not a raw live database file.
+- Keep several dated backup copies off the hosting account.
+- To verify a backup before relying on it, run:
+  `php -r "$pdo=new PDO('sqlite:'.$argv[1]); echo $pdo->query('PRAGMA integrity_check')->fetchColumn(), PHP_EOL;" neighbourpos-backup.db`
+- To restore, put the site in maintenance mode or briefly stop writes, rename the current `neighbourpos.db` to a dated safety copy, upload the backup as `neighbourpos.db`, then visit the app and log in.
+- After restore, run the same `PRAGMA integrity_check` command against the restored `neighbourpos.db` and keep the old safety copy until the store owner confirms recent orders/customers look right.
 
 ## Notes
 - Customer portal is public: `?action=portal` (phone lookup only).
