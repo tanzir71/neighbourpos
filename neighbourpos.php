@@ -1483,27 +1483,104 @@ function current_store(PDO $pdo, array $CONFIG): array {
   ];
 }
 
-function dev_selftest_results(): array {
-  $cases = [
-    ['phone' => '01712-345678', 'country_code' => '+880', 'expected' => '+8801712345678'],
-    ['phone' => '(555) 010-1234', 'country_code' => '+1', 'expected' => '+15550101234'],
-    ['phone' => 'garbage', 'country_code' => '+1', 'expected' => null],
+function dev_selftest_record(array &$tests, string $name, $expected, $actual, array $context = []): void {
+  $passed = $actual === $expected;
+  $tests[] = array_merge([
+    'name' => $name,
+    'expected' => $expected,
+    'actual' => $actual,
+    'passed' => $passed,
+  ], $context);
+}
+
+function dev_selftest_fixture_pdo(): PDO {
+  $pdo = new PDO('sqlite::memory:', null, null, [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES => false,
+  ]);
+  $pdo->exec("PRAGMA foreign_keys=OFF;");
+  init_db($pdo);
+
+  $now = '2026-07-07 12:00:00';
+  $old = '2026-05-20 12:00:00';
+  $customers = [
+    ['+15550101001', 'Amina Regular', 'amina@example.test', 1, ',vip,coffee,', 15000, 3, $now],
+    ['+15550101002', 'Ben Lapsed', 'ben@example.test', 0, ',lapsed,', 3200, 1, $old],
+    ['+15550101003', 'Cara Credit', '', 1, ',credit,', 5000, 2, $old],
   ];
+
+  $insCust = $pdo->prepare("INSERT INTO customers(phone,name,email,marketing_opt_in,marketing_opt_in_ts,total_spent_cents,order_count,last_order_at,tags_text,metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)");
+  foreach ($customers as $c) {
+    $insCust->execute([$c[0], $c[1], $c[2], $c[3], $c[3] ? $now : null, $c[5], $c[6], $c[7], $c[4], '{}', $c[7]]);
+  }
+
+  $pdo->prepare("INSERT INTO products(sku,name,price_cents,stock_qty,category,active,created_at) VALUES(?,?,?,?,?,?,?)")
+    ->execute(['COF', 'Coffee Beans', 1200, 10, 'Grocery', 1, $now]);
+  $productId = (int)$pdo->lastInsertId();
+  $aminaId = (int)$pdo->query("SELECT id FROM customers WHERE phone = '+15550101001'")->fetch()['id'];
+  $caraId = (int)$pdo->query("SELECT id FROM customers WHERE phone = '+15550101003'")->fetch()['id'];
+
+  $pdo->prepare("INSERT INTO orders(order_code,customer_id,phone_text,order_type,items_json,subtotal_cents,tax_cents,tip_cents,total_cents,status,payment_method,payment_received,expected_eta_minutes,coupon_code_text,created_at,updated_at,stock_applied,metrics_applied) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    ->execute(['SELFTEST1', $aminaId, '+15550101001', 'pickup', '[]', 1200, 0, 0, 1200, 'completed', 'cash', 1, 15, null, $now, $now, 1, 1]);
+  $orderId = (int)$pdo->lastInsertId();
+  $pdo->prepare("INSERT INTO order_items(order_id,product_id,product_name,category,qty,price_cents,notes,created_at) VALUES(?,?,?,?,?,?,?,?)")
+    ->execute([$orderId, $productId, 'Coffee Beans', 'Grocery', 1, 1200, '', $now]);
+  $pdo->prepare("INSERT INTO ledger_entries(customer_id,order_id,type,amount_cents,note,created_by,created_at) VALUES(?,?,?,?,?,?,?)")
+    ->execute([$caraId, null, 'credit', 2500, 'Self-test balance', null, $now]);
+
+  return $pdo;
+}
+
+function dev_selftest_results(): array {
   $tests = [];
-  $failures = 0;
-  foreach ($cases as $case) {
+
+  foreach ([
+    'bd_local' => ['phone' => '01712-345678', 'country_code' => '+880', 'expected' => '+8801712345678'],
+    'us_local' => ['phone' => '(555) 010-1234', 'country_code' => '+1', 'expected' => '+15550101234'],
+    'invalid' => ['phone' => 'garbage', 'country_code' => '+1', 'expected' => null],
+  ] as $label => $case) {
     $actual = normalize_e164((string)$case['phone'], (string)$case['country_code']);
-    $passed = $actual === $case['expected'];
-    if (!$passed) $failures++;
-    $tests[] = [
-      'name' => 'normalize_e164',
+    dev_selftest_record($tests, 'normalize_e164:'.$label, $case['expected'], $actual, [
       'phone' => $case['phone'],
       'country_code' => $case['country_code'],
-      'expected' => $case['expected'],
-      'actual' => $actual,
-      'passed' => $passed,
+    ]);
+  }
+
+  try {
+    $fixture = dev_selftest_fixture_pdo();
+    $segmentCases = [
+      'marketing_opt_in_only' => [['marketing_opt_in_only' => true], 2],
+      'tag' => [['tag' => 'vip'], 1],
+      'has_balance' => [['has_balance' => true], 1],
+      'inactive_days' => [['inactive_days' => 30], 2],
+      'purchased_product_id' => [['purchased_product_id' => 1], 1],
+      'total_spent_min_cents' => [['total_spent_min_cents' => 10000], 1],
+    ];
+    foreach ($segmentCases as $label => [$filters, $expected]) {
+      dev_selftest_record($tests, 'segment_filter:'.$label, $expected, segment_count($fixture, $filters), ['filters' => $filters]);
+    }
+  } catch (Throwable $e) {
+    $tests[] = [
+      'name' => 'segment_filter:fixture',
+      'expected' => 'fixture self-test pass',
+      'actual' => $e->getMessage(),
+      'passed' => false,
     ];
   }
+
+  $headerCases = [
+    'mailchimp' => ['Email Address', 'First Name', 'Last Name', 'Phone', 'Tags'],
+    'brevo' => ['EMAIL', 'SMS', 'FIRSTNAME', 'LASTNAME', 'COUPON_CODE'],
+    'sms' => ['phone', 'name', 'coupon_code', 'message'],
+    'whatsapp' => ['phone', 'name', 'message', 'wa_link'],
+  ];
+  foreach ($headerCases as $format => $expectedHeaders) {
+    [$headers] = campaign_export_profile($format, ['name' => 'Self-test', 'message_template' => 'Hi {first_name}'], [], '+1', 'Neighbour Store');
+    dev_selftest_record($tests, 'export_headers:'.$format, $expectedHeaders, $headers, ['format' => $format]);
+  }
+
+  $failures = count(array_filter($tests, fn($t) => empty($t['passed'])));
   return ['ok' => $failures === 0, 'data' => ['tests' => $tests, 'failures' => $failures]];
 }
 

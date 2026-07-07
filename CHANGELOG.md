@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P5.1] Expanded the admin self-test endpoint with E.164 checks, in-memory segment filter fixtures, and export-profile header assertions.
 - [P4.5] Added a printable Reports "Today's close" card with completed-order gross, payment-method totals, coupons redeemed, and new customer counts.
 - [P4.4] Added one-click loyalty-lite campaign presets for rewarding top spenders and winning back lapsed customers, with auto-queued coupon recipients and focused export panels.
 - [P4.3] Added product CSV imports with template download, preview/commit APIs, row-level error storage, Inventory UI controls, audit logging, and a 500-row cap.
