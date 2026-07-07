@@ -3536,7 +3536,7 @@ $csrf = csrf_token();
     .modalCard{position:relative;width:min(420px,100%);border:1px solid var(--line);border-radius:var(--radius-modal);background:#fff;box-shadow:var(--shadow-md);padding:18px;display:grid;gap:12px}
     .modalActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
     .modalCard input{width:100%;padding:10px 12px}
-    .saleTile strong,.saleTile .name{font-size:16px;font-weight:500;line-height:1.18}
+    .saleTile strong,.saleTile .name{font-size:17px;font-weight:500;line-height:1.18}
     .cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
