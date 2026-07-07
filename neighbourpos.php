@@ -798,6 +798,44 @@ function campaign_export_preview_summary(string $format, array $camp, array $row
   return $summary;
 }
 
+function campaign_queue_recipients(PDO $pdo, array $CONFIG, array $camp, array $segRow, bool $overrideOptIn, bool $withCoupons): int {
+  $campaignId = (int)$camp['id'];
+  $filters = parse_filters((string)$segRow['filters_json']);
+  $filters['marketing_opt_in_only'] = ($CONFIG['REQUIRE_MARKETING_OPT_IN'] ?? true) ? ($overrideOptIn ? false : true) : false;
+
+  $recipients = segment_query($pdo, $filters, 5000, 0);
+  $pdo->prepare("DELETE FROM campaign_recipients WHERE campaign_id = ?")->execute([$campaignId]);
+
+  $ins = $pdo->prepare("INSERT INTO campaign_recipients(campaign_id, customer_id, phone, email, coupon_code, sent_at, status, payload_json) VALUES(?,?,?,?,?,?,?,?)");
+  $queued = 0;
+  foreach ($recipients as $c) {
+    $coupon = null;
+    if ($withCoupons && !empty($CONFIG['COUPON']['ENABLED'])) {
+      $coupon = (string)$CONFIG['COUPON']['PREFIX'].'-'.rand_code((int)$CONFIG['COUPON']['LENGTH']);
+    }
+    $payload = [
+      'message' => (string)$camp['message_template'],
+      'coupon_code' => $coupon,
+      'opt_in_required' => (bool)($CONFIG['REQUIRE_MARKETING_OPT_IN'] ?? true),
+      'opt_in_overridden' => (bool)$overrideOptIn,
+    ];
+    $ins->execute([
+      $campaignId,
+      (int)$c['id'],
+      (string)$c['phone'],
+      (string)($c['email'] ?? ''),
+      $coupon,
+      null,
+      'queued',
+      json_encode($payload, JSON_UNESCAPED_SLASHES),
+    ]);
+    $queued++;
+  }
+
+  $pdo->prepare("UPDATE campaigns SET sent_count = ? WHERE id = ?")->execute([$queued, $campaignId]);
+  return $queued;
+}
+
 function customer_rows_to_export_recipients(array $rows, string $messageTemplate = '', ?array $store = null): array {
   $out = [];
   foreach ($rows as $c) {
@@ -3029,8 +3067,28 @@ if (str_starts_with($action, 'api_')) {
     rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
     $preset = (string)($body['preset'] ?? 'winback');
     $category = trim((string)($body['category'] ?? 'Deli'));
+    $spendMin = max(0, (int)($body['spend_min_cents'] ?? 1000));
+    $inactiveDays = max(1, (int)($body['inactive_days'] ?? 30));
 
     $defs = [
+      'reward_top_spenders' => [
+        'segment' => 'Preset: Reward top spenders',
+        'filters' => ['total_spent_min_cents' => $spendMin, 'order_count_min' => 1],
+        'campaign' => 'Reward top spenders',
+        'message' => 'Thanks for being one of our top customers. Use {coupon_code} on your next visit.',
+        'auto_queue' => true,
+        'with_coupons' => true,
+        'export_format' => 'sms',
+      ],
+      'win_back_lapsed' => [
+        'segment' => 'Preset: Win back lapsed',
+        'filters' => ['inactive_days' => $inactiveDays, 'order_count_min' => 1],
+        'campaign' => 'Win back lapsed customers',
+        'message' => 'We miss you. Use {coupon_code} this week and stop by when convenient.',
+        'auto_queue' => true,
+        'with_coupons' => true,
+        'export_format' => 'sms',
+      ],
       'winback' => [
         'segment' => 'Preset: Winback 30d',
         'filters' => ['inactive_days' => 30, 'order_count_min' => 1],
@@ -3066,10 +3124,29 @@ if (str_starts_with($action, 'api_')) {
     $camp = $pdo->prepare("INSERT INTO campaigns(name, segment_id, channel, message_template, scheduled_at, sent_count, created_at) VALUES(?,?,?,?,NULL,0,?)");
     $camp->execute([$def['campaign'], $segmentId, 'export', $def['message'], now_iso()]);
     $campaignId = (int)$pdo->lastInsertId();
+    $queued = 0;
+    if (!empty($def['auto_queue'])) {
+      $queued = campaign_queue_recipients(
+        $pdo,
+        $CONFIG,
+        ['id' => $campaignId, 'segment_id' => $segmentId, 'message_template' => $def['message']],
+        ['id' => $segmentId, 'filters_json' => json_encode($def['filters'], JSON_UNESCAPED_SLASHES)],
+        false,
+        !empty($def['with_coupons'])
+      );
+      audit($pdo, $uid, 'campaigns.queue', ['id' => $campaignId, 'count' => $queued, 'override_opt_in' => 0, 'with_coupons' => !empty($def['with_coupons']) ? 1 : 0, 'source' => 'preset']);
+    }
     audit($pdo, $uid, 'campaigns.preset_create', ['preset' => $preset, 'segment_id' => $segmentId, 'campaign_id' => $campaignId]);
     $pdo->commit();
 
-    json_out(['ok' => true, 'data' => ['segment_id' => $segmentId, 'campaign_id' => $campaignId]]);
+    json_out(['ok' => true, 'data' => [
+      'segment_id' => $segmentId,
+      'campaign_id' => $campaignId,
+      'queued' => $queued,
+      'focus_campaign_id' => $campaignId,
+      'export_format' => (string)($def['export_format'] ?? 'mailchimp'),
+      'with_coupons' => !empty($def['with_coupons']) ? 1 : 0,
+    ]]);
   }
 
   if ($action === 'api_campaign_send') {
@@ -3089,42 +3166,8 @@ if (str_starts_with($action, 'api_')) {
     $segRow = $seg->fetch();
     if (!$segRow) json_out(['ok' => false, 'error' => 'Segment missing'], 400);
 
-    $filters = parse_filters((string)$segRow['filters_json']);
-    $filters['marketing_opt_in_only'] = ($CONFIG['REQUIRE_MARKETING_OPT_IN'] ?? true) ? ($overrideOptIn ? false : true) : false;
-
-    $recipients = segment_query($pdo, $filters, 5000, 0);
-
     $pdo->beginTransaction();
-    $pdo->prepare("DELETE FROM campaign_recipients WHERE campaign_id = ?")->execute([$id]);
-
-    $ins = $pdo->prepare("INSERT INTO campaign_recipients(campaign_id, customer_id, phone, email, coupon_code, sent_at, status, payload_json) VALUES(?,?,?,?,?,?,?,?)");
-
-    $sentCount = 0;
-    foreach ($recipients as $c) {
-      $coupon = null;
-      if ($withCoupons && !empty($CONFIG['COUPON']['ENABLED'])) {
-        $coupon = (string)$CONFIG['COUPON']['PREFIX'].'-'.rand_code((int)$CONFIG['COUPON']['LENGTH']);
-      }
-      $payload = [
-        'message' => (string)$camp['message_template'],
-        'coupon_code' => $coupon,
-        'opt_in_required' => (bool)($CONFIG['REQUIRE_MARKETING_OPT_IN'] ?? true),
-        'opt_in_overridden' => (bool)$overrideOptIn,
-      ];
-      $ins->execute([
-        $id,
-        (int)$c['id'],
-        (string)$c['phone'],
-        (string)($c['email'] ?? ''),
-        $coupon,
-        null,
-        'queued',
-        json_encode($payload, JSON_UNESCAPED_SLASHES),
-      ]);
-      $sentCount++;
-    }
-
-    $pdo->prepare("UPDATE campaigns SET sent_count = ? WHERE id = ?")->execute([$sentCount, $id]);
+    $sentCount = campaign_queue_recipients($pdo, $CONFIG, $camp, $segRow, (bool)$overrideOptIn, (bool)$withCoupons);
     audit($pdo, $uid, 'campaigns.queue', ['id' => $id, 'count' => $sentCount, 'override_opt_in' => $overrideOptIn, 'with_coupons' => $withCoupons]);
 
     $pdo->commit();
@@ -3655,6 +3698,7 @@ $csrf = csrf_token();
     @keyframes skeletonSweep{to{transform:translateX(100%)}}
     .item{padding:12px 0;border-radius:0;border:0;background:#fff}
     .item + .item{border-top:1px solid var(--line2)}
+    .item.focusedItem{margin:8px -8px 0;padding:12px 8px;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));border-radius:var(--radius-card);background:var(--blueWash)}
     .item .name{font-weight:500;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
     .exportPanel{margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)}
@@ -3777,7 +3821,7 @@ $csrf = csrf_token();
     .modalCard{position:relative;width:min(420px,100%);border:1px solid var(--line);border-radius:var(--radius-modal);background:#fff;box-shadow:var(--shadow-md);padding:18px;display:grid;gap:12px}
     .modalActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
     .modalCard input{width:100%;padding:10px 12px}
-    .saleTile strong,.saleTile .name{font-size:17px;font-weight:500;line-height:1.18}
+    .saleTile strong,.saleTile .name{font-size:18px;font-weight:500;line-height:1.18}
     .cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
@@ -3938,6 +3982,7 @@ $csrf = csrf_token();
     campaigns: [],
     auditLogs: [],
     campaignExport: {},
+    focus_campaign_id: null,
     customerExport: { format: 'sms', segmentId: '', q: '', bom: false, override: false },
     loading: {},
     errors: {},
@@ -5292,8 +5337,10 @@ $csrf = csrf_token();
             <div class="h1">Campaign presets</div>
             <div class="muted">One click creates a reusable segment and draft export campaign.</div>
             <div class="row" style="flex-wrap:wrap;margin-top:8px">
-              <button class="btn small" data-preset="winback">Winback</button>
-              <button class="btn small" data-preset="vip">VIP</button>
+              <button class="btn small primary" data-preset="reward_top_spenders">Reward top spenders</button>
+              <button class="btn small primary" data-preset="win_back_lapsed">Win back lapsed</button>
+              <button class="btn small" data-preset="winback">Winback draft</button>
+              <button class="btn small" data-preset="vip">VIP draft</button>
               <button class="btn small" data-preset="new_customers">New customers</button>
               <button class="btn small" data-preset="product_fans">Product fans</button>
             </div>
@@ -5379,7 +5426,7 @@ $csrf = csrf_token();
             <div class="h1">Past campaigns</div>
             <div class="list">
               ${campaignsStatus || (state.campaigns.length===0 ? emptyState('campaigns', 'No campaigns yet', 'Create a campaign from a segment, then queue recipients for export.', `<button class="btn small primary" data-focus="#camp_msg">Write campaign</button>`) : state.campaigns.map(c=>`
-                <div class="item">
+                <div class="item ${Number(state.focus_campaign_id || 0) === Number(c.id) ? 'focusedItem' : ''}">
                   <div class="row" style="align-items:flex-start">
                     <div style="flex:1">
                       <div class="name" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
@@ -6010,10 +6057,26 @@ $csrf = csrf_token();
     qsa('[data-preset]').forEach(b=>b.onclick=async ()=>{
       try{
         const out = await api('api_campaign_preset_create', { method:'POST', body: { preset: b.dataset.preset }})
-        msg('camp_msgbox','ok',`Created preset segment #${out.segment_id} and campaign #${out.campaign_id}`)
+        const focusId = Number(out.focus_campaign_id || out.campaign_id || 0)
+        state.focus_campaign_id = focusId || null
+        if (focusId && out.export_format) campaignExportState(focusId).format = out.export_format
         await loadSegments()
         await loadCampaigns()
+        await loadDashboard()
+        if (focusId && Number(out.queued || 0) > 0) {
+          const ex = campaignExportState(focusId)
+          ex.loading = true
+          ex.error = ''
+          try {
+            ex.preview = await api('api_campaign_export_preview', { method:'POST', body: { id: focusId, format: ex.format || out.export_format || 'sms' }})
+          } catch (previewError) {
+            ex.error = previewError.message || 'Preview failed'
+          } finally {
+            ex.loading = false
+          }
+        }
         render()
+        msg('camp_msgbox','ok', Number(out.queued || 0) > 0 ? `Created and queued ${out.queued} recipients. Download the CSV from the highlighted campaign.` : `Created preset segment #${out.segment_id} and campaign #${out.campaign_id}`)
       }catch(e){
         msg('camp_msgbox','err', e.message || 'Preset failed')
       }
