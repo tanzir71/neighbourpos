@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P1.6] Added POS scanner-style SKU entry, keyboard shortcuts, cash change due, and mobile tap-target sizing.
 - [P1.5] Added section skeletons, retry cards, and a global connection banner for failed fetches.
 - Restored larger checkout product tile names while keeping the lighter UI font weight.
 - [P1.4] Added toast and modal prompt/confirm UI, replacing all SPA native alert/prompt/confirm usage.

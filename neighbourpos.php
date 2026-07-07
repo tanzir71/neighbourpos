@@ -1430,7 +1430,8 @@ if (str_starts_with($action, 'api_')) {
     $where = $includeInactive ? "WHERE 1=1" : "WHERE active = 1";
     $params = [];
     if ($q !== '') {
-      $where .= " AND name LIKE ?";
+      $where .= " AND (name LIKE ? OR sku LIKE ?)";
+      $params[] = '%'.$q.'%';
       $params[] = '%'.$q.'%';
     }
 
@@ -2582,6 +2583,10 @@ $csrf = csrf_token();
     .segmented button{height:36px;border:0;border-radius:var(--radius-control);background:var(--wash);font-size:13px;font-weight:500;color:#445064}
     .segmented button.active{color:var(--accent);background:var(--blueWash)}
     .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
+    .cashTender{display:grid;grid-template-columns:1fr 132px;gap:8px;align-items:end}
+    .cashTender label{display:block;color:var(--muted);font-size:11px;margin:0 0 6px}
+    .changeDue{border-radius:var(--radius-card);background:var(--greenWash);padding:10px;color:#145c2e;font-size:12px}
+    .changeDue strong{display:block;margin-top:3px;font-size:16px;color:#145c2e}
     .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:500}
     .switch{width:43px;height:24px;border-radius:999px;border:0;background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
@@ -2613,6 +2618,9 @@ $csrf = csrf_token();
       .navCopy{display:none}
       .checkoutShell{grid-template-columns:1fr}
       .cartPanel{position:static;max-height:none}
+      .btn,.btn.small,.iconBtn,.categoryTabs button,.segmented button,.tab,input,select,textarea{min-height:44px}
+      .iconBtn,input[type="checkbox"]{min-width:44px}
+      .lineControls .btn.small,.switch{min-width:44px;min-height:44px}
     }
     @media(max-width:620px){
       .app{padding:12px}
@@ -2620,7 +2628,7 @@ $csrf = csrf_token();
       .pageHeader{display:grid}
       .pageActions{justify-content:flex-start}
       .navin{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .saleToolbar,.compactFields,.tenderGrid{grid-template-columns:1fr}
+      .saleToolbar,.compactFields,.tenderGrid,.cashTender{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
       .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
@@ -2724,11 +2732,13 @@ $csrf = csrf_token();
       walkin: false,
       coupon: '',
       tipCents: 0,
+      amountTenderedCents: 0,
       payMethod: 'cash',
       paid: false,
       type: 'pickup',
       eta: 15
     },
+    lastTouchedProductId: null,
     lowStock: [],
     orders: [],
     orderSearch: [],
@@ -2929,6 +2939,13 @@ $csrf = csrf_token();
     const sym = state.store?.currency_symbol ?? '$'
     return sym + (cents/100).toFixed(2)
   }
+  function centsFromAmount(value){
+    const n = Number(String(value || '').replace(/[^\d.]/g, ''))
+    return Number.isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0
+  }
+  function amountValue(cents){
+    return cents ? (cents/100).toFixed(2) : ''
+  }
 
   function badge(status){
     const cls = {
@@ -2957,17 +2974,25 @@ $csrf = csrf_token();
     const found = state.cart.find(x=>x.product_id===p.id)
     if (found) found.qty += 1
     else state.cart.push({ product_id:p.id, name:p.name, price_cents:p.price_cents, qty:1, notes:'' })
+    state.lastTouchedProductId = p.id
     render()
   }
   function cartQty(pid, delta){
     const it = state.cart.find(x=>x.product_id===pid)
     if (!it) return
     it.qty = Math.max(1, it.qty + delta)
+    state.lastTouchedProductId = pid
     render()
   }
   function cartRemove(pid){
     state.cart = state.cart.filter(x=>x.product_id!==pid)
+    state.lastTouchedProductId = state.cart.length ? state.cart[state.cart.length - 1].product_id : null
     render()
+  }
+  function adjustLastTouchedLine(delta){
+    const it = state.cart.find(x=>x.product_id===state.lastTouchedProductId) || state.cart[state.cart.length - 1]
+    if (!it) return
+    cartQty(it.product_id, delta)
   }
 
   function cartTotals(){
@@ -3119,6 +3144,21 @@ $csrf = csrf_token();
     return state.products.filter(p=>state.categoryFilter === 'All' || (p.category || 'Uncategorized') === state.categoryFilter)
   }
 
+  async function addExactSkuFromSearch(value){
+    const code = String(value || '').trim()
+    if (!code) return false
+    await loadProducts(code, false, {renderStart:false})
+    const match = state.products.find(p=>String(p.sku || '').trim().toLowerCase() === code.toLowerCase())
+    if (!match || Number(match.stock_qty) <= 0) {
+      render()
+      return false
+    }
+    state.pos.q = ''
+    state.categoryFilter = 'All'
+    cartAdd(match)
+    return true
+  }
+
   function customerSummaryHtml(){
     const found = state.attachedCustomer?.customer
     if (state.pos.walkin) {
@@ -3193,6 +3233,7 @@ $csrf = csrf_token();
     const totals = cartTotals()
     const products = visibleCheckoutProducts()
     const count = state.cart.reduce((sum,it)=>sum+it.qty,0)
+    const changeDue = Math.max(0, state.pos.amountTenderedCents - totals.total)
     const productGridStatus = regionState('products', Array.from({length:8},()=>'<div class="skeletonTile"></div>').join(''), 'Products could not load', 'Retry the product catalog.')
 
     return `
@@ -3270,6 +3311,16 @@ $csrf = csrf_token();
               <button type="button" class="${state.pos.payMethod === method ? 'active' : ''}" data-paymethod="${method}">${method[0].toUpperCase()+method.slice(1)}</button>
             `).join('')}
           </div>
+
+          ${state.pos.payMethod === 'cash' ? `
+            <div class="cashTender">
+              <div>
+                <label for="pos_amount_received">Cash received</label>
+                <input id="pos_amount_received" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" value="${esc(amountValue(state.pos.amountTenderedCents))}">
+              </div>
+              <div class="changeDue">Change due<strong id="change_due">${money(changeDue)}</strong></div>
+            </div>
+          ` : ``}
 
           <div class="paidRow">
             <span>Mark payment received</span>
@@ -3881,6 +3932,72 @@ $csrf = csrf_token();
     window.setInterval(updateConnectionBanner, 5000)
   }
 
+  let keyboardShortcutsReady = false
+  function isTypingTarget(el){
+    if (!el) return false
+    return ['INPUT','TEXTAREA','SELECT'].includes(el.tagName) || el.isContentEditable
+  }
+  function setupKeyboardShortcuts(){
+    if (keyboardShortcutsReady) return
+    keyboardShortcutsReady = true
+    document.addEventListener('keydown', e=>{
+      if (state.tab !== 'pos') return
+      const typing = isTypingTarget(e.target)
+      if (!typing && e.key === '/') {
+        e.preventDefault()
+        qs('#pos_q')?.focus()
+        return
+      }
+      if (!typing && e.key === 'F2') {
+        e.preventDefault()
+        placeCurrentOrder()
+        return
+      }
+      if (!typing && e.key === '+') {
+        e.preventDefault()
+        adjustLastTouchedLine(1)
+        return
+      }
+      if (!typing && e.key === '-') {
+        e.preventDefault()
+        adjustLastTouchedLine(-1)
+      }
+    })
+  }
+
+  async function placeCurrentOrder(){
+    if (!state.cart.length) return
+    try{
+      const walkin = state.pos.walkin ? 1 : 0
+      const payload = {
+        items: state.cart.map(it=>({ product_id: it.product_id, qty: it.qty, notes: it.notes })),
+        order_type: state.pos.type || 'pickup',
+        expected_eta_minutes: parseInt(state.pos.eta||'15',10)||15,
+        tip_cents: parseInt(state.pos.tipCents||'0',10)||0,
+        coupon_code: state.pos.coupon || '',
+        payment_method: state.pos.payMethod || 'cash',
+        payment_received: state.pos.paid ? 1 : 0,
+        walkin,
+        phone: state.pos.phone || '',
+        customer_name: state.pos.name || '',
+        customer_address: state.pos.address || '',
+        marketing_opt_in: (state.pos.optIn || '0') === '1' ? 1 : 0
+      }
+      const out = await api('api_orders_create', { method:'POST', body: payload })
+      state.cart = []
+      state.lastTouchedProductId = null
+      state.pos.coupon = ''
+      state.pos.tipCents = 0
+      state.pos.amountTenderedCents = 0
+      msg('pos_msg','ok',`Order placed: ${out.order_code}`)
+      await loadOrders('active')
+      await loadDashboard()
+      render()
+    }catch(e){
+      msg('pos_msg','err', e.message || 'Failed to place order')
+    }
+  }
+
   function bind(){
     const navToggle = qs('#navToggle')
     if (navToggle) navToggle.onclick = () => setAppSidebarCollapsed(!qs('#appShell').classList.contains('navCollapsed'))
@@ -3898,6 +4015,12 @@ $csrf = csrf_token();
       state.categoryFilter = 'All'
       await loadProducts(state.pos.q, false, {renderStart:false})
       render()
+    }
+    if (posQ) posQ.onkeydown = async e => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      state.pos.q = posQ.value
+      await addExactSkuFromSearch(state.pos.q)
     }
 
     qsa('[data-poscat]').forEach(b=>b.onclick=()=>{
@@ -3946,6 +4069,12 @@ $csrf = csrf_token();
       state.pos.tipCents = Math.max(0, parseInt(posTip.value || '0', 10) || 0)
       render()
     }
+    const posReceived = qs('#pos_amount_received')
+    if (posReceived) posReceived.oninput = () => {
+      state.pos.amountTenderedCents = centsFromAmount(posReceived.value)
+      const due = qs('#change_due')
+      if (due) due.textContent = money(Math.max(0, state.pos.amountTenderedCents - cartTotals().total))
+    }
     const posType = qs('#pos_type')
     if (posType) posType.onchange = () => { state.pos.type = posType.value }
     const posEta = qs('#pos_eta')
@@ -3977,35 +4106,7 @@ $csrf = csrf_token();
     })
 
     const place = qs('#pos_place')
-    if (place) place.onclick = async () => {
-      try{
-        const walkin = state.pos.walkin ? 1 : 0
-        const payload = {
-          items: state.cart.map(it=>({ product_id: it.product_id, qty: it.qty, notes: it.notes })),
-          order_type: state.pos.type || 'pickup',
-          expected_eta_minutes: parseInt(state.pos.eta||'15',10)||15,
-          tip_cents: parseInt(state.pos.tipCents||'0',10)||0,
-          coupon_code: state.pos.coupon || '',
-          payment_method: state.pos.payMethod || 'cash',
-          payment_received: state.pos.paid ? 1 : 0,
-          walkin,
-          phone: state.pos.phone || '',
-          customer_name: state.pos.name || '',
-          customer_address: state.pos.address || '',
-          marketing_opt_in: (state.pos.optIn || '0') === '1' ? 1 : 0
-        }
-        const out = await api('api_orders_create', { method:'POST', body: payload })
-        state.cart = []
-        state.pos.coupon = ''
-        state.pos.tipCents = 0
-        msg('pos_msg','ok',`Order placed: ${out.order_code}`)
-        await loadOrders('active')
-        await loadDashboard()
-        render()
-      }catch(e){
-        msg('pos_msg','err', e.message || 'Failed to place order')
-      }
-    }
+    if (place) place.onclick = placeCurrentOrder
 
     const ordRef = qs('#orders_refresh')
     if (ordRef) ordRef.onclick = async ()=>{ await loadOrders(qs('#orders_filter')?.value || 'active'); render() }
@@ -4312,6 +4413,7 @@ $csrf = csrf_token();
   async function boot(){
     setAppSidebarCollapsed(localStorage.getItem('neighbourposSidebarCollapsed') === '1')
     setupConnectionWatch()
+    setupKeyboardShortcuts()
     await loadMe()
     const initial = (window.location.hash || '#pos').slice(1)
     await setTab(['dashboard','pos','orders','inventory','crm','campaigns','reports','admin'].includes(initial) ? initial : 'pos')

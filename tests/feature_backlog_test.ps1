@@ -87,6 +87,13 @@ Assert-SourceContains $source 'retryCard' 'Production inline retry cards are mis
 Assert-SourceContains $source 'data-retry' 'Production retry action binding is missing'
 Assert-SourceContains $source 'offlineBanner' 'Production offline banner is missing'
 Assert-SourceContains $source 'Connection lost' 'Production offline warning copy is missing'
+Assert-SourceContains $source 'addExactSkuFromSearch' 'Production exact-SKU scan helper is missing'
+Assert-SourceContains $source 'setupKeyboardShortcuts' 'Production POS keyboard shortcuts are missing'
+Assert-SourceContains $source 'lastTouchedProductId' 'Production last-touched cart line state is missing'
+Assert-SourceContains $source 'pos_amount_received' 'Production cash received input is missing'
+Assert-SourceContains $source 'change_due' 'Production change-due display is missing'
+Assert-SourceContains $source 'min-height:44px' 'Production mobile tap target sizing is missing'
+Assert-SourceContains $source 'sku LIKE' 'Production product search does not include SKU matching'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'
