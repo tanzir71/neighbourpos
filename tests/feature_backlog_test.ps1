@@ -39,6 +39,9 @@ if (-not $landingVersionMatch.Success) { throw 'Landing APP_VERSION constant is 
 if ($phpVersionMatch.Groups[1].Value -ne $landingVersionMatch.Groups[1].Value) {
   throw "Landing version badge does not match production APP_VERSION"
 }
+if ($phpVersionMatch.Groups[1].Value -ne '0.4.0') {
+  throw "APP_VERSION should be bumped to 0.4.0 for the release sweep"
+}
 
 $demoProductSeedCount = ([regex]::Matches($demo, 'sku:"[^"]+"')).Count
 $demoCustomerSeedCount = ([regex]::Matches($demo, 'phone:"555-')).Count
@@ -74,6 +77,11 @@ Assert-SourceContains $source "api_password_change" 'Password change API is miss
 Assert-SourceContains $source "api_admin_password_reset" 'Admin password reset API is missing'
 Assert-SourceContains $source "VACUUM INTO" 'Database backup should use a SQLite snapshot'
 Assert-SourceContains $setup "PRAGMA integrity_check" 'SETUP restore docs should include backup integrity check'
+Assert-SourceContains $readme "Credit ledger" 'README should mention the customer credit ledger'
+Assert-SourceContains $readme "Mailchimp" 'README should mention export profiles such as Mailchimp'
+Assert-SourceContains $readme "Brevo" 'README should mention export profiles such as Brevo'
+Assert-SourceContains $readme "Today.s close" 'README should mention the end-of-day close report'
+Assert-SourceContains $readme "snapshot backup" 'README should mention snapshot backup ownership'
 Assert-SourceContains $source "default_country_code" 'Store default country code setting is missing'
 Assert-SourceContains $source "function normalize_e164" 'E.164 phone normalizer is missing'
 Assert-SourceContains $source "api_dev_selftest" 'Developer self-test route is missing'

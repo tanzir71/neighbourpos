@@ -15,7 +15,7 @@ README (Deployment - 10 lines)
 
 declare(strict_types=1);
 
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 const PRODUCT_IMPORT_MAX_ROWS = 500;
 
 /* =========================

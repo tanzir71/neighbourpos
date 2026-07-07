@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P5.3] Refreshed README feature claims, bumped the app/landing version to 0.4.0, and reran final static-page and fresh-install verification.
 - [P5.2] Switched admin database backup downloads to `VACUUM INTO` SQLite snapshots and documented restore/integrity checks.
 - [P5.1] Expanded the admin self-test endpoint with E.164 checks, in-memory segment filter fixtures, and export-profile header assertions.
 - [P4.5] Added a printable Reports "Today's close" card with completed-order gross, payment-method totals, coupons redeemed, and new customer counts.
