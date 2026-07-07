@@ -1593,9 +1593,68 @@ function sales_report_data(PDO $pdo, string $fromTs, string $toTs): array {
       'revenue_cents' => (int)$sum['revenue_cents'],
       'aov_cents' => (int)round((float)$sum['aov_cents']),
     ],
+    'today_close' => sales_report_close_summary($pdo, gmdate('Y-m-d').' 00:00:00', gmdate('Y-m-d').' 23:59:59'),
     'top_products' => $top->fetchAll(),
     'category_mix' => $cat->fetchAll(),
     'daily' => $daily,
+  ];
+}
+
+function sales_report_close_summary(PDO $pdo, string $fromTs, string $toTs): array {
+  $methods = [
+    'cash' => ['order_count' => 0, 'gross_cents' => 0],
+    'card' => ['order_count' => 0, 'gross_cents' => 0],
+    'mobile' => ['order_count' => 0, 'gross_cents' => 0],
+    'credit' => ['order_count' => 0, 'gross_cents' => 0],
+  ];
+
+  $byMethod = $pdo->prepare("
+    SELECT payment_method, COUNT(*) AS order_count, COALESCE(SUM(total_cents),0) AS gross_cents
+    FROM orders
+    WHERE status = 'completed' AND created_at >= ? AND created_at <= ?
+    GROUP BY payment_method
+  ");
+  $byMethod->execute([$fromTs, $toTs]);
+
+  $orderCount = 0;
+  $gross = 0;
+  foreach ($byMethod->fetchAll() as $row) {
+    $method = (string)$row['payment_method'];
+    $bucket = ($method === 'online' || $method === 'mobile') ? 'mobile' : $method;
+    if (!isset($methods[$bucket])) $bucket = 'cash';
+    $count = (int)$row['order_count'];
+    $amount = (int)$row['gross_cents'];
+    $methods[$bucket]['order_count'] += $count;
+    $methods[$bucket]['gross_cents'] += $amount;
+    $orderCount += $count;
+    $gross += $amount;
+  }
+
+  $coupons = $pdo->prepare("
+    SELECT COUNT(*) AS c
+    FROM orders
+    WHERE status = 'completed'
+      AND created_at >= ? AND created_at <= ?
+      AND coupon_code_text IS NOT NULL
+      AND TRIM(coupon_code_text) <> ''
+  ");
+  $coupons->execute([$fromTs, $toTs]);
+
+  $customers = $pdo->prepare("
+    SELECT COUNT(*) AS c
+    FROM customers
+    WHERE created_at >= ? AND created_at <= ?
+  ");
+  $customers->execute([$fromTs, $toTs]);
+
+  return [
+    'from' => substr($fromTs, 0, 10),
+    'to' => substr($toTs, 0, 10),
+    'order_count' => $orderCount,
+    'gross_cents' => $gross,
+    'payment_methods' => $methods,
+    'coupons_redeemed' => (int)($coupons->fetch()['c'] ?? 0),
+    'new_customers' => (int)($customers->fetch()['c'] ?? 0),
   ];
 }
 
@@ -3734,6 +3793,16 @@ $csrf = csrf_token();
     .kDelta{display:inline-flex;align-items:center;min-height:22px;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;background:var(--wash);color:var(--muted);white-space:nowrap}
     .kDelta.up{background:var(--greenWash);color:var(--good)}
     .kDelta.down{background:var(--redWash);color:var(--bad)}
+    .closeCard{display:grid;gap:12px}
+    .closeHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .closeMetrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .closeMetric{border-radius:var(--radius-control);background:var(--wash);padding:10px}
+    .closeMetric strong{display:block;font-size:20px;line-height:1.1}
+    .closeMetric span{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+    .closeRows{display:grid;gap:0;border-top:1px solid var(--line2)}
+    .closeRow{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line2);font-size:13px}
+    .closeRow span{color:var(--muted);font-size:12px}
+    .closeRow strong{text-align:right}
     .sparklineWrap{margin-top:14px;border-radius:var(--radius-card);background:#f8fafc;border:1px solid var(--line);padding:12px}
     .sparklineMeta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--muted);font-size:12px}
     .sparkline{display:block;width:100%;height:150px;overflow:visible}
@@ -3852,6 +3921,26 @@ $csrf = csrf_token();
       .saleToolbar,.compactFields,.tenderGrid,.cashTender{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
       .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @page{size:80mm auto;margin:4mm}
+    @media print{
+      html,body{width:80mm;margin:0;background:#fff}
+      body{font-size:11px;color:#111}
+      .appShell{display:block;min-height:0}
+      .nav,.topbar,.pageHeader,.card:not(.closeCard),.noPrint{display:none!important}
+      .app{width:72mm;max-width:none;margin:0 auto;padding:0}
+      .grid{display:block}
+      .closeCard{display:block;border:0;border-radius:0;box-shadow:none;padding:0;width:72mm;background:#fff}
+      .closeHead{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:8px}
+      .closeCard .h1{font-size:14px}
+      .closeCard .muted{font-size:10px;color:#222}
+      .closeMetrics{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+      .closeMetric{border-radius:0;background:#fff;border:1px solid #ddd;padding:6px}
+      .closeMetric strong{font-size:13px}
+      .closeMetric span{font-size:9.5px;color:#222}
+      .closeRows{border-top:1px solid #ddd}
+      .closeRow{font-size:10.5px;padding:5px 0;border-bottom:1px solid #ddd}
+      .closeRow span{font-size:9.5px;color:#222}
     }
   </style>
 </head>
@@ -5447,6 +5536,44 @@ $csrf = csrf_token();
     `
   }
 
+  function closePaymentRows(close){
+    const methods = close?.payment_methods || {}
+    const labels = [
+      ['cash', 'Cash'],
+      ['card', 'Card'],
+      ['mobile', 'Mobile/online'],
+      ['credit', 'On credit']
+    ]
+    return labels.map(([key,label])=>{
+      const row = methods[key] || { order_count: 0, gross_cents: 0 }
+      return `<div class="closeRow"><div><strong>${esc(label)}</strong><br><span>${esc(row.order_count || 0)} orders</span></div><strong>${fmtMoney(row.gross_cents || 0)}</strong></div>`
+    }).join('')
+  }
+
+  function renderCloseCard(close){
+    const from = close?.from || state.reportFrom || ''
+    const to = close?.to || state.reportTo || ''
+    const range = from === to ? from : `${from} - ${to}`
+    return `
+      <div class="card closeCard" id="today_close_card">
+        <div class="closeHead">
+          <div>
+            <div class="h1">Today's close</div>
+            <div class="muted">${esc(range)} / completed orders</div>
+          </div>
+          <button class="btn small ghost noPrint" type="button" id="close_print">Print close</button>
+        </div>
+        <div class="closeMetrics">
+          <div class="closeMetric"><strong>${fmtMoney(close?.gross_cents || 0)}</strong><span>Gross</span></div>
+          <div class="closeMetric"><strong>${esc(close?.order_count || 0)}</strong><span>Orders</span></div>
+          <div class="closeMetric"><strong>${esc(close?.coupons_redeemed || 0)}</strong><span>Coupons redeemed</span></div>
+          <div class="closeMetric"><strong>${esc(close?.new_customers || 0)}</strong><span>New customers</span></div>
+        </div>
+        <div class="closeRows">${closePaymentRows(close)}</div>
+      </div>
+    `
+  }
+
   function renderReports(){
     const r = state.report || { summary:{}, top_products:[], category_mix:[] }
     const exportHref = `?action=sales_report_export&from=${encodeURIComponent(state.reportFrom || '')}&to=${encodeURIComponent(state.reportTo || '')}`
@@ -5454,6 +5581,7 @@ $csrf = csrf_token();
     return `
       ${pageHeader('Reports', 'Review completed-order revenue and export owner-friendly CSV reports.', `<a class="btn primary" href="${exportHref}">Export CSV</a>`)}
       <div class="grid">
+        ${renderCloseCard(r.today_close || {})}
         <div class="card">
           <div class="h1">Sales reports</div>
           <div class="muted">Completed-order revenue by date, category, and product.</div>
@@ -6175,6 +6303,8 @@ $csrf = csrf_token();
         $view.insertAdjacentHTML('afterbegin', `<div class="errbox">${esc(e.message || 'Report failed')}</div>`)
       }
     }
+    const closePrint = qs('#close_print')
+    if (closePrint) closePrint.onclick = () => window.print()
 
     const auditRefresh = qs('#audit_refresh')
     if (auditRefresh) auditRefresh.onclick = async ()=>{
