@@ -210,6 +210,30 @@ function normalize_phone(string $phone): string {
   return $p;
 }
 
+function normalize_country_code(string $countryCode): string {
+  $cc = preg_replace('/[^\d\+]/', '', trim($countryCode));
+  if ($cc === '') return '+1';
+  if (str_starts_with($cc, '00')) $cc = '+'.substr($cc, 2);
+  if ($cc[0] !== '+') $cc = '+'.$cc;
+  if (!preg_match('/^\+[1-9][0-9]{0,3}$/', $cc)) return '+1';
+  return $cc;
+}
+
+function normalize_e164(string $phone, string $countryCode): ?string {
+  $p = preg_replace('/[\s\-\(\)\.]/', '', trim($phone));
+  $p = preg_replace('/[^\d\+]/', '', $p ?? '');
+  if ($p === '') return null;
+  if (str_starts_with($p, '00')) $p = '+'.substr($p, 2);
+  if ($p[0] !== '+') {
+    $digits = preg_replace('/\D/', '', $p);
+    if (str_starts_with($digits, '0')) $digits = substr($digits, 1);
+    $p = normalize_country_code($countryCode).$digits;
+  } else {
+    $p = '+'.preg_replace('/\D/', '', $p);
+  }
+  return preg_match('/^\+[1-9][0-9]{6,14}$/', $p) ? $p : null;
+}
+
 function apply_env_overrides(array &$CONFIG, string $envPath): void {
   if (!is_file($envPath)) return;
   $raw = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -518,6 +542,7 @@ function init_db(PDO $pdo): void {
       accent TEXT NOT NULL DEFAULT '#2563eb',
       currency TEXT NOT NULL DEFAULT 'USD',
       currency_symbol TEXT NOT NULL DEFAULT '$',
+      default_country_code TEXT NOT NULL DEFAULT '+1',
       created_at TEXT NOT NULL
     );
   ");
@@ -671,6 +696,7 @@ function init_db(PDO $pdo): void {
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_order_items_category ON order_items(category);");
   $pdo->exec("CREATE INDEX IF NOT EXISTS idx_campaign_recipients_campaign ON campaign_recipients(campaign_id);");
   ensure_column($pdo, 'orders', 'coupon_code_text', 'TEXT');
+  ensure_column($pdo, 'stores', 'default_country_code', "TEXT NOT NULL DEFAULT '+1'");
   ensure_column($pdo, 'campaign_recipients', 'redeemed_order_id', 'INTEGER');
   ensure_column($pdo, 'campaign_recipients', 'redeemed_at', 'TEXT');
 
@@ -936,7 +962,32 @@ function current_store(PDO $pdo, array $CONFIG): array {
     'accent' => (string)($CONFIG['ACCENT'] ?? '#2563eb'),
     'currency' => (string)($CONFIG['CURRENCY'] ?? 'USD'),
     'currency_symbol' => (string)($CONFIG['CURRENCY_SYMBOL'] ?? '$'),
+    'default_country_code' => '+1',
   ];
+}
+
+function dev_selftest_results(): array {
+  $cases = [
+    ['phone' => '01712-345678', 'country_code' => '+880', 'expected' => '+8801712345678'],
+    ['phone' => '(555) 010-1234', 'country_code' => '+1', 'expected' => '+15550101234'],
+    ['phone' => 'garbage', 'country_code' => '+1', 'expected' => null],
+  ];
+  $tests = [];
+  $failures = 0;
+  foreach ($cases as $case) {
+    $actual = normalize_e164((string)$case['phone'], (string)$case['country_code']);
+    $passed = $actual === $case['expected'];
+    if (!$passed) $failures++;
+    $tests[] = [
+      'name' => 'normalize_e164',
+      'phone' => $case['phone'],
+      'country_code' => $case['country_code'],
+      'expected' => $case['expected'],
+      'actual' => $actual,
+      'passed' => $passed,
+    ];
+  }
+  return ['ok' => $failures === 0, 'data' => ['tests' => $tests, 'failures' => $failures]];
 }
 
 function report_date_bounds(array $input): array {
@@ -1462,6 +1513,11 @@ if ($action === 'cron_campaigns') {
    API actions (JSON)
    ========================= */
 
+if ($action === 'api_dev_selftest' && PHP_SAPI === 'cli') {
+  $result = dev_selftest_results();
+  json_out($result, $result['ok'] ? 200 : 500);
+}
+
 if (str_starts_with($action, 'api_')) {
   require_login();
   $uid = (int)($_SESSION['uid'] ?? 0);
@@ -1483,6 +1539,12 @@ if (str_starts_with($action, 'api_')) {
       ],
       'csrf' => csrf_token(),
     ]]);
+  }
+
+  if ($action === 'api_dev_selftest') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $result = dev_selftest_results();
+    json_out($result, $result['ok'] ? 200 : 500);
   }
 
   if ($action === 'api_today_snapshot') {
@@ -1553,10 +1615,11 @@ if (str_starts_with($action, 'api_')) {
     $sym = trim((string)($body['currency_symbol'] ?? $store['currency_symbol']));
     if ($sym === '') $sym = (string)$store['currency_symbol'];
     $sym = substr($sym, 0, 4);
+    $countryCode = normalize_country_code((string)($body['default_country_code'] ?? ($store['default_country_code'] ?? '+1')));
 
-    $st = $pdo->prepare("UPDATE stores SET name=?, enable_delivery=?, tax_rate=?, accent=?, currency=?, currency_symbol=? WHERE id=?");
-    $st->execute([$name, $enableDelivery, $tax, $accentOk, (string)$store['currency'], $sym, (int)$store['id']]);
-    audit($pdo, $uid, 'store.update', ['name' => $name, 'enable_delivery' => $enableDelivery, 'tax_rate' => $tax, 'accent' => $accentOk]);
+    $st = $pdo->prepare("UPDATE stores SET name=?, enable_delivery=?, tax_rate=?, accent=?, currency=?, currency_symbol=?, default_country_code=? WHERE id=?");
+    $st->execute([$name, $enableDelivery, $tax, $accentOk, (string)$store['currency'], $sym, $countryCode, (int)$store['id']]);
+    audit($pdo, $uid, 'store.update', ['name' => $name, 'enable_delivery' => $enableDelivery, 'tax_rate' => $tax, 'accent' => $accentOk, 'default_country_code' => $countryCode]);
     json_out(['ok' => true]);
   }
 
@@ -4154,6 +4217,7 @@ $csrf = csrf_token();
               <div class="row" style="flex-wrap:wrap">
                 <div class="field"><label>Store name</label><input id="store_name" value="${esc(state.store?.name || '')}"></div>
                 <div class="field"><label>Currency symbol</label><input id="store_symbol" maxlength="4" value="${esc(state.store?.currency_symbol || '')}"></div>
+                <div class="field"><label>Default country code</label><input id="store_country_code" value="${esc(state.store?.default_country_code || '+1')}" placeholder="+1"></div>
               </div>
               <div class="row" style="flex-wrap:wrap">
                 <div class="field"><label>Tax rate</label><input id="store_tax" type="number" min="0" step="0.001" value="${esc(state.store?.tax_rate ?? 0)}"></div>
@@ -4685,6 +4749,7 @@ $csrf = csrf_token();
         await api('api_settings_update', { method:'POST', body: {
           name: qs('#store_name')?.value || state.store?.name || '',
           currency_symbol: qs('#store_symbol')?.value || state.store?.currency_symbol || '',
+          default_country_code: qs('#store_country_code')?.value || state.store?.default_country_code || '+1',
           tax_rate: Number(qs('#store_tax')?.value || state.store?.tax_rate || 0),
           accent: qs('#store_accent')?.value || state.store?.accent || '#2563eb',
           enable_delivery: (qs('#store_delivery')?.value || '1') === '1' ? 1 : 0
