@@ -2424,13 +2424,17 @@ $csrf = csrf_token();
       --amberWash:#fff5dc;
       --redWash:#fff0ee;
       --violetWash:#f1ecff;
-      --shadow:none;
+      --shadow-sm:0 1px 2px rgb(9 11 16 / .06);
+      --shadow-md:0 4px 12px rgb(9 11 16 / .08);
+      --radius-control:6px;
+      --radius-card:10px;
+      --radius-modal:14px;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
     a{color:inherit}
     button,input,select,textarea{font-family:inherit}
-    input,select,textarea{border:0;border-radius:7px;background:var(--wash);color:var(--txt);outline:none}
+    input,select,textarea{border:0;border-radius:var(--radius-control);background:var(--wash);color:var(--txt);outline:none}
     input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
     .iconSprite{position:absolute;width:0;height:0;overflow:hidden}
     .icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -2439,38 +2443,38 @@ $csrf = csrf_token();
     .app{max-width:1360px;width:100%;margin:0 auto;padding:14px 18px 32px;min-width:0}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none;flex:0 0 auto}
+    .brandMark{width:40px;height:40px;border-radius:var(--radius-card);display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);flex:0 0 auto}
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
     .title{font-weight:700;font-size:15px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
-    .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--muted);font-weight:500}
+    .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:var(--radius-control);font-size:12px;color:var(--muted);font-weight:500}
     .grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
-    .card{background:var(--card);border:0;border-radius:8px;padding:14px;box-shadow:none}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-sm)}
     .h1{font-size:14px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center}
     .row > *{flex:1}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
-    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-size:13px;outline:none}
+    .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:var(--radius-control);border:0;background:var(--wash);color:var(--txt);font-size:13px;outline:none}
     .field textarea{min-height:70px;resize:vertical}
     .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
 
-    .btn{padding:9px 11px;border-radius:7px;border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:13px;font-weight:500}
+    .btn{padding:9px 11px;border-radius:var(--radius-control);border:0;background:var(--wash);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:13px;font-weight:500}
     .btn.primary{background:var(--accent);color:#fff}
     .btn.danger{background:var(--redWash);color:var(--bad)}
     .btn.ghost{background:var(--wash)}
     .btn:active{transform:translateY(1px)}
-    .btn.small{padding:8px 10px;border-radius:7px;font-size:12px}
+    .btn.small{padding:8px 10px;border-radius:var(--radius-control);font-size:12px}
     .btn:disabled{opacity:.5}
 
-    .nav{position:sticky;top:0;height:100vh;background:#fff;z-index:10;padding:14px 10px;display:flex;flex-direction:column;gap:14px}
+    .nav{position:sticky;top:0;height:100vh;background:#fff;border-right:1px solid var(--line);box-shadow:var(--shadow-sm);z-index:10;padding:14px 10px;display:flex;flex-direction:column;gap:14px}
     .navHead{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .navBrandText{min-width:0}
     .navin{display:grid;gap:4px;padding:0;overflow:visible}
-    .tab{--nav-bg:var(--wash);--nav-color:var(--muted);min-width:0;display:grid;grid-template-columns:32px 1fr;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;border:0;background:transparent;font-size:13px;color:var(--muted);font-weight:500;text-align:left}
+    .tab{--nav-bg:var(--wash);--nav-color:var(--muted);min-width:0;display:grid;grid-template-columns:32px 1fr;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--radius-card);border:0;background:transparent;font-size:13px;color:var(--muted);font-weight:500;text-align:left}
     .tab[data-tab="pos"]{--nav-bg:var(--blueWash);--nav-color:var(--accent)}
     .tab[data-tab="dashboard"]{--nav-bg:var(--greenWash);--nav-color:var(--good)}
     .tab[data-tab="orders"]{--nav-bg:var(--amberWash);--nav-color:var(--warn)}
@@ -2479,13 +2483,13 @@ $csrf = csrf_token();
     .tab[data-tab="campaigns"]{--nav-bg:#edf8e8;--nav-color:#4d7c0f}
     .tab[data-tab="reports"]{--nav-bg:var(--redWash);--nav-color:var(--bad)}
     .tab[data-tab="admin"]{--nav-bg:#eef0f4;--nav-color:#4b5563}
-    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center}
+    .navIcon{width:32px;height:32px;border-radius:var(--radius-card);background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center}
     .navIcon .icon{width:17px;height:17px}
     .tab:hover,.tab.active{background:var(--nav-bg);color:var(--nav-color)}
     .tab.active .navIcon{background:#fff}
-    .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+    .sideToggle{width:34px;height:34px;border:0;border-radius:var(--radius-card);background:var(--wash);color:var(--muted);font-weight:700;display:grid;place-items:center;flex:0 0 auto}
     .sideToggle:hover{background:var(--blueWash);color:var(--accent)}
-    .navCopy{margin-top:auto;border-radius:8px;background:var(--wash);padding:12px;color:var(--muted);font-size:12px;line-height:1.45}
+    .navCopy{margin-top:auto;border-radius:var(--radius-card);background:var(--wash);padding:12px;color:var(--muted);font-size:12px;line-height:1.45}
     .appShell.navCollapsed .nav{align-items:center}
     .appShell.navCollapsed .navHead{display:grid;justify-items:center}
     .appShell.navCollapsed .navBrandText,.appShell.navCollapsed .navLabel,.appShell.navCollapsed .navCopy{display:none}
@@ -2504,36 +2508,37 @@ $csrf = csrf_token();
     .b-out{background:var(--violetWash)}
     .b-done{background:#eef0f4}
     .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
-    .k{padding:12px;border-radius:8px;border:0;background:#fff}
+    .k{padding:14px;border-radius:var(--radius-card);border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-sm)}
     .k .v{font-weight:700;font-size:16px}
     .k .l{color:var(--muted);font-size:11px;margin-top:4px}
-    .warnbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--amberWash);color:#744800;font-size:12px;line-height:1.35}
-    .okbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--greenWash);color:#145c2e;font-size:12px;line-height:1.35}
-    .errbox{margin-top:10px;padding:10px;border-radius:8px;border:0;background:var(--redWash);color:#8a1f17;font-size:12px;line-height:1.35}
+    .warnbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--amberWash);color:#744800;font-size:12px;line-height:1.35}
+    .okbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--greenWash);color:#145c2e;font-size:12px;line-height:1.35}
+    .errbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--redWash);color:#8a1f17;font-size:12px;line-height:1.35}
     .checkoutShell{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
-    .stationPanel,.cartPanel{background:#fff;border:0;border-radius:8px;box-shadow:none}
+    .stationPanel,.cartPanel{background:#fff;border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-sm)}
     .stationPanel{padding:16px;min-width:0}
     .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
     .saleSearch{height:42px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
-    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;display:grid;place-items:center}
+    .iconBtn{width:42px;height:42px;border:0;border-radius:var(--radius-control);background:var(--wash);color:#1f2a3d;display:grid;place-items:center}
     .iconBtn .icon{width:20px;height:20px}
-    .categoryTabs{display:flex;gap:4px;border:0;border-radius:8px;overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
-    .categoryTabs button{min-width:104px;height:34px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:13px;font-weight:500}
+    .categoryTabs{display:flex;gap:4px;border:0;border-radius:var(--radius-card);overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
+    .categoryTabs button{min-width:104px;height:34px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--muted);font-size:13px;font-weight:500}
     .categoryTabs button:last-child{border-right:0}
     .categoryTabs button.active{background:var(--accent);color:#fff}
     .saleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
-    .saleTile{min-height:150px;padding:12px;align-content:space-between;text-align:left;transition:background .12s ease}
-    .saleTile:hover{background:var(--blueWash)}
-    .productVisual{width:48px;height:48px;border-radius:8px;display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:700}
+    .saleTile{min-height:150px;padding:12px;align-content:space-between;text-align:left;border:1px solid var(--line);border-radius:var(--radius-card);background:#fff;box-shadow:var(--shadow-sm);transition:background .12s ease,transform .12s ease,box-shadow .12s ease}
+    .saleTile:hover{background:var(--blueWash);transform:translateY(-1px);box-shadow:var(--shadow-md)}
+    .saleTile:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
+    .productVisual{width:48px;height:48px;border-radius:var(--radius-card);display:grid;place-items:center;background:#eef5ff;color:var(--accent);font-size:18px;font-weight:700}
     .productMeta{display:grid;gap:4px;margin-top:10px;justify-items:start}
     .stockText{font-size:12px;font-weight:500;color:var(--good)}
     .stockText.low{color:var(--warn)}
     .cartTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .cartTitle .h1{font-size:18px}
     .customerLookup{display:grid;gap:8px}
-    .customerChip{border:0;border-radius:8px;background:var(--greenWash);padding:10px;display:flex;gap:10px;align-items:center}
-    .avatar{width:38px;height:38px;border-radius:8px;background:var(--good);color:#fff;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+    .customerChip{border:0;border-radius:var(--radius-card);background:var(--greenWash);padding:10px;display:flex;gap:10px;align-items:center}
+    .avatar{width:38px;height:38px;border-radius:var(--radius-card);background:var(--good);color:#fff;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
     .chipMain{min-width:0;flex:1}
     .chipMain strong{display:block;font-size:13px;font-weight:500}
     .chipMain span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
@@ -2547,18 +2552,18 @@ $csrf = csrf_token();
     .lineControls [data-note-prompt]{min-width:52px}
     .noteText{display:block;color:var(--muted);font-size:12px;margin-top:3px}
     .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
-    .totals{border:0;border-radius:8px;background:var(--blueWash);padding:10px;display:grid;gap:8px}
+    .totals{border:1px solid color-mix(in srgb,var(--accent) 12%,var(--line));border-radius:var(--radius-card);background:var(--blueWash);padding:10px;display:grid;gap:8px;box-shadow:var(--shadow-sm)}
     .totalRow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted)}
     .totalRow strong{font-size:22px;color:var(--txt);font-weight:700}
     .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .segmented button{height:36px;border:0;border-radius:7px;background:var(--wash);font-size:13px;font-weight:500;color:#445064}
+    .segmented button{height:36px;border:0;border-radius:var(--radius-control);background:var(--wash);font-size:13px;font-weight:500;color:#445064}
     .segmented button.active{color:var(--accent);background:var(--blueWash)}
     .tenderGrid{display:grid;grid-template-columns:1fr 98px;gap:8px}
     .paidRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:500}
     .switch{width:43px;height:24px;border-radius:999px;border:0;background:#dbe1ea;padding:2px;display:flex;justify-content:flex-start}
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
     .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
-    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:8px;background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:500}
+    .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:var(--radius-card);background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:500}
     .saleTile strong{font-size:15px;font-weight:500;line-height:1.15}
     .cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
@@ -2949,151 +2954,6 @@ $csrf = csrf_token();
       state.customerLookupError = e.message || ''
     }
     render()
-  }
-
-  function renderPOSOld(){
-    const enableDelivery = Number(state.store?.enable_delivery ?? 1) === 1
-    const totals = cartTotals()
-
-    return `
-      <div class="grid">
-        <div class="card">
-          <div class="h1">Quick Order</div>
-          <div class="muted">Search inventory, build cart, capture phone (or walk-in), place order.</div>
-
-          <div class="field">
-            <label>Product search</label>
-            <input id="pos_q" placeholder="Search products (e.g., coffee, sandwich)">
-          </div>
-
-          <div class="list" id="pos_products">
-            ${state.products.map(p=>`
-              <div class="item">
-                <div class="row" style="align-items:flex-start">
-                  <div style="flex:1">
-                    <div class="name">${esc(p.name)}</div>
-                    <div class="meta">${esc(p.category || 'Uncategorized')} • ${money(p.price_cents)} • Stock: ${esc(p.stock_qty)}</div>
-                  </div>
-                  <div style="flex:0">
-                    <button class="btn small primary" data-add="${p.id}">Add</button>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="h1">Cart</div>
-          <div class="muted">Order type and customer details. Inventory is reduced on <b><?=h($CONFIG['STOCK_DECREMENT_ON'])?></b>.</div>
-
-          <div class="list">
-            ${state.cart.length === 0 ? `<div class="muted">Cart empty. Add items from inventory.</div>` : state.cart.map(it=>`
-              <div class="item">
-                <div class="row" style="align-items:flex-start">
-                  <div style="flex:1">
-                    <div class="name">${esc(it.name)}</div>
-                    <div class="meta">${money(it.price_cents)} each</div>
-                  </div>
-                  <div style="flex:0;display:flex;gap:6px;align-items:center">
-                    <button class="btn small" data-qtyminus="${it.product_id}">-</button>
-                    <div class="pill">${esc(it.qty)}</div>
-                    <button class="btn small" data-qtyplus="${it.product_id}">+</button>
-                    <button class="btn small danger" data-remove="${it.product_id}">×</button>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>Modifiers / notes</label>
-                  <input data-notes="${it.product_id}" placeholder="e.g., no onion, extra mustard" value="${esc(it.notes||'')}">
-                </div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <div class="field">
-              <label>Order type</label>
-              <select id="pos_type">
-                <option value="pickup">pickup</option>
-                <option value="dine_in">dine-in</option>
-                ${enableDelivery ? `<option value="delivery">delivery</option>` : ``}
-              </select>
-            </div>
-            <div class="field">
-              <label>ETA (minutes)</label>
-              <input id="pos_eta" type="number" min="5" value="15">
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label>Payment method</label>
-              <select id="pos_paymethod">
-                <option value="cash">cash</option>
-                <option value="card">card</option>
-                <option value="online">online</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Tip (cents)</label>
-              <input id="pos_tip" type="number" min="0" value="0">
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Coupon code</label>
-            <input id="pos_coupon" placeholder="Optional campaign coupon code">
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label><input id="pos_paid" type="checkbox"> Mark payment received</label>
-              <div class="muted">NeighbourPOS records payment status only (no processing).</div>
-            </div>
-            <div class="field">
-              <label><input id="pos_walkin" type="checkbox"> Walk-in anonymous</label>
-              <div class="muted">If checked, customer lookup is skipped.</div>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Customer phone</label>
-            <input id="pos_phone" placeholder="+14155550101">
-          </div>
-          <div class="row">
-            <div class="field">
-              <label>Customer name (optional)</label>
-              <input id="pos_name" placeholder="Name">
-            </div>
-            <div class="field">
-              <label>Marketing opt-in</label>
-              <select id="pos_optin">
-                <option value="0">No (default)</option>
-                <option value="1">Yes (consented)</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label>Address (optional; recommended for delivery)</label>
-            <input id="pos_addr" placeholder="Address">
-          </div>
-
-          <div class="kpi">
-            <div class="k"><div class="v">${money(totals.subtotal)}</div><div class="l">Subtotal</div></div>
-            <div class="k"><div class="v">${money(totals.tax)}</div><div class="l">Tax</div></div>
-            <div class="k"><div class="v">${money(totals.tip)}</div><div class="l">Tip</div></div>
-            <div class="k"><div class="v">${money(totals.total)}</div><div class="l">Total</div></div>
-          </div>
-
-          <button class="btn primary" style="width:100%;margin-top:12px" id="pos_place" ${state.cart.length===0?'disabled':''}>Place order</button>
-
-          <div class="warnbox">
-            Compliance warning: only message customers who explicitly opted in. This app defaults marketing_opt_in=false and audits campaign runs.
-          </div>
-          <div id="pos_msg"></div>
-        </div>
-      </div>
-    `
   }
 
   function renderPOS(){
