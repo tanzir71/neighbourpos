@@ -128,6 +128,13 @@
     .flowCard{border:0;border-radius:8px;background:#fff;padding:18px;min-height:210px;display:flex;flex-direction:column;justify-content:space-between}
     .flowCard h3,.fitCard h3,.limitCard h3{margin:0;font-size:18px;letter-spacing:-.035em;font-weight:700}
     .flowCard p,.fitCard p,.limitCard p{margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
+    .cashGrid,.stepGrid,.faqGrid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width:820px){.cashGrid,.stepGrid{grid-template-columns:repeat(3,1fr)}.faqGrid{grid-template-columns:1fr 1fr}}
+    .cashCard,.stepCard,.faqItem{border-radius:8px;background:#fff;padding:18px}
+    .cashCard h3,.stepCard h3,.faqItem h3{margin:0;font-size:17px;letter-spacing:-.035em}
+    .cashCard p,.stepCard p,.faqItem p{margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
+    .stepNum{width:30px;height:30px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;margin-bottom:12px}
+    .campaignWalk{margin-top:28px}
     .miniUi{margin-top:18px;border:0;border-radius:8px;background:var(--panel);padding:10px;display:grid;gap:8px}
     .miniRow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:0;border-radius:6px;padding:8px 9px;font-size:12px}
     .miniRow strong{font-size:12px;font-weight:500}
@@ -193,11 +200,12 @@
       .proofLine{display:none}
       section{padding:48px 0}
       .heroInner{padding:16px 0 22px;gap:16px}
-      .hero h1{font-size:40px;line-height:1}
-      .subhead{font-size:15px;line-height:1.45;margin-top:12px}
-      .cta{margin-top:18px;gap:8px}
-      .heroMock{height:312px;overflow:hidden}
-      .heroMock .browserFrame{transform:scale(.78);transform-origin:top left;width:128.25%}
+      .hero h1{font-size:36px;line-height:.98}
+      .subhead{font-size:14px;line-height:1.35;margin-top:10px}
+      .cta{margin-top:14px;gap:7px}
+      .hero .cta .btn{min-height:32px;padding:7px 9px}
+      .heroMock{height:258px;overflow:hidden}
+      .heroMock .browserFrame{transform:scale(.7);transform-origin:top left;width:142.86%}
       .checkoutMockup{min-height:0}
       .mockStation,.mockCart{padding:10px}
       .checkoutMockup{grid-template-columns:38px minmax(0,1fr) 126px}
@@ -225,10 +233,11 @@
         <span class="brandTag mono">POS + CRM for tiny stores</span>
       </a>
       <nav aria-label="Primary">
+        <a href="#cash">Cash-first</a>
         <a href="#workflow">Workflow</a>
+        <a href="#exports">Exports</a>
         <a href="#compare">Fit</a>
-        <a href="#docs">Setup</a>
-        <a href="#limits">Limits</a>
+        <a href="#faq">FAQ</a>
         <a class="btn primary" href="demo.html">Open demo</a>
         <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos" target="_blank" rel="noreferrer">GitHub</a>
       </nav>
@@ -239,17 +248,17 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap heroInner">
         <div class="heroCopy">
-          <h1 id="hero-title">NeighbourPOS</h1>
-          <p class="subhead">Sell fast, remember customers, bring them back, and keep your store data on shared hosting. A tiny POS + CRM for neighborhood shops that want the checkout flow without the platform lock-in.</p>
+          <h1 id="hero-title">The POS + customer list your corner shop actually owns</h1>
+          <p class="subhead">NeighbourPOS is one PHP file and one SQLite database on your hosting: checkout, customer memory, inventory follow-up, and export-ready campaigns without a cloud subscription.</p>
           <div class="cta">
-            <a class="btn primary" href="demo.html">Open demo</a>
-            <a class="btn secondary" href="#docs">Deploy guide</a>
+            <a class="btn primary" href="demo.html">Try the live demo</a>
+            <a class="btn secondary" href="#docs">Deploy in 10 minutes</a>
             <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos" target="_blank" rel="noreferrer">View source</a>
           </div>
           <div class="proofLine" aria-label="Product proof points">
-            <div><strong>Checkout first</strong><span>Search, scan, tap items, attach a customer, and place the order.</span></div>
-            <div><strong>Customer memory</strong><span>Orders update spend, recency, opt-in, coupons, and timelines.</span></div>
-            <div><strong>Local ownership</strong><span>One PHP file, one SQLite database, CSV exports, and backups.</span></div>
+            <div><strong>No card reader required</strong><span>Record cash, mobile-money, card, or online payment status.</span></div>
+            <div><strong>Phone is the customer ID</strong><span>Attach regulars at checkout without requiring email.</span></div>
+            <div><strong>Local ownership</strong><span>CSV exports, SQLite backups, and readable source stay in reach.</span></div>
           </div>
         </div>
         <div class="heroMock" aria-label="NeighbourPOS checkout preview">
@@ -302,13 +311,39 @@
       </div>
     </section>
 
+    <section id="cash" class="fit">
+      <div class="wrap">
+        <div class="sectionHead">
+          <div>
+            <div class="micro mono">Cash-first shops</div>
+            <h2>No card reader required, no payment lock-in.</h2>
+            <p>NeighbourPOS records the sale and payment status. The shop keeps using cash, mobile money, card, or online payment however it already works.</p>
+          </div>
+        </div>
+        <div class="cashGrid">
+          <article class="cashCard">
+            <h3>Record the tender</h3>
+            <p>Mark cash, card, mobile-money, or online payments as received or pending. NeighbourPOS never processes cards or touches payouts.</p>
+          </article>
+          <article class="cashCard">
+            <h3>Use phone as identity</h3>
+            <p>The phone number is the customer ID: enough to remember a customer, track order history, and keep consent. Email stays optional.</p>
+          </article>
+          <article class="cashCard">
+            <h3>Keep the owner loop simple</h3>
+            <p>Sell at the counter, check low stock, export customer lists, and back up the SQLite file when the day is done.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section id="workflow">
       <div class="wrap">
         <div class="sectionHead">
           <div>
             <div class="micro mono">Store loop</div>
-            <h2>Built around the day a tiny shop actually repeats.</h2>
-            <p>Square, Shopify, Hishabee, and Lightspeed all lead with the operational loop: sell, track stock, know the customer, and act on the next visit. NeighbourPOS keeps that loop small enough to run from one local file.</p>
+            <h2>Sell -> remember -> bring back.</h2>
+            <p>Square, Shopify, Hishabee, and Lightspeed all lead with the same operational loop: sell, track stock, know the customer, and act on the next visit. NeighbourPOS keeps that loop small enough to own.</p>
           </div>
         </div>
         <div class="flowGrid">
@@ -345,6 +380,32 @@
               <div class="miniRow"><strong>Backup</strong><span>SQLite file</span></div>
             </div>
           </article>
+        </div>
+        <div id="exports" class="campaignWalk">
+          <div class="sectionHead">
+            <div>
+              <div class="micro mono">Campaign export</div>
+              <h2>Build the list here. Send it wherever the owner already works.</h2>
+              <p>NeighbourPOS does not send messages. It prepares opt-in recipients and clean CSVs for Mailchimp, Brevo, SMS tools, or a manual WhatsApp workflow.</p>
+            </div>
+          </div>
+          <div class="stepGrid">
+            <article class="stepCard">
+              <span class="stepNum">1</span>
+              <h3>Build segment</h3>
+              <p>Filter customers by recency, spend, order count, product, category, and consent status.</p>
+            </article>
+            <article class="stepCard">
+              <span class="stepNum">2</span>
+              <h3>Queue campaign</h3>
+              <p>Preview recipients, attach coupon codes, and keep opt-in rules visible before exporting.</p>
+            </article>
+            <article class="stepCard">
+              <span class="stepNum">3</span>
+              <h3>Download CSV</h3>
+              <p>Use the file with Mailchimp, Brevo, SimpleTexting, TextMagic, WhatsApp, or any spreadsheet-first workflow.</p>
+            </article>
+          </div>
         </div>
         <div class="productMockups" aria-label="NeighbourPOS campaign export preview">
           <div class="browserFrame campaignFrame">
@@ -428,7 +489,7 @@
             <h2>Owner-friendly surface, operator-friendly install.</h2>
             <p>Production stays deliberately boring: upload one PHP file, let SQLite initialize, change the default admin, and keep regular backups.</p>
           </div>
-          <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Full setup</a>
+          <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Deploy guide</a>
         </div>
         <div class="setupGrid">
           <div class="codebox">
@@ -504,16 +565,54 @@ admin@example.com / ChangeMe123!
       </div>
     </section>
 
+    <section id="faq" class="fit">
+      <div class="wrap">
+        <div class="sectionHead">
+          <div>
+            <div class="micro mono">FAQ</div>
+            <h2>Honest answers before you install it.</h2>
+            <p>The product is intentionally small. These are the boundaries a store owner or operator should understand first.</p>
+          </div>
+        </div>
+        <div class="faqGrid">
+          <article class="faqItem">
+            <h3>What hosting does it need?</h3>
+            <p>PHP 8.1+ with PDO SQLite and a writable folder for the database file. Ordinary shared hosting is the target.</p>
+          </article>
+          <article class="faqItem">
+            <h3>Does it process payments?</h3>
+            <p>No. It records whether cash, card, mobile-money, or online payment was received. Payment processing stays outside the app.</p>
+          </article>
+          <article class="faqItem">
+            <h3>Can more than one device use it?</h3>
+            <p>Yes, staff can open the same hosted PHP app from multiple devices. SQLite is best for tiny-store traffic, not high-concurrency chains.</p>
+          </article>
+          <article class="faqItem">
+            <h3>How do backups work?</h3>
+            <p>The owner can download the SQLite database and CSV exports. Hosting-level backups are still recommended.</p>
+          </article>
+          <article class="faqItem">
+            <h3>What does "no sending" mean?</h3>
+            <p>NeighbourPOS queues and exports recipient lists. You send through Mailchimp, Brevo, an SMS tool, WhatsApp, or manual outreach.</p>
+          </article>
+          <article class="faqItem">
+            <h3>Is customer consent handled?</h3>
+            <p>The app stores marketing opt-in and defaults campaign export workflows toward opted-in customers. Local compliance remains the merchant's responsibility.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section class="final">
       <div class="wrap">
         <div class="banner">
           <div>
-            <h2>Try the cashier station.</h2>
-            <p>Open the static demo, add items, attach a customer, mark payment status, and place an order without logging in.</p>
+            <h2>Try the live demo.</h2>
+            <p>Add items, attach a customer, mark payment status, and place an order without logging in.</p>
           </div>
           <div class="cta" style="margin:0">
-            <a class="btn primary" href="demo.html">Open demo</a>
-            <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Read setup</a>
+            <a class="btn primary" href="demo.html">Try the live demo</a>
+            <a class="btn secondary" href="https://github.com/tanzir71/neighbourpos/blob/main/SETUP.md" target="_blank" rel="noreferrer">Deploy in 10 minutes</a>
           </div>
         </div>
       </div>

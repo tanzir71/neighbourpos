@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P2.2] Rewrote the landing page narrative around owned POS + customer data, cash-first workflows, export-based campaigns, limits, FAQ, and live-demo CTAs.
 - [P2.1] Added handcrafted landing-page product mockups for checkout and campaign export, including a hero checkout preview and Mailchimp CSV export preview.
 - [P1.10] Standardized Orders, Inventory, CRM, and Audit lists on shared sticky-header data tables with numeric alignment and mobile-safe overflow.
 - [P1.9] Upgraded the dashboard with KPI deltas, a 14-day sales sparkline, and needs-attention cards for stock, unpaid orders, and queued exports.
