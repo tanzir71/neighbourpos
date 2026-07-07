@@ -454,10 +454,24 @@ function campaign_recipient_coupon(array $r): string {
   return $coupon;
 }
 
-function campaign_render_message(array $camp, array $r): string {
+function campaign_row_name(array $r): string {
+  return trim((string)($r['customer_name'] ?? ($r['name'] ?? '')));
+}
+
+function campaign_render_message(array $camp, array $r, string $storeName = ''): string {
   $payload = campaign_payload($r);
   $message = (string)($payload['message'] ?? ($camp['message_template'] ?? ''));
-  return str_replace('{{coupon}}', campaign_recipient_coupon($r), $message);
+  $name = campaign_row_name($r);
+  [$first] = split_customer_name($name);
+  $coupon = campaign_recipient_coupon($r);
+
+  return strtr($message, [
+    '{{coupon}}' => $coupon,
+    '{coupon_code}' => $coupon,
+    '{name}' => $name,
+    '{first_name}' => $first,
+    '{store_name}' => $storeName,
+  ]);
 }
 
 function split_customer_name(string $name): array {
@@ -477,7 +491,7 @@ function customer_tags_from_text(string $tagsText): array {
   return array_values($tags);
 }
 
-function campaign_export_profile(string $format, array $camp, array $rows, string $countryCode): array {
+function campaign_export_profile(string $format, array $camp, array $rows, string $countryCode, string $storeName = ''): array {
   $headers = [
     'mailchimp' => ['Email Address', 'First Name', 'Last Name', 'Phone', 'Tags'],
     'brevo' => ['EMAIL', 'SMS', 'FIRSTNAME', 'LASTNAME', 'COUPON_CODE'],
@@ -488,13 +502,13 @@ function campaign_export_profile(string $format, array $camp, array $rows, strin
   $out = [];
   $seen = [];
   foreach ($rows as $r) {
-    $name = trim((string)($r['customer_name'] ?? ''));
+    $name = campaign_row_name($r);
     [$first, $last] = split_customer_name($name);
     $email = campaign_recipient_email($r);
     $emailKey = strtolower($email);
     $e164 = normalize_e164((string)($r['phone'] ?? ''), $countryCode);
     $coupon = campaign_recipient_coupon($r);
-    $message = campaign_render_message($camp, $r);
+    $message = campaign_render_message($camp, $r, $storeName);
 
     if ($format === 'mailchimp') {
       if ($email === '' || isset($seen[$emailKey])) continue;
@@ -1407,9 +1421,10 @@ if ($action === 'campaign_export') {
   }
 
   $store = current_store($pdo, $CONFIG);
+  $storeName = (string)($store['name'] ?? '');
   $profileRows = [];
   if ($format !== 'full') {
-    [, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'));
+    [, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'), $storeName);
   }
 
   audit($pdo, $uid, 'campaigns.export', [
@@ -1426,7 +1441,7 @@ if ($action === 'campaign_export') {
 
   $out = fopen('php://output', 'w');
   if ($format !== 'full') {
-    [$headers, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'));
+    [$headers, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'), $storeName);
     fwrite($out, implode(',', $headers)."\n");
     foreach ($profileRows as $profileRow) {
       fputcsv($out, $profileRow);
@@ -1462,7 +1477,7 @@ if ($action === 'campaign_export') {
     $payload = json_decode((string)$r['payload_json'], true);
     if (!is_array($payload)) $payload = [];
 
-    $message = (string)($payload['message'] ?? $camp['message_template']);
+    $message = campaign_render_message($camp, $r, $storeName);
     $coupon = (string)($r['coupon_code'] ?: ($payload['coupon_code'] ?? ''));
     $optInRequired = array_key_exists('opt_in_required', $payload) ? (!empty($payload['opt_in_required']) ? '1' : '0') : '';
     $optInOverridden = array_key_exists('opt_in_overridden', $payload) ? (!empty($payload['opt_in_overridden']) ? '1' : '0') : '';
@@ -2414,6 +2429,10 @@ if (str_starts_with($action, 'api_')) {
     $red = (float)($body['redemption_rate'] ?? ($CONFIG['SIMULATOR']['DEFAULT_REDEMPTION_RATE'] ?? 0.06));
     $lift = (float)($body['coupon_lift'] ?? ($CONFIG['SIMULATOR']['DEFAULT_COUPON_LIFT'] ?? 0.12));
     $overrideOptIn = !empty($body['override_opt_in']) ? 1 : 0;
+    $messageTemplate = trim((string)($body['message_template'] ?? ''));
+    $sampleCoupon = strtoupper(trim((string)($body['sample_coupon_code'] ?? '')));
+    $sampleCoupon = substr((string)preg_replace('/[^A-Z0-9\-]/', '', $sampleCoupon), 0, 40);
+    if ($sampleCoupon === '') $sampleCoupon = (string)($CONFIG['COUPON']['PREFIX'] ?? 'NP').'-PREVIEW';
 
     $seg = $pdo->prepare("SELECT * FROM segments WHERE id = ?");
     $seg->execute([$segmentId]);
@@ -2440,6 +2459,28 @@ if (str_starts_with($action, 'api_')) {
     $expectedRecipients = $count;
     $expectedRedemptions = (int)round($expectedRecipients * $red);
     $expectedRevenueCents = (int)round($expectedRedemptions * $avgSpend * (1.0 + $lift));
+    $store = current_store($pdo, $CONFIG);
+    $previewMessages = [];
+    if ($messageTemplate !== '') {
+      foreach (array_slice($rows, 0, 3) as $c) {
+        $previewRow = [
+          'customer_id' => $c['id'] ?? null,
+          'customer_name' => (string)($c['name'] ?? ''),
+          'phone' => (string)($c['phone'] ?? ''),
+          'coupon_code' => $sampleCoupon,
+          'payload_json' => json_encode([
+            'message' => $messageTemplate,
+            'coupon_code' => $sampleCoupon,
+          ], JSON_UNESCAPED_SLASHES),
+        ];
+        $previewMessages[] = [
+          'customer_id' => (int)($c['id'] ?? 0),
+          'name' => (string)($c['name'] ?? ''),
+          'phone' => (string)($c['phone'] ?? ''),
+          'message' => campaign_render_message(['message_template' => $messageTemplate], $previewRow, (string)($store['name'] ?? '')),
+        ];
+      }
+    }
 
     json_out(['ok' => true, 'data' => [
       'recipients' => $expectedRecipients,
@@ -2447,6 +2488,7 @@ if (str_starts_with($action, 'api_')) {
       'expected_revenue_cents' => $expectedRevenueCents,
       'avg_order_value_cents_est' => (int)round($avgSpend),
       'assumptions' => ['redemption_rate' => $red, 'coupon_lift' => $lift],
+      'preview_messages' => $previewMessages,
     ]]);
   }
 
@@ -4280,6 +4322,17 @@ $csrf = csrf_token();
               Expected redemptions: <b>${esc(state.sim.expected_redemptions)}</b><br>
               Est revenue: <b>${fmtMoney(state.sim.expected_revenue_cents)}</b><br>
               AOV est: <b>${fmtMoney(state.sim.avg_order_value_cents_est)}</b>
+              ${(state.sim.preview_messages||[]).length ? `
+                <div class="dataMeta" style="margin-top:8px">Preview messages</div>
+                <div class="list tight">
+                  ${(state.sim.preview_messages||[]).map(p=>`
+                    <div class="item">
+                      <div class="name">${esc(p.name || p.phone || 'Customer')}</div>
+                      <div class="meta">${esc(p.message || '')}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ``}
             </div>
           ` : ``}
 
@@ -4832,7 +4885,8 @@ $csrf = csrf_token();
       try{
         const segment_id = Number(qs('#camp_seg')?.value || '0')
         const override_opt_in = (qs('#camp_override')?.value || '0') === '1' ? 1 : 0
-        state.sim = await api('api_campaign_simulate', { method:'POST', body: { segment_id, override_opt_in }})
+        const message_template = qs('#camp_msg')?.value || ''
+        state.sim = await api('api_campaign_simulate', { method:'POST', body: { segment_id, override_opt_in, message_template, sample_coupon_code: 'NP-PREVIEW' }})
         render()
       }catch(e){
         msg('camp_msgbox','err', e.message || 'Sim failed')

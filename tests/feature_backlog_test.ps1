@@ -63,6 +63,9 @@ Assert-SourceContains $source "function campaign_export_profile" 'Campaign expor
 Assert-SourceContains $source "Email Address" 'Mailchimp export profile header is missing'
 Assert-SourceContains $source "COUPON_CODE" 'Brevo export profile coupon header is missing'
 Assert-SourceContains $source "https://wa.me/" 'WhatsApp export link builder is missing'
+Assert-SourceContains $source "preview_messages" 'Campaign simulator merge-field preview is missing'
+Assert-SourceContains $source "{first_name}" 'Campaign merge-field renderer is missing first_name support'
+Assert-SourceContains $source "{store_name}" 'Campaign merge-field renderer is missing store_name support'
 Assert-SourceContains $source "portal_opt_in_update" 'Customer portal opt-in update route is missing'
 Assert-SourceContains $source "database_backup" 'Database backup route is missing'
 

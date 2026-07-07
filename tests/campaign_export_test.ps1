@@ -236,6 +236,25 @@ try {
   $profileSegmentId = [int]$profileSegment.id
   Assert-True ($profileSegmentId -gt 0) 'Profile segment create did not return a positive id'
 
+  $mergeTemplate = 'Hi {first_name}, use {coupon_code} at {store_name}. Keep {unknown}.'
+  $simulate = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_campaign_simulate' `
+    -Body @{
+      segment_id = $profileSegmentId
+      override_opt_in = 0
+      message_template = $mergeTemplate
+      sample_coupon_code = 'NP-PREVIEW'
+    }
+  $previewMessages = @($simulate.preview_messages | Where-Object { $null -ne $_ })
+  Assert-True ($previewMessages.Count -gt 0) 'Campaign simulator did not return rendered preview messages'
+  foreach ($preview in $previewMessages) {
+    $expectedFirstName = (($preview.name -split '\s+', 2)[0])
+    Assert-True ($preview.message -eq "Hi $expectedFirstName, use NP-PREVIEW at Neighbour Store. Keep {unknown}.") "Campaign simulator merge preview was incorrect: $($preview.message)"
+  }
+
   $profileCampaign = Invoke-AppJson `
     -BaseUrl $baseUrl `
     -Session $session `
@@ -245,7 +264,7 @@ try {
       name = 'Profile Export Test'
       segment_id = $profileSegmentId
       channel = 'export'
-      message_template = 'Hi {{coupon}} profile check'
+      message_template = $mergeTemplate
       scheduled_at = $null
     }
 
@@ -277,6 +296,9 @@ try {
   $smsRows = @($sms.Content | ConvertFrom-Csv)
   Assert-True ($smsRows.Count -eq 4) "SMS should include 4 valid-phone rows, got $($smsRows.Count)"
   Assert-True (($smsRows | Where-Object { $_.phone -notmatch '^\+[1-9][0-9]{6,14}$' }).Count -eq 0) 'SMS export included a blank or invalid phone'
+  Assert-True (($smsRows | Where-Object { $_.message -match '\{first_name\}|\{coupon_code\}|\{store_name\}' }).Count -eq 0) 'SMS export left supported merge fields unresolved'
+  Assert-True (($smsRows | Where-Object { $_.message -notmatch '^Hi .+, use NP-[A-Z0-9]+ at Neighbour Store\. Keep \{unknown\}\.$' }).Count -eq 0) 'SMS export did not render merge-field messages correctly'
+  Assert-True (($smsRows | Where-Object { $_.message -notlike "*$($_.coupon_code)*" }).Count -eq 0) 'SMS export message did not include each row coupon code'
 
   $whatsapp = Invoke-WebRequest -Uri "${baseUrl}?action=campaign_export&id=$($profileCampaign.id)&format=whatsapp" -WebSession $session -UseBasicParsing
   $whatsappHeader = Get-CsvHeader $whatsapp.Content
@@ -284,6 +306,9 @@ try {
   $whatsappRows = @($whatsapp.Content | ConvertFrom-Csv)
   Assert-True ($whatsappRows.Count -eq 4) "WhatsApp should include 4 valid-phone rows, got $($whatsappRows.Count)"
   Assert-True (($whatsappRows | Where-Object { $_.wa_link -notmatch '^https://wa\.me/[0-9]+\?text=' }).Count -eq 0) 'WhatsApp export included an invalid wa.me link'
+  $firstWhatsApp = $whatsappRows[0]
+  $decodedWhatsAppText = [uri]::UnescapeDataString(($firstWhatsApp.wa_link -split 'text=', 2)[1])
+  Assert-True ($decodedWhatsAppText -eq $firstWhatsApp.message) 'WhatsApp wa.me link text did not match the rendered message'
 
   Write-Host "campaign_export_test passed with $rowCount full recipient(s) and profile exports verified."
 } finally {
