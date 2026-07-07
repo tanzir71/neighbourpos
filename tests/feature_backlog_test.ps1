@@ -128,6 +128,11 @@ Assert-SourceContains $landing 'Open demo' 'Landing page primary demo CTA is mis
 Assert-SourceContains $landing 'Deploy guide' 'Landing page deploy guide link is missing'
 Assert-SourceContains $landing 'View source' 'Landing page source link is missing'
 Assert-SourceContains $landing 'No payment processing' 'Landing page payment-processing limit is missing'
+Assert-SourceContains $landing 'checkoutMockup' 'Landing page checkout product mockup is missing'
+Assert-SourceContains $landing 'campaignMockup' 'Landing page campaign export mockup is missing'
+Assert-SourceContains $landing 'Download Mailchimp CSV' 'Landing page campaign export CTA mockup is missing'
+Assert-SourceContains $landing 'segmentPreview' 'Landing page segment preview mockup is missing'
+Assert-SourceContains $landing 'browserFrame' 'Landing page browser-frame product preview styling is missing'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'
