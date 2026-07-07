@@ -982,6 +982,41 @@ function sales_report_data(PDO $pdo, string $fromTs, string $toTs): array {
   ");
   $cat->execute([$fromTs, $toTs]);
 
+  $dailyRows = $pdo->prepare("
+    SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS order_count, COALESCE(SUM(total_cents),0) AS revenue_cents
+    FROM orders
+    WHERE status = 'completed' AND created_at >= ? AND created_at <= ?
+    GROUP BY substr(created_at, 1, 10)
+    ORDER BY day ASC
+  ");
+  $dailyRows->execute([$fromTs, $toTs]);
+  $dailyMap = [];
+  foreach ($dailyRows->fetchAll() as $row) {
+    $dailyMap[(string)$row['day']] = [
+      'order_count' => (int)$row['order_count'],
+      'revenue_cents' => (int)$row['revenue_cents'],
+    ];
+  }
+
+  $daily = [];
+  $fromDay = substr($fromTs, 0, 10);
+  $toDay = substr($toTs, 0, 10);
+  $cursor = strtotime($fromDay.' 00:00:00 UTC');
+  $end = strtotime($toDay.' 00:00:00 UTC');
+  if ($cursor === false || $end === false) {
+    $cursor = time();
+    $end = $cursor;
+  }
+  while ($cursor <= $end) {
+    $day = gmdate('Y-m-d', $cursor);
+    $daily[] = [
+      'date' => $day,
+      'order_count' => (int)($dailyMap[$day]['order_count'] ?? 0),
+      'revenue_cents' => (int)($dailyMap[$day]['revenue_cents'] ?? 0),
+    ];
+    $cursor += 86400;
+  }
+
   return [
     'summary' => [
       'order_count' => (int)$sum['order_count'],
@@ -990,6 +1025,7 @@ function sales_report_data(PDO $pdo, string $fromTs, string $toTs): array {
     ],
     'top_products' => $top->fetchAll(),
     'category_mix' => $cat->fetchAll(),
+    'daily' => $daily,
   ];
 }
 
@@ -1450,26 +1486,54 @@ if (str_starts_with($action, 'api_')) {
   if ($action === 'api_today_snapshot') {
     $start = gmdate('Y-m-d').' 00:00:00';
     $end = gmdate('Y-m-d').' 23:59:59';
+    $prevStart = gmdate('Y-m-d', time() - 86400).' 00:00:00';
+    $prevEnd = gmdate('Y-m-d', time() - 86400).' 23:59:59';
+
     $today = $pdo->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE created_at >= ? AND created_at <= ?");
     $today->execute([$start, $end]);
     $t = $today->fetch() ?: ['c' => 0, 'revenue' => 0];
+    $prev = $pdo->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE created_at >= ? AND created_at <= ?");
+    $prev->execute([$prevStart, $prevEnd]);
+    $p = $prev->fetch() ?: ['c' => 0, 'revenue' => 0];
+
     $completed = $pdo->prepare("SELECT COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE status = 'completed' AND created_at >= ? AND created_at <= ?");
     $completed->execute([$start, $end]);
     $done = $completed->fetch() ?: ['revenue' => 0];
+    $prevCompleted = $pdo->prepare("SELECT COALESCE(SUM(total_cents),0) AS revenue FROM orders WHERE status = 'completed' AND created_at >= ? AND created_at <= ?");
+    $prevCompleted->execute([$prevStart, $prevEnd]);
+    $prevDone = $prevCompleted->fetch() ?: ['revenue' => 0];
+
     $active = (int)$pdo->query("SELECT COUNT(*) AS c FROM orders WHERE status IN ('new','preparing','ready_for_pickup','out_for_delivery')")->fetch()['c'];
+    $prevActiveSt = $pdo->prepare("SELECT COUNT(*) AS c FROM orders WHERE status IN ('new','preparing','ready_for_pickup','out_for_delivery') AND created_at >= ? AND created_at <= ?");
+    $prevActiveSt->execute([$prevStart, $prevEnd]);
+    $prevActive = (int)$prevActiveSt->fetch()['c'];
+    $unpaid = (int)$pdo->query("SELECT COUNT(*) AS c FROM orders WHERE payment_received = 0 AND status NOT IN ('completed','cancelled')")->fetch()['c'];
     $threshold = (int)($CONFIG['LOW_STOCK_THRESHOLD'] ?? 5);
     $low = $pdo->prepare("SELECT COUNT(*) AS c FROM products WHERE active = 1 AND stock_qty <= ?");
     $low->execute([$threshold]);
-    $campaigns = (int)$pdo->query("SELECT COUNT(*) AS c FROM campaigns WHERE sent_count > 0")->fetch()['c'];
+    $campaigns = (int)$pdo->query("SELECT COUNT(DISTINCT campaign_id) AS c FROM campaign_recipients WHERE status IN ('pending','queued')")->fetch()['c'];
     $recipients = (int)$pdo->query("SELECT COUNT(*) AS c FROM campaign_recipients WHERE status IN ('pending','queued')")->fetch()['c'];
     json_out(['ok' => true, 'data' => [
       'today_order_count' => (int)$t['c'],
       'today_revenue_cents' => (int)$t['revenue'],
       'today_completed_revenue_cents' => (int)$done['revenue'],
       'active_orders_count' => $active,
+      'unpaid_orders_count' => $unpaid,
       'low_stock_count' => (int)$low->fetch()['c'],
       'queued_campaigns_count' => $campaigns,
       'queued_recipients_count' => $recipients,
+      'previous' => [
+        'order_count' => (int)$p['c'],
+        'revenue_cents' => (int)$p['revenue'],
+        'completed_revenue_cents' => (int)$prevDone['revenue'],
+        'active_orders_count' => $prevActive,
+      ],
+      'deltas' => [
+        'today_order_count' => (int)$t['c'] - (int)$p['c'],
+        'today_revenue_cents' => (int)$t['revenue'] - (int)$p['revenue'],
+        'today_completed_revenue_cents' => (int)$done['revenue'] - (int)$prevDone['revenue'],
+        'active_orders_count' => $active - $prevActive,
+      ],
     ]]);
   }
 
@@ -2543,14 +2607,14 @@ $csrf = csrf_token();
     .title{font-weight:700;font-size:15px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
     .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:var(--radius-control);font-size:12px;color:var(--muted);font-weight:500}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
     .pageHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
     .pageHeader .h1{font-size:18px;line-height:1.2}
     .pageHeader .muted{max-width:680px}
     .pageActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;flex-wrap:wrap}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-sm)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-sm);min-width:0}
     .h1{font-size:14px;font-weight:700;margin:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center}
@@ -2626,8 +2690,30 @@ $csrf = csrf_token();
     .b-done{background:#eef0f4}
     .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
     .k{padding:14px;border-radius:var(--radius-card);border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-sm)}
+    .kHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .kIcon{width:32px;height:32px;border-radius:var(--radius-card);display:grid;place-items:center;background:var(--wash);color:var(--accent)}
+    .kIcon .icon{width:17px;height:17px}
     .k .v{font-weight:700;font-size:16px}
     .k .l{color:var(--muted);font-size:11px;margin-top:4px}
+    .kDelta{display:inline-flex;align-items:center;min-height:22px;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;background:var(--wash);color:var(--muted);white-space:nowrap}
+    .kDelta.up{background:var(--greenWash);color:var(--good)}
+    .kDelta.down{background:var(--redWash);color:var(--bad)}
+    .sparklineWrap{margin-top:14px;border-radius:var(--radius-card);background:#f8fafc;border:1px solid var(--line);padding:12px}
+    .sparklineMeta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--muted);font-size:12px}
+    .sparkline{display:block;width:100%;height:150px;overflow:visible}
+    .sparklineGrid{stroke:var(--line);stroke-width:1}
+    .sparklineArea{fill:color-mix(in srgb,var(--accent) 14%,transparent)}
+    .sparklineLine{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    .attentionList{display:grid;gap:10px;margin-top:12px}
+    .attentionItem{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-card);background:#fff;border:1px solid var(--line)}
+    .attentionIcon{width:34px;height:34px;border-radius:var(--radius-card);display:grid;place-items:center;background:var(--wash);color:var(--accent)}
+    .attentionIcon.warn{background:var(--amberWash);color:var(--warn)}
+    .attentionIcon.bad{background:var(--redWash);color:var(--bad)}
+    .attentionIcon.good{background:var(--greenWash);color:var(--good)}
+    .attentionIcon .icon{width:17px;height:17px}
+    .attentionItem .name{font-size:13px;font-weight:600}
+    .attentionItem .meta{margin-top:3px;color:var(--muted);font-size:12px;line-height:1.35}
+    .attentionValue{font-weight:700}
     .warnbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--amberWash);color:#744800;font-size:12px;line-height:1.35}
     .okbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--greenWash);color:#145c2e;font-size:12px;line-height:1.35}
     .errbox{margin-top:10px;padding:10px;border-radius:var(--radius-card);border:0;background:var(--redWash);color:#8a1f17;font-size:12px;line-height:1.35}
@@ -2721,6 +2807,7 @@ $csrf = csrf_token();
       .pageHeader{display:grid}
       .pageActions{justify-content:flex-start}
       .navin{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .kpi{grid-template-columns:1fr}
       .saleToolbar,.compactFields,.tenderGrid,.cashTender{grid-template-columns:1fr}
       .segmented{grid-template-columns:1fr}
       .saleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -2807,6 +2894,7 @@ $csrf = csrf_token();
     store: null,
     tab: 'pos',
     dashboard: null,
+    dashboardTrend: null,
     report: null,
     reportFrom: '',
     reportTo: '',
@@ -3132,7 +3220,16 @@ $csrf = csrf_token();
 
   async function loadDashboard(options={}){
     return withRegionLoad('dashboard', async ()=>{
-      state.dashboard = await api('api_today_snapshot')
+      const to = new Date()
+      const from = new Date()
+      from.setDate(to.getDate() - 13)
+      const params = { from: from.toISOString().slice(0,10), to: to.toISOString().slice(0,10) }
+      const [snapshot, trend] = await Promise.all([
+        api('api_today_snapshot'),
+        api('api_sales_report', { params })
+      ])
+      state.dashboard = snapshot
+      state.dashboardTrend = trend
     }, options)
   }
 
@@ -3213,9 +3310,66 @@ $csrf = csrf_token();
     }, options)
   }
 
+  function dashboardDelta(delta, type='count'){
+    const n = Number(delta || 0)
+    const cls = n > 0 ? 'up' : (n < 0 ? 'down' : '')
+    const value = type === 'money' ? fmtMoney(Math.abs(n)) : Math.abs(n).toLocaleString()
+    const label = n === 0 ? 'no change' : `${n > 0 ? '+' : '-'}${value}`
+    return `<span class="kDelta ${cls}">${label} vs yesterday</span>`
+  }
+
+  function dashboardKpi(iconId, value, label, delta, deltaType='count'){
+    return `<div class="k">
+      <div class="kHead"><span class="kIcon">${icon(iconId)}</span>${dashboardDelta(delta, deltaType)}</div>
+      <div class="v">${value}</div>
+      <div class="l">${esc(label)}</div>
+    </div>`
+  }
+
+  function sparklinePath(points, width=520, height=150, pad=12){
+    const series = points.length ? points : [{ revenue_cents: 0 }, { revenue_cents: 0 }]
+    const max = Math.max(0, ...series.map(p=>Number(p.revenue_cents || 0)))
+    const step = (width - pad * 2) / Math.max(1, series.length - 1)
+    const coords = series.map((p, i)=>{
+      const x = pad + i * step
+      const y = max > 0 ? (height - pad - (Number(p.revenue_cents || 0) / max) * (height - pad * 2)) : (height - pad)
+      return [Number(x.toFixed(2)), Number(y.toFixed(2))]
+    })
+    const line = coords.map((p, i)=>`${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ')
+    const area = `M ${coords[0][0]} ${height - pad} ${coords.map(p=>`L ${p[0]} ${p[1]}`).join(' ')} L ${coords[coords.length - 1][0]} ${height - pad} Z`
+    return { line, area, width, height, baseline: height - pad }
+  }
+
+  function salesTrendSparkline(report){
+    const daily = report?.daily || []
+    const path = sparklinePath(daily)
+    const total = Number(report?.summary?.revenue_cents || 0)
+    const first = daily[0]?.date || ''
+    const last = daily[daily.length - 1]?.date || ''
+    return `<div class="sparklineWrap">
+      <div class="sparklineMeta"><span>14-day completed sales</span><strong>${fmtMoney(total)}</strong></div>
+      <svg class="sparkline" viewBox="0 0 ${path.width} ${path.height}" role="img" aria-label="14-day sales sparkline">
+        <path class="sparklineGrid" d="M 12 ${path.baseline} L ${path.width - 12} ${path.baseline}"></path>
+        <path class="sparklineArea" d="${path.area}"></path>
+        <path class="sparklineLine" d="${path.line}"></path>
+      </svg>
+      <div class="sparklineMeta"><span>${esc(first)}</span><span>${esc(last)}</span></div>
+    </div>`
+  }
+
+  function attentionItem(iconId, title, body, value, tone, goTab){
+    return `<div class="attentionItem">
+      <span class="attentionIcon ${esc(tone)}">${icon(iconId)}</span>
+      <div><div class="name">${esc(title)}</div><div class="meta">${esc(body)}</div></div>
+      <button class="btn small" data-go="${esc(goTab)}"><span class="attentionValue">${esc(value)}</span></button>
+    </div>`
+  }
+
   function renderDashboard(){
     const d = state.dashboard || {}
-    const dashboardStatus = regionState('dashboard', `<div class="card"><div class="h1">Loading dashboard</div>${skeletonKpis(6)}</div>`, 'Dashboard could not load', 'Try refreshing today snapshot.')
+    const trend = state.dashboardTrend || {}
+    const deltas = d.deltas || {}
+    const dashboardStatus = regionState('dashboard', `<div class="card"><div class="h1">Loading dashboard</div>${skeletonKpis(4)}${skeletonList(2)}</div>`, 'Dashboard could not load', 'Try refreshing today snapshot.')
     if (dashboardStatus) {
       return `${pageHeader('Dashboard', 'Today at a glance across checkout, orders, stock, and campaign queues.', `<button class="btn primary" data-go="pos">New order</button>`)}${dashboardStatus}`
     }
@@ -3226,13 +3380,12 @@ $csrf = csrf_token();
           <div class="h1">Today snapshot dashboard</div>
           <div class="muted">A tiny control room for sales, service, stock, and queued CRM work.</div>
           <div class="kpi">
-            <div class="k"><div class="v">${fmtMoney(d.today_revenue_cents || 0)}</div><div class="l">Today revenue</div></div>
-            <div class="k"><div class="v">${esc(d.today_order_count || 0)}</div><div class="l">Today orders</div></div>
-            <div class="k"><div class="v">${esc(d.active_orders_count || 0)}</div><div class="l">Active orders</div></div>
-            <div class="k"><div class="v">${esc(d.low_stock_count || 0)}</div><div class="l">Low-stock products</div></div>
-            <div class="k"><div class="v">${esc(d.queued_campaigns_count || 0)}</div><div class="l">Queued campaigns</div></div>
-            <div class="k"><div class="v">${esc(d.queued_recipients_count || 0)}</div><div class="l">Queued recipients</div></div>
+            ${dashboardKpi('reports', fmtMoney(d.today_revenue_cents || 0), 'Today revenue', deltas.today_revenue_cents, 'money')}
+            ${dashboardKpi('pos', fmtMoney(d.today_completed_revenue_cents || 0), 'Completed revenue', deltas.today_completed_revenue_cents, 'money')}
+            ${dashboardKpi('orders', esc(d.today_order_count || 0), 'Today orders', deltas.today_order_count)}
+            ${dashboardKpi('dashboard', esc(d.active_orders_count || 0), 'Active orders', deltas.active_orders_count)}
           </div>
+          ${salesTrendSparkline(trend)}
           <div class="row" style="margin-top:12px;flex-wrap:wrap">
             <button class="btn small primary" data-go="pos">New order</button>
             <button class="btn small" data-go="orders">Orders</button>
@@ -3241,7 +3394,13 @@ $csrf = csrf_token();
           </div>
         </div>
         <div class="card">
-          <div class="h1">Quick health</div>
+          <div class="h1">Needs attention</div>
+          <div class="muted">Current store work that may need a staff action.</div>
+          <div class="attentionList">
+            ${attentionItem('inventory', 'Low stock', 'Products at or below the alert threshold.', d.low_stock_count || 0, Number(d.low_stock_count || 0) ? 'warn' : 'good', 'inventory')}
+            ${attentionItem('orders', 'Unpaid active orders', 'Open orders where payment is still pending.', d.unpaid_orders_count || 0, Number(d.unpaid_orders_count || 0) ? 'bad' : 'good', 'orders')}
+            ${attentionItem('campaigns', 'Queued export work', 'Recipients waiting in campaign export queues.', d.queued_recipients_count || 0, Number(d.queued_recipients_count || 0) ? 'warn' : 'good', 'campaigns')}
+          </div>
           <div class="list">
             <div class="item"><div class="name">CRM loop</div><div class="meta">Orders feed recency, spend, campaigns, coupon redemptions, and timeline events.</div></div>
             <div class="item"><div class="name">Shared hosting fit</div><div class="meta">No workers, no services, no build step. Exports are direct CSV downloads.</div></div>

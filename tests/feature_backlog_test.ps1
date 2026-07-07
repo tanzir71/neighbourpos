@@ -108,6 +108,12 @@ Assert-SourceContains $source 'navigator\.clipboard && navigator\.clipboard\.wri
 Assert-SourceContains $source 'action=receipt&code' 'Public receipt code URL is missing'
 Assert-SourceContains $source 'SELECT \* FROM orders WHERE order_code = \?' 'Receipt route must support code lookup'
 Assert-SourceDoesNotContain $source 'action=receipt&id' 'In-app receipt links should use public receipt codes'
+Assert-SourceContains $source "daily' =>" 'Sales report daily sparkline series is missing'
+Assert-SourceContains $source 'function salesTrendSparkline' 'Dashboard 14-day sales sparkline renderer is missing'
+Assert-SourceContains $source 'function sparklinePath' 'Dashboard sparkline path helper is missing'
+Assert-SourceContains $source 'unpaid_orders_count' 'Dashboard unpaid-orders attention count is missing'
+Assert-SourceContains $source 'COUNT\(DISTINCT campaign_id\)' 'Dashboard queued campaign attention count is missing'
+Assert-SourceContains $source 'deltas' 'Dashboard KPI deltas are missing'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'

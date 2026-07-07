@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P1.9] Upgraded the dashboard with KPI deltas, a 14-day sales sparkline, and needs-attention cards for stock, unpaid orders, and queued exports.
 - [P1.8] Polished login, register, customer portal, and receipt pages with shared public-page styling, receipt sharing, and 80mm print CSS.
 - [P1.7] Added shared money/date formatters, Admin currency-symbol editing, locale thousands separators, and relative dates in the SPA.
 - [P1.6] Added POS scanner-style SKU entry, keyboard shortcuts, cash change due, and mobile tap-target sizing.
