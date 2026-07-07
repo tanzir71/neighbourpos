@@ -566,6 +566,91 @@ function campaign_export_profile(string $format, array $camp, array $rows, strin
   return [$headers, $out];
 }
 
+function campaign_export_allowed_format(string $format): bool {
+  return in_array($format, ['full', 'mailchimp', 'brevo', 'sms', 'whatsapp'], true);
+}
+
+function campaign_export_filename(array $camp, string $format, bool $legacyFull = false): string {
+  if ($legacyFull && $format === 'full') return 'campaign-'.(int)$camp['id'].'-recipients.csv';
+  $slug = strtolower(trim((string)($camp['name'] ?? 'campaign')));
+  $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+  $slug = trim((string)$slug, '-');
+  if ($slug === '') $slug = 'campaign-'.(int)($camp['id'] ?? 0);
+  return $slug.'-'.$format.'-'.gmdate('Ymd').'.csv';
+}
+
+function campaign_export_preview_summary(string $format, array $camp, array $rows, string $countryCode, string $storeName = ''): array {
+  [, $profileRows] = $format === 'full'
+    ? [[], $rows]
+    : campaign_export_profile($format, $camp, $rows, $countryCode, $storeName);
+
+  $summary = [
+    'format' => $format,
+    'total_queued' => count($rows),
+    'opted_in' => 0,
+    'with_email' => 0,
+    'with_valid_phone' => 0,
+    'export_count' => count($profileRows),
+    'excluded_and_why' => [
+      'missing_email' => 0,
+      'invalid_phone' => 0,
+      'missing_contact' => 0,
+      'duplicate_email' => 0,
+      'duplicate_phone' => 0,
+      'duplicate_contact' => 0,
+    ],
+  ];
+
+  $seenEmail = [];
+  $seenPhone = [];
+  $seenContact = [];
+  foreach ($rows as $r) {
+    if ((int)($r['marketing_opt_in'] ?? 0) === 1) $summary['opted_in']++;
+    $email = campaign_recipient_email($r);
+    $emailKey = strtolower($email);
+    $e164 = normalize_e164((string)($r['phone'] ?? ''), $countryCode);
+    if ($email !== '') $summary['with_email']++;
+    if ($e164 !== null) $summary['with_valid_phone']++;
+
+    if ($format === 'mailchimp') {
+      if ($email === '') {
+        $summary['excluded_and_why']['missing_email']++;
+      } elseif (isset($seenEmail[$emailKey])) {
+        $summary['excluded_and_why']['duplicate_email']++;
+      } else {
+        $seenEmail[$emailKey] = true;
+      }
+      continue;
+    }
+
+    if ($format === 'sms' || $format === 'whatsapp') {
+      if ($e164 === null) {
+        $summary['excluded_and_why']['invalid_phone']++;
+      } elseif (isset($seenPhone[$e164])) {
+        $summary['excluded_and_why']['duplicate_phone']++;
+      } else {
+        $seenPhone[$e164] = true;
+      }
+      continue;
+    }
+
+    if ($format === 'brevo') {
+      if ($email === '' && $e164 === null) {
+        $summary['excluded_and_why']['missing_contact']++;
+        continue;
+      }
+      $key = $email !== '' ? 'email:'.$emailKey : 'phone:'.$e164;
+      if (isset($seenContact[$key])) {
+        $summary['excluded_and_why']['duplicate_contact']++;
+      } else {
+        $seenContact[$key] = true;
+      }
+    }
+  }
+
+  return $summary;
+}
+
 function rand_code(int $len): string {
   $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   $out = '';
@@ -1354,8 +1439,10 @@ if ($action === 'campaign_export') {
   require_login();
   $uid = (int)($_SESSION['uid'] ?? 0);
   $id = (int)($_GET['id'] ?? 0);
+  $formatWasExplicit = array_key_exists('format', $_GET);
   $format = strtolower(trim((string)($_GET['format'] ?? 'full')));
   if ($format === '') $format = 'full';
+  $bom = !empty($_GET['bom']);
 
   if ($id <= 0) {
     http_response_code(400);
@@ -1364,8 +1451,7 @@ if ($action === 'campaign_export') {
     exit;
   }
 
-  $allowedFormats = ['full', 'mailchimp', 'brevo', 'sms', 'whatsapp'];
-  if (!in_array($format, $allowedFormats, true)) {
+  if (!campaign_export_allowed_format($format)) {
     http_response_code(400);
     header('Content-Type: text/plain; charset=utf-8');
     echo "Invalid export format";
@@ -1435,11 +1521,12 @@ if ($action === 'campaign_export') {
   ]);
 
   header('Content-Type: text/csv; charset=utf-8');
-  $filename = $format === 'full' ? 'campaign-'.$id.'-recipients.csv' : 'campaign-'.$id.'-'.$format.'.csv';
+  $filename = campaign_export_filename($camp, $format, $format === 'full' && !$formatWasExplicit);
   header('Content-Disposition: attachment; filename="'.$filename.'"');
   header('Cache-Control: no-store');
 
   $out = fopen('php://output', 'w');
+  if ($bom) fwrite($out, "\xEF\xBB\xBF");
   if ($format !== 'full') {
     [$headers, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'), $storeName);
     fwrite($out, implode(',', $headers)."\n");
@@ -2294,6 +2381,61 @@ if (str_starts_with($action, 'api_')) {
     json_out(['ok' => true, 'data' => $rows]);
   }
 
+  if ($action === 'api_campaign_export_preview') {
+    $id = (int)($body['id'] ?? 0);
+    $format = strtolower(trim((string)($body['format'] ?? 'full')));
+    if ($format === '') $format = 'full';
+    if ($id <= 0) json_out(['ok' => false, 'error' => 'Campaign id required'], 400);
+    if (!campaign_export_allowed_format($format)) json_out(['ok' => false, 'error' => 'Invalid export format'], 400);
+
+    $campSt = $pdo->prepare("
+      SELECT c.id, c.name, c.channel, c.message_template, c.sent_count, s.name AS segment_name
+      FROM campaigns c
+      LEFT JOIN segments s ON s.id = c.segment_id
+      WHERE c.id = ?
+    ");
+    $campSt->execute([$id]);
+    $camp = $campSt->fetch();
+    if (!$camp) json_out(['ok' => false, 'error' => 'Campaign not found'], 404);
+
+    $rowSt = $pdo->prepare("
+      SELECT
+        cr.customer_id,
+        cr.phone,
+        cr.email AS recipient_email,
+        cr.coupon_code,
+        cr.sent_at,
+        cr.redeemed_order_id,
+        cr.redeemed_at,
+        cr.status,
+        cr.payload_json,
+        cust.name AS customer_name,
+        cust.email AS customer_email,
+        cust.tags_text,
+        cust.marketing_opt_in,
+        cust.total_spent_cents,
+        cust.order_count,
+        cust.last_order_at
+      FROM campaign_recipients cr
+      LEFT JOIN customers cust ON cust.id = cr.customer_id
+      WHERE cr.campaign_id = ?
+      ORDER BY cr.id ASC
+    ");
+    $rowSt->execute([$id]);
+    $rows = $rowSt->fetchAll();
+
+    $store = current_store($pdo, $CONFIG);
+    $summary = campaign_export_preview_summary(
+      $format,
+      $camp,
+      $rows,
+      (string)($store['default_country_code'] ?? '+1'),
+      (string)($store['name'] ?? '')
+    );
+    $summary['filename'] = campaign_export_filename($camp, $format, false);
+    json_out(['ok' => true, 'data' => $summary]);
+  }
+
   if ($action === 'api_campaign_create') {
     $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
     rate_limit_or_fail($pdo, 'api_write:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
@@ -2885,6 +3027,7 @@ $csrf = csrf_token();
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     .row{display:flex;gap:10px;align-items:center;min-width:0}
     .row > *{flex:1;min-width:0}
+    .topbar .row > *,.exportPanel .row > *{flex:0 0 auto}
     .field label{display:block;color:var(--muted);font-size:11px;margin:10px 0 6px}
     .field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:var(--radius-control);border:0;background:var(--wash);color:var(--txt);font-size:13px;outline:none}
     .field textarea{min-height:70px;resize:vertical}
@@ -2948,6 +3091,13 @@ $csrf = csrf_token();
     .item + .item{border-top:1px solid var(--line2)}
     .item .name{font-weight:500;font-size:13px}
     .item .meta{color:var(--muted);font-size:12px;margin-top:4px}
+    .exportPanel{margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)}
+    .exportPanel .row{flex-wrap:wrap}
+    .exportPanel .field{flex:1 1 150px;min-width:150px;max-width:220px}
+    .checkRow{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;border-radius:var(--radius-control);background:var(--wash);color:var(--txt);font-size:12px;font-weight:500;white-space:nowrap}
+    .checkRow input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+    .exportSummary{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .exportSummary span{display:inline-flex;align-items:center;min-height:28px;border-radius:var(--radius-control);background:var(--blueWash);color:#1642a6;padding:0 8px;font-size:12px}
     .dataTableWrap{max-width:100%;overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius-card);background:#fff}
     .dataTable{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;font-size:13px}
     .dataTable th{position:sticky;top:0;z-index:1;background:#f8fafc;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -3209,6 +3359,7 @@ $csrf = csrf_token();
     segments: [],
     campaigns: [],
     auditLogs: [],
+    campaignExport: {},
     loading: {},
     errors: {},
     lastCustomerId: null,
@@ -3643,6 +3794,73 @@ $csrf = csrf_token();
       </svg>
       <div class="sparklineMeta"><span>${esc(first)}</span><span>${esc(last)}</span></div>
     </div>`
+  }
+
+  function campaignExportState(id){
+    const key = String(id)
+    if (!state.campaignExport[key]) state.campaignExport[key] = { format: 'mailchimp', bom: false, preview: null, loading: false, error: '' }
+    return state.campaignExport[key]
+  }
+
+  function campaignExportHref(c){
+    const ex = campaignExportState(c.id)
+    const params = new URLSearchParams({ action: 'campaign_export', id: String(c.id), format: ex.format || 'mailchimp' })
+    if (ex.bom) params.set('bom', '1')
+    return `?${params.toString()}`
+  }
+
+  function exportReasonSummary(reasons){
+    const labels = {
+      missing_email: 'missing email',
+      invalid_phone: 'invalid phone',
+      missing_contact: 'missing email/phone',
+      duplicate_email: 'duplicate email',
+      duplicate_phone: 'duplicate phone',
+      duplicate_contact: 'duplicate contact'
+    }
+    return Object.entries(reasons || {})
+      .filter(([,v])=>Number(v || 0) > 0)
+      .map(([k,v])=>`${labels[k] || k}: ${Number(v || 0).toLocaleString()}`)
+      .join(' - ') || 'none'
+  }
+
+  function campaignExportPanel(c){
+    const ex = campaignExportState(c.id)
+    const summary = ex.preview
+    return `
+      <div class="exportPanel">
+        <div class="row" style="align-items:flex-end">
+          <div class="field">
+            <label>Export format</label>
+            <select data-export-format="${c.id}">
+              <option value="mailchimp" ${ex.format === 'mailchimp' ? 'selected' : ''}>Mailchimp</option>
+              <option value="brevo" ${ex.format === 'brevo' ? 'selected' : ''}>Brevo</option>
+              <option value="sms" ${ex.format === 'sms' ? 'selected' : ''}>SMS</option>
+              <option value="whatsapp" ${ex.format === 'whatsapp' ? 'selected' : ''}>WhatsApp</option>
+              <option value="full" ${ex.format === 'full' ? 'selected' : ''}>Full archive</option>
+            </select>
+          </div>
+          <label class="checkRow">
+            <input type="checkbox" data-export-bom="${c.id}" ${ex.bom ? 'checked' : ''}>
+            <span>Excel-friendly</span>
+          </label>
+          <button class="btn small" data-export-preview="${c.id}">${ex.loading ? 'Checking...' : 'Preview'}</button>
+          <a class="btn small primary" href="${campaignExportHref(c)}">Download CSV</a>
+        </div>
+        <div class="meta">Works with: Mailchimp / Brevo / any SMS tool / WhatsApp manual</div>
+        ${ex.error ? `<div class="errbox">${esc(ex.error)}</div>` : ``}
+        ${summary ? `
+          <div class="exportSummary">
+            <span>Queued <b>${Number(summary.total_queued || 0).toLocaleString()}</b></span>
+            <span>Opted-in <b>${Number(summary.opted_in || 0).toLocaleString()}</b></span>
+            <span>Email <b>${Number(summary.with_email || 0).toLocaleString()}</b></span>
+            <span>Valid phone <b>${Number(summary.with_valid_phone || 0).toLocaleString()}</b></span>
+            <span>Export rows <b>${Number(summary.export_count || 0).toLocaleString()}</b></span>
+            <span>Excluded: ${esc(exportReasonSummary(summary.excluded_and_why))}</span>
+          </div>
+        ` : ``}
+      </div>
+    `
   }
 
   function attentionItem(iconId, title, body, value, tone, goTab){
@@ -4351,12 +4569,11 @@ $csrf = csrf_token();
                     <div style="flex:1">
                       <div class="name" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
                         <span>#${c.id} ${esc(c.name)}</span>
-                        ${Number(c.sent_count || 0) > 0
-                          ? `<a class="btn small ghost" href="?action=campaign_export&id=${c.id}">Export CSV</a>`
-                          : `<button class="btn small ghost" disabled>Queue first</button>`}
+                        ${Number(c.sent_count || 0) > 0 ? `<span class="pill">Ready to export</span>` : `<button class="btn small ghost" disabled>Queue first</button>`}
                       </div>
                       <div class="meta">Segment: ${esc(c.segment_name || ('#'+c.segment_id))}  -  Channel: ${esc(c.channel)}  -  Sent/queued: ${esc(c.sent_count)}</div>
                       <div class="meta">Scheduled: ${fmtDate(c.scheduled_at)}  -  Created: ${fmtDate(c.created_at)}</div>
+                      ${Number(c.sent_count || 0) > 0 ? campaignExportPanel(c) : ``}
                     </div>
                   </div>
                 </div>
@@ -4926,11 +5143,41 @@ $csrf = csrf_token();
         await loadCampaigns()
         await loadDashboard()
         render()
-        msg('camp_msgbox','ok',`Queued ${out.queued} recipients. Use Export CSV on this campaign row.`)
+        msg('camp_msgbox','ok',`Queued ${out.queued} recipients. Use the export panel on this campaign row.`)
       }catch(e){
         msg('camp_msgbox','err', e.message || 'Send failed')
       }
     }
+
+    qsa('[data-export-format]').forEach(sel=>sel.onchange=()=>{
+      const ex = campaignExportState(sel.dataset.exportFormat)
+      ex.format = sel.value || 'mailchimp'
+      ex.preview = null
+      ex.error = ''
+      render()
+    })
+
+    qsa('[data-export-bom]').forEach(inp=>inp.onchange=()=>{
+      const ex = campaignExportState(inp.dataset.exportBom)
+      ex.bom = !!inp.checked
+      render()
+    })
+
+    qsa('[data-export-preview]').forEach(btn=>btn.onclick=async ()=>{
+      const id = Number(btn.dataset.exportPreview || '0')
+      const ex = campaignExportState(id)
+      ex.loading = true
+      ex.error = ''
+      render()
+      try{
+        ex.preview = await api('api_campaign_export_preview', { method:'POST', body: { id, format: ex.format || 'mailchimp' }})
+      }catch(e){
+        ex.error = e.message || 'Preview failed'
+      }finally{
+        ex.loading = false
+        render()
+      }
+    })
 
     const repRefresh = qs('#rep_refresh')
     if (repRefresh) repRefresh.onclick = async ()=>{

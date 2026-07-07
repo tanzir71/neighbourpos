@@ -85,16 +85,21 @@ if ($env:NEIGHBOURPOS_PHP_EXT_DIR) {
 
 Assert-True ($source -match "function csv_safe_cell") 'CSV spreadsheet-safety helper is missing'
 Assert-True ($source -match 'if \(\$action === ''campaign_export''\)') 'campaign_export route is missing'
-Assert-True ($source.Contains('$filename = $format === ''full''')) 'CSV filename format branch is missing'
-Assert-True ($source.Contains('campaign-''.$id.''-recipients.csv')) 'Full CSV download filename is missing'
-Assert-True ($source.Contains('campaign-''.$id.''-''.$format.''.csv')) 'Profile CSV download filename is missing'
+Assert-True ($source -match "function campaign_export_filename") 'CSV filename helper is missing'
+Assert-True ($source -match "recipients\.csv") 'Legacy full CSV download filename is missing'
+Assert-True ($source -match "gmdate\('Ymd'\)") 'Profile CSV download filename date stamp is missing'
+Assert-True ($source -match "bom") 'Excel-friendly BOM option is missing'
 Assert-True ($source -match "function campaign_export_profile") 'Campaign export profile engine is missing'
 Assert-True ($source -match "Email Address") 'Mailchimp profile header is missing'
 Assert-True ($source -match "https://wa\.me/") 'WhatsApp profile link builder is missing'
 Assert-True ($source -match 'campaigns\.export') 'Campaign export audit action is missing'
 Assert-True ($source -match 'No queued recipients') 'No-recipient export error is missing'
 Assert-True ($source -match "message' => csv_safe_cell") 'CSV message column is not protected with csv_safe_cell'
-Assert-True ($source -match 'Export CSV') 'Campaign list export control is missing'
+Assert-True ($source -match 'api_campaign_export_preview') 'Campaign export preview API is missing'
+Assert-True ($source -match 'data-export-preview') 'Campaign export preview control is missing'
+Assert-True ($source -match 'Download CSV') 'Campaign list download control is missing'
+Assert-True ($source -match 'Excel-friendly') 'Campaign export BOM toggle is missing'
+Assert-True ($source -match 'Works with: Mailchimp / Brevo / any SMS tool / WhatsApp manual') 'Campaign export format helper copy is missing'
 Assert-True ($source -match 'Queue first') 'Campaign list empty-state export control is missing'
 
 $phpModules = & $phpCommand @phpArgs -m
@@ -275,6 +280,29 @@ try {
     -Action 'api_campaign_send' `
     -Body @{ id = [int]$profileCampaign.id; override_opt_in = 0; with_coupons = 1 } | Out-Null
 
+  $smsPreview = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_campaign_export_preview' `
+    -Body @{ id = [int]$profileCampaign.id; format = 'sms' }
+  Assert-True ($smsPreview.total_queued -eq 5) "SMS export preview total_queued should be 5, got $($smsPreview.total_queued)"
+  Assert-True ($smsPreview.opted_in -eq 5) "SMS export preview opted_in should be 5, got $($smsPreview.opted_in)"
+  Assert-True ($smsPreview.with_email -eq 3) "SMS export preview with_email should be 3, got $($smsPreview.with_email)"
+  Assert-True ($smsPreview.with_valid_phone -eq 4) "SMS export preview with_valid_phone should be 4, got $($smsPreview.with_valid_phone)"
+  Assert-True ($smsPreview.export_count -eq 4) "SMS export preview export_count should be 4, got $($smsPreview.export_count)"
+  Assert-True ($smsPreview.excluded_and_why.invalid_phone -eq 1) "SMS export preview invalid_phone should be 1, got $($smsPreview.excluded_and_why.invalid_phone)"
+
+  $mailchimpPreview = Invoke-AppJson `
+    -BaseUrl $baseUrl `
+    -Session $session `
+    -Csrf $csrf `
+    -Action 'api_campaign_export_preview' `
+    -Body @{ id = [int]$profileCampaign.id; format = 'mailchimp' }
+  Assert-True ($mailchimpPreview.export_count -eq 2) "Mailchimp export preview export_count should be 2, got $($mailchimpPreview.export_count)"
+  Assert-True ($mailchimpPreview.excluded_and_why.missing_email -eq 2) "Mailchimp export preview missing_email should be 2, got $($mailchimpPreview.excluded_and_why.missing_email)"
+  Assert-True ($mailchimpPreview.excluded_and_why.duplicate_email -eq 1) "Mailchimp export preview duplicate_email should be 1, got $($mailchimpPreview.excluded_and_why.duplicate_email)"
+
   $mailchimp = Invoke-WebRequest -Uri "${baseUrl}?action=campaign_export&id=$($profileCampaign.id)&format=mailchimp" -WebSession $session -UseBasicParsing
   $mailchimpHeader = Get-CsvHeader $mailchimp.Content
   Assert-True ($mailchimpHeader -eq 'Email Address,First Name,Last Name,Phone,Tags') "Mailchimp header row is incorrect: $mailchimpHeader"
@@ -291,6 +319,7 @@ try {
   Assert-True (($brevoRows | Where-Object { $_.SMS -and $_.SMS -notmatch '^\+[1-9][0-9]{6,14}$' }).Count -eq 0) 'Brevo export included an invalid SMS phone'
 
   $sms = Invoke-WebRequest -Uri "${baseUrl}?action=campaign_export&id=$($profileCampaign.id)&format=sms" -WebSession $session -UseBasicParsing
+  Assert-True ([string]$sms.Headers['Content-Disposition'] -match 'profile-export-test-sms-\d{8}\.csv') 'SMS export filename should use campaign slug, format, and date'
   $smsHeader = Get-CsvHeader $sms.Content
   Assert-True ($smsHeader -eq 'phone,name,coupon_code,message') "SMS header row is incorrect: $smsHeader"
   $smsRows = @($sms.Content | ConvertFrom-Csv)
@@ -299,6 +328,8 @@ try {
   Assert-True (($smsRows | Where-Object { $_.message -match '\{first_name\}|\{coupon_code\}|\{store_name\}' }).Count -eq 0) 'SMS export left supported merge fields unresolved'
   Assert-True (($smsRows | Where-Object { $_.message -notmatch '^Hi .+, use NP-[A-Z0-9]+ at Neighbour Store\. Keep \{unknown\}\.$' }).Count -eq 0) 'SMS export did not render merge-field messages correctly'
   Assert-True (($smsRows | Where-Object { $_.message -notlike "*$($_.coupon_code)*" }).Count -eq 0) 'SMS export message did not include each row coupon code'
+  $smsBom = Invoke-WebRequest -Uri "${baseUrl}?action=campaign_export&id=$($profileCampaign.id)&format=sms&bom=1" -WebSession $session -UseBasicParsing
+  Assert-True ($smsBom.Content.StartsWith([string][char]0xFEFF)) 'Excel-friendly BOM export did not start with UTF-8 BOM'
 
   $whatsapp = Invoke-WebRequest -Uri "${baseUrl}?action=campaign_export&id=$($profileCampaign.id)&format=whatsapp" -WebSession $session -UseBasicParsing
   $whatsappHeader = Get-CsvHeader $whatsapp.Content

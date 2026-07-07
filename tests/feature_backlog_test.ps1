@@ -66,6 +66,10 @@ Assert-SourceContains $source "https://wa.me/" 'WhatsApp export link builder is 
 Assert-SourceContains $source "preview_messages" 'Campaign simulator merge-field preview is missing'
 Assert-SourceContains $source "{first_name}" 'Campaign merge-field renderer is missing first_name support'
 Assert-SourceContains $source "{store_name}" 'Campaign merge-field renderer is missing store_name support'
+Assert-SourceContains $source "api_campaign_export_preview" 'Campaign export preview API is missing'
+Assert-SourceContains $source "data-export-preview" 'Campaign export preview control is missing'
+Assert-SourceContains $source "Excel-friendly" 'Campaign export BOM toggle is missing'
+Assert-SourceContains $source "Works with: Mailchimp / Brevo / any SMS tool / WhatsApp manual" 'Campaign export helper copy is missing'
 Assert-SourceContains $source "portal_opt_in_update" 'Customer portal opt-in update route is missing'
 Assert-SourceContains $source "database_backup" 'Database backup route is missing'
 
