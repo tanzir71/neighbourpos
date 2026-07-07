@@ -18,15 +18,12 @@
   <meta name="twitter:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'%3E%3Crect width='1200' height='630' fill='%23f6f8fb'/%3E%3Crect x='72' y='72' width='164' height='164' rx='28' fill='%23090b10'/%3E%3Crect x='204' y='98' width='10' height='112' rx='5' fill='%231747d5'/%3E%3Ctext x='96' y='172' font-family='Inter,Arial,sans-serif' font-size='68' font-weight='900' letter-spacing='0' fill='white'%3ENP%3C/text%3E%3Ctext x='284' y='142' font-family='Inter,Arial,sans-serif' font-size='72' font-weight='800' fill='%230b0d12'%3ENeighbourPOS%3C/text%3E%3Ctext x='284' y='220' font-family='Inter,Arial,sans-serif' font-size='34' font-weight='500' fill='%2358606d'%3EOwned POS + customer memory for tiny stores%3C/text%3E%3Crect x='284' y='298' width='330' height='72' rx='14' fill='%23eaf1ff'/%3E%3Ctext x='318' y='344' font-family='Inter,Arial,sans-serif' font-size='28' font-weight='700' fill='%231747d5'%3EFast checkout%3C/text%3E%3Crect x='640' y='298' width='360' height='72' rx='14' fill='%23eaf7ef'/%3E%3Ctext x='674' y='344' font-family='Inter,Arial,sans-serif' font-size='28' font-weight='700' fill='%2314784f'%3ESQLite ownership%3C/text%3E%3Ctext x='72' y='540' font-family='Inter,Arial,sans-serif' font-size='28' font-weight='500' fill='%2358606d'%3EOne PHP file. One local database. Export-ready campaigns.%3C/text%3E%3C/svg%3E">
   <meta name="theme-color" content="#090b10">
   <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='0' fill='white'%3ENP%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --bg:#ffffff;
       --ink:#0b0d12;
       --muted:#58606d;
-      --soft:#737b88;
+      --soft:#58606d;
       --line:#e5ebf3;
       --line-strong:#d8e0eb;
       --panel:#f6f8fb;
@@ -44,10 +41,10 @@
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px}
     a{color:inherit}
     img{max-width:100%;display:block}
-    .mono,code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .mono,code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
     .skip{position:absolute;left:-999px;top:12px}
     .skip:focus{left:12px;z-index:30;background:#fff;outline:2px solid var(--blue);border-radius:6px;padding:8px 10px}
     .wrap{width:min(1180px,calc(100% - 40px));margin:0 auto}
@@ -130,7 +127,7 @@
     .segmentPreview div:first-child{border-top:0;background:#f8fafc;color:var(--muted);font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
     .exportPanel{border-radius:8px;background:#fff;border:1px solid var(--line);padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .exportPanel span{color:var(--muted);font-size:12px}
-    .csvButton{border-radius:6px;background:var(--blue);color:#fff;padding:10px 12px;font-size:12px;font-weight:700}
+    .exportPanel .csvButton{border-radius:6px;background:var(--blue);color:#fff;padding:10px 12px;font-size:12px;font-weight:700}
     section{padding:66px 0}
     .sectionHead{display:flex;align-items:end;justify-content:space-between;gap:22px;margin-bottom:24px}
     .sectionHead h2{margin:0;font-size:clamp(28px,4vw,42px);line-height:1.08;letter-spacing:0;font-weight:800}

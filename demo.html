@@ -6,9 +6,6 @@
   <title>NeighbourPOS Demo</title>
   <meta name="description" content="Static NeighbourPOS demo for orders, inventory, CRM, campaigns, and reports.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='0' fill='white'%3ENP%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --bg:#f6f8fc;
@@ -31,11 +28,11 @@
       --shadow:none;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px}
     button,input,select{font:inherit}
     button{cursor:pointer}
     a{color:inherit}
-    .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
     .iconSprite{position:absolute;width:0;height:0;overflow:hidden}
     .icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
     .shell{min-height:100vh;display:grid;grid-template-columns:214px minmax(0,1fr);transition:grid-template-columns .18s ease}
@@ -259,7 +256,7 @@
         </a>
         <button class="sideToggle" id="sideToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true"><svg class="icon"><use href="#i-chevron-left"></use></svg></span></button>
       </div>
-      <div class="nav" role="tablist" aria-label="Demo views">
+      <div class="nav" aria-label="Demo views">
         <button class="active" data-view="pos"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-pos"></use></svg></span><span class="navLabel">POS</span></button>
         <button data-view="dashboard"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-dashboard"></use></svg></span><span class="navLabel">Dashboard</span></button>
         <button data-view="orders"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-orders"></use></svg></span><span class="navLabel">Orders</span></button>
@@ -313,7 +310,7 @@
           <div class="checkoutShell">
             <div class="stationPanel">
               <div class="saleToolbar">
-                <input class="saleSearch" id="saleSearch" placeholder="Search or scan">
+                <input class="saleSearch" id="saleSearch" aria-label="Search or scan products" placeholder="Search or scan">
                 <button class="iconBtn" title="Scan barcode" aria-label="Scan barcode"><svg class="icon"><use href="#i-barcode"></use></svg></button>
                 <button class="iconBtn" title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><svg class="icon"><use href="#i-keyboard"></use></svg></button>
               </div>
@@ -329,7 +326,7 @@
               <div class="customerLookup" id="customerLookup"></div>
               <div id="cartRows" class="cartRows"></div>
               <div class="couponRow">
-                <input id="couponInput" placeholder="WINBACK10">
+                <input id="couponInput" aria-label="Coupon code" placeholder="WINBACK10">
                 <button class="btn" id="applyCoupon">Apply</button>
               </div>
               <div class="totals" id="cartTotals"></div>
@@ -339,7 +336,7 @@
                 <button class="switch" id="markPaid" aria-label="Mark paid"><i></i></button>
               </div>
               <div class="tenderGrid">
-                <select id="orderType">
+                <select id="orderType" aria-label="Order type">
                   <option value="pickup">Pickup</option>
                   <option value="dine_in">Dine-in</option>
                   <option value="delivery">Delivery</option>
@@ -357,8 +354,8 @@
               <div><h2>Orders</h2><p class="sub">Search by order code, customer, status, or date.</p></div>
             </div>
             <div class="filters">
-              <input id="orderSearch" placeholder="Search orders">
-              <select id="statusFilter">
+              <input id="orderSearch" aria-label="Search orders" placeholder="Search orders">
+              <select id="statusFilter" aria-label="Filter orders by status">
                 <option value="all">All statuses</option>
                 <option value="open">Open</option>
                 <option value="ready">Ready</option>
@@ -375,7 +372,7 @@
               <div class="panelHead">
                 <div><h2>Customer search</h2><p class="sub">Profiles are built from orders, opt-in, coupons, and campaign history.</p></div>
               </div>
-              <input id="customerSearch" placeholder="Search name, phone, or email">
+              <input id="customerSearch" aria-label="Search customers" placeholder="Search name, phone, or email">
               <div id="customerList" style="margin-top:12px"></div>
             </div>
             <div class="panel">
@@ -665,7 +662,7 @@
       const count=entries.reduce((sum,{line})=>sum+line.qty,0);
       document.getElementById("cartCount").textContent=`${count} ${count===1?"item":"items"}`;
       document.getElementById("customerLookup").innerHTML=`
-        <input id="customerPhone" placeholder="Enter phone number" value="${state.customerPhone}">
+        <input id="customerPhone" aria-label="Customer phone" placeholder="Enter phone number" value="${state.customerPhone}">
         ${c ? `
           <div class="customerChip">
             <span class="avatar">${c.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</span>
@@ -673,8 +670,8 @@
             <span class="chipMeta">${c.optIn?"Opt-in":"No opt-in"}</span>
           </div>` : `
           <div class="compactFields">
-            <input id="newCustomerName" placeholder="${state.customerLookupStatus==="walkin"?"Walk-in name":"New customer name"}" value="${state.newCustomerName}">
-            <select id="newCustomerOptIn">
+            <input id="newCustomerName" aria-label="${state.customerLookupStatus==="walkin"?"Walk-in name":"New customer name"}" placeholder="${state.customerLookupStatus==="walkin"?"Walk-in name":"New customer name"}" value="${state.newCustomerName}">
+            <select id="newCustomerOptIn" aria-label="Marketing opt-in">
               <option value="0" ${state.newCustomerOptIn?"":"selected"}>No opt-in</option>
               <option value="1" ${state.newCustomerOptIn?"selected":""}>Opt-in</option>
             </select>
@@ -695,7 +692,7 @@
         <div class="totalRow"><span>Subtotal</span><span>${money.format(subtotal)}</span></div>
         <div class="totalRow"><span>Discount</span><span>-${money.format(discount)}</span></div>
         <div class="totalRow"><span>Tax</span><span>${money.format(tax)}</span></div>
-        <div class="totalRow"><span>Tip</span><span class="tipControl"><input id="tipInput" type="number" min="0" step="0.01" value="${Number(state.tip).toFixed(2)}"></span></div>
+        <div class="totalRow"><span>Tip</span><span class="tipControl"><input id="tipInput" aria-label="Tip amount" type="number" min="0" step="0.01" value="${Number(state.tip).toFixed(2)}"></span></div>
         <div class="totalRow"><span>Total</span><strong>${money.format(total)}</strong></div>
       `;
       document.getElementById("paymentMethod").innerHTML=["cash","card","online"].map(method=>`

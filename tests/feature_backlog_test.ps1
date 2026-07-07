@@ -90,6 +90,7 @@ Assert-SourceContains $demo 'receiptModal' 'Static demo receipt modal styling is
 Assert-SourceContains $demo 'showReceiptModal' 'Static demo receipt modal renderer is missing'
 Assert-SourceContains $demo 'receiptRoot' 'Static demo receipt modal root is missing'
 Assert-SourceContains $demo 'data-view-orders' 'Static demo receipt view-orders action is missing'
+Assert-SourceDoesNotContain $demo 'fonts.googleapis.com' 'Static demo should not use render-blocking remote font CSS'
 
 Assert-SourceContains $source 'checkoutShell' 'Production cashier station shell is missing'
 Assert-SourceContains $source 'pos_category' 'Production checkout category filter is missing'
@@ -171,6 +172,7 @@ Assert-SourceContains $landing 'CHANGELOG.md' 'Landing page changelog link is mi
 Assert-SourceContains $landing 'SECURITY.md' 'Landing page security link is missing'
 Assert-SourceContains $landing 'Last updated: 2026-07-07' 'Landing page last-updated date is missing'
 Assert-SourceContains $landing 'License: not declared yet' 'Landing page license note is missing'
+Assert-SourceDoesNotContain $landing 'fonts.googleapis.com' 'Landing page should not use render-blocking remote font CSS'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'
