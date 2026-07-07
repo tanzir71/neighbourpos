@@ -5,7 +5,7 @@ Minimal, mobile-first POS + CRM MVP built for shared hosting (single-file PHP + 
 - App entry: `neighbourpos.php` (creates `neighbourpos.db` on first run).
 - Default admin (change immediately): `admin@example.com` / `ChangeMe123!`
 - Customer portal: `/neighbourpos.php?action=portal`
-- Docs: [SETUP.md](SETUP.md) | [SECURITY.md](SECURITY.md)
+- Docs: [SETUP.md](SETUP.md) | [EXPORTS.md](EXPORTS.md) | [SECURITY.md](SECURITY.md)
 - Repo: https://github.com/tanzir71/neighbourpos
 
 ## What makes it different (CRM moat)

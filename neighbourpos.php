@@ -4519,7 +4519,7 @@ $csrf = csrf_token();
 
           <div class="exportPanel">
             <div class="h1">Export customers</div>
-            <div class="meta">Download the opted-in phone book or a saved segment using the same provider-ready formats as campaigns.</div>
+            <div class="meta">Download the opted-in phone book or a saved segment using the same provider-ready formats as campaigns. <a href="EXPORTS.md" target="_blank" rel="noopener">Export guide</a></div>
             <div class="row" style="align-items:flex-end">
               <div class="field">
                 <label>Segment</label>
@@ -4800,7 +4800,7 @@ $csrf = csrf_token();
           ` : ``}
 
           <div class="warnbox">
-            SMS costs and compliance are on you. By default, campaigns target only opted-in customers unless "override" is used (audited).
+            SMS costs and compliance are on you. By default, campaigns target only opted-in customers unless "override" is used (audited). <a href="EXPORTS.md" target="_blank" rel="noopener">Export guide</a>
           </div>
 
           <div id="camp_msgbox"></div>

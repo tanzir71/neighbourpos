@@ -28,6 +28,9 @@ $demo = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'demo.html')
 $landing = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'index.html')
 $readme = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'README.md')
 $setup = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'SETUP.md')
+$exportsPath = Join-Path $repoRoot 'EXPORTS.md'
+if (-not (Test-Path -LiteralPath $exportsPath)) { throw 'EXPORTS.md export guide is missing' }
+$exports = Get-Content -Raw -LiteralPath $exportsPath
 
 $phpVersionMatch = [regex]::Match($source, "const APP_VERSION = '([^']+)'")
 $landingVersionMatch = [regex]::Match($landing, "const APP_VERSION = '([^']+)'")
@@ -73,6 +76,8 @@ Assert-SourceContains $source "Works with: Mailchimp / Brevo / any SMS tool / Wh
 Assert-SourceContains $source "customer_export" 'Customer export route is missing'
 Assert-SourceContains $source "crm_export_format" 'CRM customer export format control is missing'
 Assert-SourceContains $source "Download customers" 'CRM customer export download control is missing'
+Assert-SourceContains $source "EXPORTS.md" 'Campaigns tab export guide link is missing'
+Assert-SourceContains $source "Export guide" 'Campaigns tab export guide label is missing'
 Assert-SourceContains $source "api_segment_duplicate" 'Segment duplicate API is missing'
 Assert-SourceContains $source "data-dup-seg" 'Segment duplicate control is missing'
 Assert-SourceContains $source "has_balance" 'Segment has_balance filter hook is missing'
@@ -196,6 +201,22 @@ Assert-SourceContains $landing 'License: not declared yet' 'Landing page license
 Assert-SourceDoesNotContain $landing 'fonts.googleapis.com' 'Landing page should not use render-blocking remote font CSS'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
+Assert-SourceContains $readme 'EXPORTS.md' 'README export guide link is missing'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'
+
+Assert-SourceContains $exports '# NeighbourPOS Export Guide' 'EXPORTS guide title is missing'
+Assert-SourceContains $exports 'Email Address,First Name,Last Name,Phone,Tags' 'EXPORTS Mailchimp header spec is missing'
+Assert-SourceContains $exports 'EMAIL,SMS,FIRSTNAME,LASTNAME,COUPON_CODE' 'EXPORTS Brevo header spec is missing'
+Assert-SourceContains $exports 'phone,name,coupon_code,message' 'EXPORTS SMS header spec is missing'
+Assert-SourceContains $exports 'phone,name,message,wa_link' 'EXPORTS WhatsApp header spec is missing'
+Assert-SourceContains $exports 'Mailchimp' 'EXPORTS Mailchimp section is missing'
+Assert-SourceContains $exports 'Brevo' 'EXPORTS Brevo section is missing'
+Assert-SourceContains $exports 'SimpleTexting' 'EXPORTS SimpleTexting instructions are missing'
+Assert-SourceContains $exports 'TextMagic|Textmagic' 'EXPORTS TextMagic instructions are missing'
+Assert-SourceContains $exports 'WhatsApp' 'EXPORTS WhatsApp instructions are missing'
+Assert-SourceContains $exports 'https://wa.me/' 'EXPORTS WhatsApp wa.me workflow is missing'
+Assert-SourceContains $exports 'opted-in' 'EXPORTS consent default note is missing'
+Assert-SourceContains $exports 'override' 'EXPORTS audited override note is missing'
+Assert-SourceContains $exports 'merchant' 'EXPORTS merchant compliance responsibility note is missing'
 
 Write-Host 'feature_backlog source checks passed.'
