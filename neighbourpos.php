@@ -15,6 +15,8 @@ README (Deployment - 10 lines)
 
 declare(strict_types=1);
 
+const APP_VERSION = '0.3.0';
+
 /* =========================
    Customize here (CONFIG)
    ========================= */
@@ -137,7 +139,7 @@ enforce_session_timeout($CONFIG);
 function htmlEscape(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function h(string $s): string { return htmlEscape($s); }
 function brand_favicon_href(): string {
-  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='-2' fill='white'%3ENP%3C/text%3E%3C/svg%3E";
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='0' fill='white'%3ENP%3C/text%3E%3C/svg%3E";
 }
 function now_iso(): string { return gmdate('Y-m-d H:i:s'); }
 function client_ip(): string { return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'; }
@@ -318,14 +320,14 @@ function public_page_css(string $accent): string {
     .publicWrap{width:min(100%,430px)}
     .publicWrap.wide{width:min(100%,560px)}
     .publicBrand{display:flex;align-items:center;gap:10px;margin:0 0 16px}
-    .brandMark{width:40px;height:40px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+    .brandMark{width:40px;height:40px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:0;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
     .brandMark::after{content:'';position:absolute;right:7px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .brandText strong{display:block;font-size:15px;font-weight:700;letter-spacing:-.03em}
+    .brandText strong{display:block;font-size:15px;font-weight:700;letter-spacing:0}
     .brandText span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
     .publicCard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:18px}
     .publicCard + .publicCard{margin-top:12px}
-    .h1{font-size:18px;line-height:1.2;font-weight:700;margin:0;letter-spacing:-.03em}
+    .h1{font-size:18px;line-height:1.2;font-weight:700;margin:0;letter-spacing:0}
     .p,.muted{color:var(--muted);font-size:12.5px;line-height:1.45;margin:6px 0 0}
     label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:12px 0 6px}
     input,select{width:100%;height:38px;border-radius:var(--radius-control);border:1px solid var(--line);background:var(--wash);color:var(--txt);padding:0 11px;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;outline:none}
@@ -365,10 +367,10 @@ function receipt_page_css(string $accent): string {
     .btn.primary{background:var(--accent);color:#fff}
     .receiptPaper{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-sm);padding:18px}
     .brandLine{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden}
+    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:900;letter-spacing:0;position:relative;overflow:hidden}
     .brandMark::after{content:'';position:absolute;right:6px;top:6px;width:4px;height:24px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .h1{font-size:18px;font-weight:700;margin:0;letter-spacing:-.03em}
+    .h1{font-size:18px;font-weight:700;margin:0;letter-spacing:0}
     .muted{color:var(--muted);font-size:12px;line-height:1.4}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     td{padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
@@ -2601,12 +2603,14 @@ $csrf = csrf_token();
     .app{max-width:1360px;width:100%;margin:0 auto;padding:14px 18px 32px;min-width:0}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .brand{display:flex;align-items:center;gap:10px}
-    .brandMark{width:40px;height:40px;border-radius:var(--radius-card);display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);flex:0 0 auto}
+    .brandMark{width:40px;height:40px;border-radius:var(--radius-card);display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:0;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);flex:0 0 auto}
     .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
+    .titleRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .title{font-weight:700;font-size:15px}
     .sub{color:var(--muted);font-size:12px;margin-top:2px}
     .pill{border:0;background:var(--wash);padding:6px 10px;border-radius:var(--radius-control);font-size:12px;color:var(--muted);font-weight:500}
+    .versionPill{background:var(--blueWash);color:var(--accent);font-size:11px;padding:4px 7px}
     .grid{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}
     @media(min-width:980px){ .grid{grid-template-columns: 1.2fr .8fr} }
 
@@ -2878,7 +2882,7 @@ $csrf = csrf_token();
   <div class="topbar">
     <div class="brand">
       <div>
-        <div class="title"><?=h((string)$store['name'])?> counter</div>
+        <div class="titleRow"><div class="title"><?=h((string)$store['name'])?> counter</div><span class="pill versionPill mono">v<?=h(APP_VERSION)?></span></div>
         <div class="sub">POS convenience, customer memory, campaigns, and local data ownership.</div>
       </div>
     </div>
@@ -4771,7 +4775,7 @@ $csrf = csrf_token();
   <div class="card" style="margin:14px 0">
     <div class="h1">Security & docs</div>
     <div class="muted" style="margin-top:6px">
-      <a href="SETUP.md">Docs</a>  -  <a href="SECURITY.md">Security</a>  -  <a href="README.md">README</a>
+      <a href="SETUP.md">Docs</a>  -  <a href="SECURITY.md">Security</a>  -  <a href="README.md">README</a>  -  <span class="pill versionPill mono">v<?=h(APP_VERSION)?></span>
     </div>
     <div class="muted" style="margin-top:10px">
       Logged in as <?=h((string)($_SESSION['email'] ?? ''))?> (<?=h((string)($_SESSION['role'] ?? 'staff'))?>).

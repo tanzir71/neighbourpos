@@ -29,6 +29,14 @@ $landing = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'index.html')
 $readme = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'README.md')
 $setup = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'SETUP.md')
 
+$phpVersionMatch = [regex]::Match($source, "const APP_VERSION = '([^']+)'")
+$landingVersionMatch = [regex]::Match($landing, "const APP_VERSION = '([^']+)'")
+if (-not $phpVersionMatch.Success) { throw 'Production APP_VERSION constant is missing' }
+if (-not $landingVersionMatch.Success) { throw 'Landing APP_VERSION constant is missing' }
+if ($phpVersionMatch.Groups[1].Value -ne $landingVersionMatch.Groups[1].Value) {
+  throw "Landing version badge does not match production APP_VERSION"
+}
+
 Assert-SourceContains $source 'inventory_low_stock_export' 'Low-stock CSV export route is missing'
 Assert-SourceContains $source 'function renderDashboard' 'Today snapshot dashboard UI is missing'
 Assert-SourceContains $source "api_today_snapshot" 'Today snapshot API is missing'
@@ -119,6 +127,7 @@ Assert-SourceContains $source 'dataTableWrap' 'Shared data table wrapper class i
 Assert-SourceContains $source 'position:sticky;top:0' 'Shared data table sticky header is missing'
 Assert-SourceContains $source 'className:''num''' 'Shared data table numeric alignment is missing from render paths'
 Assert-SourceContains $source 'statusBadge' 'Shared status badge component/class is missing'
+Assert-SourceContains $source 'v<\?=h\(APP_VERSION\)\?>' 'Production app version badge is missing'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'
@@ -142,6 +151,14 @@ Assert-SourceContains $landing 'campaignMockup' 'Landing page campaign export mo
 Assert-SourceContains $landing 'Download Mailchimp CSV' 'Landing page campaign export CTA mockup is missing'
 Assert-SourceContains $landing 'segmentPreview' 'Landing page segment preview mockup is missing'
 Assert-SourceContains $landing 'browserFrame' 'Landing page browser-frame product preview styling is missing'
+Assert-SourceContains $landing 'data-app-version' 'Landing page version badge target is missing'
+Assert-SourceContains $landing 'property="og:title"' 'Landing page OpenGraph title is missing'
+Assert-SourceContains $landing 'property="og:image"' 'Landing page OpenGraph social card is missing'
+Assert-SourceContains $landing 'name="twitter:card" content="summary_large_image"' 'Landing page Twitter card metadata is missing'
+Assert-SourceContains $landing 'CHANGELOG.md' 'Landing page changelog link is missing'
+Assert-SourceContains $landing 'SECURITY.md' 'Landing page security link is missing'
+Assert-SourceContains $landing 'Last updated: 2026-07-07' 'Landing page last-updated date is missing'
+Assert-SourceContains $landing 'License: not declared yet' 'Landing page license note is missing'
 
 Assert-SourceContains $readme 'sales reports' 'README does not mention sales reports'
 Assert-SourceContains $setup 'database backup' 'SETUP does not mention database backup'

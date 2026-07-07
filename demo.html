@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NeighbourPOS Demo</title>
   <meta name="description" content="Static NeighbourPOS demo for orders, inventory, CRM, campaigns, and reports.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='-2' fill='white'%3ENP%3C/text%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090b10'/%3E%3Crect x='50' y='10' width='5' height='44' rx='2.5' fill='%231652f0'/%3E%3Ctext x='9' y='42' font-family='Inter,Arial,sans-serif' font-size='25' font-weight='900' letter-spacing='0' fill='white'%3ENP%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -41,10 +41,10 @@
     .side{position:sticky;top:0;height:100vh;background:#fff;padding:14px 10px;display:flex;flex-direction:column;gap:14px}
     .sideTop{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:950;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:none}
+    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:900;letter-spacing:0;position:relative;overflow:hidden;box-shadow:none}
     .brandMark::after{content:"";position:absolute;right:5px;top:6px;width:4px;height:24px;border-radius:999px;background:var(--blue)}
     .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .brand strong{display:block;font-size:15px;letter-spacing:-.04em;font-weight:700}
+    .brand strong{display:block;font-size:15px;letter-spacing:0;font-weight:700}
     .brandText{display:block}
     .brandKicker{display:block;font-size:12px;color:var(--muted);margin-top:2px}
     .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:700;display:grid;place-items:center;flex:0 0 auto}
@@ -68,7 +68,7 @@
     .shell.navCollapsed .sideToggle span{transform:rotate(180deg)}
     .main{min-width:0}
     .top{height:62px;background:rgba(246,248,252,.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 22px;position:sticky;top:0;z-index:5}
-    .top h1{margin:0;font-size:20px;letter-spacing:-.05em}
+    .top h1{margin:0;font-size:20px;letter-spacing:0}
     .top p{margin:3px 0 0;color:var(--muted);font-size:13px}
     .topActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
     .pill{border:0;border-radius:7px;background:var(--wash);padding:7px 9px;color:var(--muted);font-size:12px;font-weight:500}
@@ -88,13 +88,13 @@
     .panel{padding:16px}
     .card{padding:14px}
     .panelHead{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:13px}
-    h2,h3{margin:0;letter-spacing:-.04em;font-weight:700}
+    h2,h3{margin:0;letter-spacing:0;font-weight:700}
     h2{font-size:18px}
     h3{font-size:14px}
     .sub{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
     .stat{padding:15px;background:#fff;border:0;border-radius:8px}
     .stat span{display:block;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
-    .stat strong{display:block;margin-top:6px;font-size:26px;letter-spacing:-.05em;font-weight:700}
+    .stat strong{display:block;margin-top:6px;font-size:26px;letter-spacing:0;font-weight:700}
     .stat small{display:block;margin-top:4px;color:var(--soft)}
     table{width:100%;border-collapse:collapse;font-size:12.5px}
     th,td{text-align:left;padding:9px 10px;border-bottom:0;vertical-align:top}
