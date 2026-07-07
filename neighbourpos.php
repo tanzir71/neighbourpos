@@ -310,7 +310,14 @@ function rand_code(int $len): string {
 }
 
 function require_login(): void {
-  if (empty($_SESSION['uid'])) redirect_to('?action=staff_login');
+  if (empty($_SESSION['uid'])) {
+    $action = $_GET['action'] ?? '';
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    if ((is_string($action) && str_starts_with($action, 'api_')) || (is_string($accept) && stripos($accept, 'application/json') !== false)) {
+      json_out(['ok' => false, 'error' => 'Authentication required'], 401);
+    }
+    redirect_to('?action=staff_login');
+  }
 }
 
 function is_admin(): bool {
@@ -811,6 +818,9 @@ if (PHP_SAPI === 'cli') {
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($action === '' && empty($_SESSION['uid']) && PHP_SAPI !== 'cli') {
+  $action = 'staff_login';
+}
 
 function current_store(PDO $pdo, array $CONFIG): array {
   $r = $pdo->query("SELECT * FROM stores ORDER BY id ASC LIMIT 1")->fetch();
@@ -2422,6 +2432,8 @@ $csrf = csrf_token();
     button,input,select,textarea{font-family:inherit}
     input,select,textarea{border:0;border-radius:7px;background:var(--wash);color:var(--txt);outline:none}
     input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);background:#fff}
+    .iconSprite{position:absolute;width:0;height:0;overflow:hidden}
+    .icon{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
     .appShell{min-height:100vh;display:grid;grid-template-columns:214px minmax(0,1fr);transition:grid-template-columns .18s ease}
     .appShell.navCollapsed{grid-template-columns:72px minmax(0,1fr)}
     .app{max-width:1360px;width:100%;margin:0 auto;padding:14px 18px 32px;min-width:0}
@@ -2467,7 +2479,8 @@ $csrf = csrf_token();
     .tab[data-tab="campaigns"]{--nav-bg:#edf8e8;--nav-color:#4d7c0f}
     .tab[data-tab="reports"]{--nav-bg:var(--redWash);--nav-color:var(--bad)}
     .tab[data-tab="admin"]{--nav-bg:#eef0f4;--nav-color:#4b5563}
-    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:0}
+    .navIcon{width:32px;height:32px;border-radius:8px;background:var(--nav-bg);color:var(--nav-color);display:grid;place-items:center}
+    .navIcon .icon{width:17px;height:17px}
     .tab:hover,.tab.active{background:var(--nav-bg);color:var(--nav-color)}
     .tab.active .navIcon{background:#fff}
     .sideToggle{width:34px;height:34px;border:0;border-radius:8px;background:var(--wash);color:var(--muted);font-weight:700;display:grid;place-items:center;flex:0 0 auto}
@@ -2503,7 +2516,8 @@ $csrf = csrf_token();
     .cartPanel{position:sticky;top:14px;display:grid;gap:12px;padding:14px;max-height:calc(100vh - 112px);overflow:auto}
     .saleToolbar{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:8px;margin-bottom:12px}
     .saleSearch{height:42px;padding-left:38px;background:#fff url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235c6472' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center}
-    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;font-weight:700;display:grid;place-items:center}
+    .iconBtn{width:42px;height:42px;border:0;border-radius:7px;background:var(--wash);color:#1f2a3d;display:grid;place-items:center}
+    .iconBtn .icon{width:20px;height:20px}
     .categoryTabs{display:flex;gap:4px;border:0;border-radius:8px;overflow:auto;margin-bottom:14px;background:var(--wash);padding:4px}
     .categoryTabs button{min-width:104px;height:34px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:13px;font-weight:500}
     .categoryTabs button:last-child{border-right:0}
@@ -2529,6 +2543,7 @@ $csrf = csrf_token();
     .cartLine:first-child{border-top:0}
     .lineControls{display:flex;align-items:center;gap:5px}
     .lineControls .btn.small{padding:8px}
+    .lineControls .icon{width:14px;height:14px}
     .lineControls [data-note-prompt]{min-width:52px}
     .noteText{display:block;color:var(--muted);font-size:12px;margin-top:3px}
     .couponRow{display:grid;grid-template-columns:1fr;gap:8px}
@@ -2571,6 +2586,28 @@ $csrf = csrf_token();
   </style>
 </head>
 <body>
+<svg class="iconSprite" aria-hidden="true" focusable="false">
+  <symbol id="i-pos" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M6 7l1-3h10l1 3"/><path d="M5 7v12h14V7"/><path d="M9 11h6"/><path d="M9 15h6"/></symbol>
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0"/><path d="M12 13l4-5"/><path d="M5 17h14"/></symbol>
+  <symbol id="i-orders" viewBox="0 0 24 24"><path d="M7 4h10l2 3v13H5V7z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/></symbol>
+  <symbol id="i-inventory" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></symbol>
+  <symbol id="i-crm" viewBox="0 0 24 24"><path d="M16 19a4 4 0 0 0-8 0"/><circle cx="12" cy="8" r="3"/><path d="M19 17a3 3 0 0 0-3-3"/><path d="M5 17a3 3 0 0 1 3-3"/></symbol>
+  <symbol id="i-campaigns" viewBox="0 0 24 24"><path d="M4 13V9l11-4v12z"/><path d="M15 9h3a3 3 0 0 1 0 6h-3"/><path d="M8 14l1 5"/></symbol>
+  <symbol id="i-reports" viewBox="0 0 24 24"><path d="M5 19V5"/><path d="M5 19h14"/><path d="M9 16v-5"/><path d="M13 16V8"/><path d="M17 16v-3"/></symbol>
+  <symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 14h10l1-14"/><path d="M9 7V4h6v3"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M8 8l4-4 4 4"/><path d="M5 15v4h14v-4"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><path d="M7 17H5a2 2 0 0 1-2-2v-4h18v4a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v6H7z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 9v5"/><path d="M12 18h.01"/></symbol>
+  <symbol id="i-barcode" viewBox="0 0 24 24"><path d="M4 5v14"/><path d="M8 5v14"/><path d="M11 5v14"/><path d="M16 5v14"/><path d="M20 5v14"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M7 10h.01"/><path d="M10 10h.01"/><path d="M13 10h.01"/><path d="M16 10h.01"/><path d="M8 14h8"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M15 4v4h4"/><path d="M9 12h6"/><path d="M9 16h4"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+</svg>
 <div class="appShell" id="appShell">
   <aside class="nav" aria-label="Primary">
     <div class="navHead">
@@ -2581,17 +2618,17 @@ $csrf = csrf_token();
           <div class="sub"><?=h((string)$store['name'])?></div>
         </div>
       </div>
-      <button class="sideToggle" id="navToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true">&lt;</span></button>
+      <button class="sideToggle" id="navToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar"><span aria-hidden="true"><svg class="icon"><use href="#i-chevron-left"></use></svg></span></button>
     </div>
     <div class="navin">
-      <button class="tab" data-tab="dashboard"><span class="navIcon" aria-hidden="true">D</span><span class="navLabel">Dashboard</span></button>
-      <button class="tab" data-tab="pos"><span class="navIcon" aria-hidden="true">POS</span><span class="navLabel">POS</span></button>
-      <button class="tab" data-tab="orders"><span class="navIcon" aria-hidden="true">O</span><span class="navLabel">Orders</span></button>
-      <button class="tab" data-tab="inventory"><span class="navIcon" aria-hidden="true">I</span><span class="navLabel">Inventory</span></button>
-      <button class="tab" data-tab="crm"><span class="navIcon" aria-hidden="true">C</span><span class="navLabel">CRM</span></button>
-      <button class="tab" data-tab="campaigns"><span class="navIcon" aria-hidden="true">M</span><span class="navLabel">Campaigns</span></button>
-      <button class="tab" data-tab="reports"><span class="navIcon" aria-hidden="true">R</span><span class="navLabel">Reports</span></button>
-      <button class="tab" data-tab="admin"><span class="navIcon" aria-hidden="true">A</span><span class="navLabel">Admin</span></button>
+      <button class="tab" data-tab="dashboard"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-dashboard"></use></svg></span><span class="navLabel">Dashboard</span></button>
+      <button class="tab" data-tab="pos"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-pos"></use></svg></span><span class="navLabel">POS</span></button>
+      <button class="tab" data-tab="orders"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-orders"></use></svg></span><span class="navLabel">Orders</span></button>
+      <button class="tab" data-tab="inventory"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-inventory"></use></svg></span><span class="navLabel">Inventory</span></button>
+      <button class="tab" data-tab="crm"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-crm"></use></svg></span><span class="navLabel">CRM</span></button>
+      <button class="tab" data-tab="campaigns"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-campaigns"></use></svg></span><span class="navLabel">Campaigns</span></button>
+      <button class="tab" data-tab="reports"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-reports"></use></svg></span><span class="navLabel">Reports</span></button>
+      <button class="tab" data-tab="admin"><span class="navIcon" aria-hidden="true"><svg class="icon"><use href="#i-admin"></use></svg></span><span class="navLabel">Admin</span></button>
     </div>
     <div class="navCopy">Flat local POS + CRM with owned data, CSV exports, and SQLite backups.</div>
   </aside>
@@ -2665,6 +2702,7 @@ $csrf = csrf_token();
   function qs(sel, el=document){ return el.querySelector(sel) }
   function qsa(sel, el=document){ return [...el.querySelectorAll(sel)] }
   function esc(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])) }
+  function icon(id){ return `<svg class="icon" aria-hidden="true"><use href="#i-${id}"></use></svg>` }
   function setAppSidebarCollapsed(collapsed){
     const shell = qs('#appShell')
     const toggle = qs('#navToggle')
@@ -3069,8 +3107,8 @@ $csrf = csrf_token();
         <div class="stationPanel">
           <div class="saleToolbar">
             <input class="saleSearch" id="pos_q" placeholder="Search or scan" value="${esc(state.pos.q)}">
-            <button class="iconBtn" type="button" aria-label="Scan barcode">|||</button>
-            <button class="iconBtn" type="button" aria-label="Keyboard shortcuts">kbd</button>
+            <button class="iconBtn" type="button" aria-label="Scan barcode">${icon('barcode')}</button>
+            <button class="iconBtn" type="button" aria-label="Keyboard shortcuts">${icon('keyboard')}</button>
           </div>
 
           <div class="categoryTabs" id="pos_category" aria-label="Product categories">
@@ -3111,11 +3149,11 @@ $csrf = csrf_token();
               <div class="cartLine">
                 <div><strong>${esc(it.name)}</strong><br><span class="muted">${money(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
                 <div class="lineControls">
-                  <button class="btn small" data-qtyminus="${it.product_id}">-</button>
+                  <button class="btn small" data-qtyminus="${it.product_id}" aria-label="Decrease ${esc(it.name)} quantity">${icon('minus')}</button>
                   <span class="pill">${esc(it.qty)}</span>
-                  <button class="btn small" data-qtyplus="${it.product_id}">+</button>
-                  <button class="btn small" data-note-prompt="${it.product_id}">Note</button>
-                  <button class="btn small danger" data-remove="${it.product_id}">x</button>
+                  <button class="btn small" data-qtyplus="${it.product_id}" aria-label="Increase ${esc(it.name)} quantity">${icon('plus')}</button>
+                  <button class="btn small" data-note-prompt="${it.product_id}" aria-label="Add note for ${esc(it.name)}">${icon('note')}</button>
+                  <button class="btn small danger" data-remove="${it.product_id}" aria-label="Remove ${esc(it.name)}">${icon('trash')}</button>
                 </div>
               </div>
             `).join('')}

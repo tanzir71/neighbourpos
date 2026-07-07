@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-07-07
+- [P1.1] Replaced SPA letter-glyph navigation and checkout controls with a shared inline SVG sprite; API unauth responses now return JSON 401 for verification smoke tests.
+
 ## 2026-05-14
 - Hardened session handling (idle timeout) and made logout POST-only with CSRF protection.
 - Added SQLite-backed rate limiting (login + write endpoints) with HTTP 429 responses.
