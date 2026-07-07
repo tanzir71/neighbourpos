@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P3.2] Added Mailchimp, Brevo, SMS, and WhatsApp campaign export profiles with E.164 phone normalization, provider-specific headers, dedupe, and rendered coupon messages.
 - [P3.1] Added store default country calling code, Admin editing, E.164 phone normalization, and CLI/admin self-tests for Bangladesh, US, and invalid phone cases.
 - [P2.5] Removed render-blocking remote font CSS from static pages, added accessible demo control labels, fixed landing contrast, and recorded Lighthouse mobile observed-throttling scores: landing 100 performance / 100 accessibility; demo 100 performance / 100 accessibility.
 - [P2.4] Upgraded the static demo with a reset/hosting banner, SVG icon chrome, preserved 12-item catalog and sample customers, and a receipt modal after checkout.

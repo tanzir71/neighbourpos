@@ -429,6 +429,129 @@ function csv_safe_cell($value): string {
   return $text;
 }
 
+function csv_safe_phone_cell($value): string {
+  $text = (string)($value ?? '');
+  // Provider import profiles require strict E.164 phone values without a leading apostrophe.
+  if (preg_match('/^\+[1-9][0-9]{6,14}$/', $text) === 1) return $text;
+  return csv_safe_cell($text);
+}
+
+function campaign_payload(array $r): array {
+  $payload = json_decode((string)($r['payload_json'] ?? '{}'), true);
+  return is_array($payload) ? $payload : [];
+}
+
+function campaign_recipient_email(array $r): string {
+  $email = trim((string)($r['recipient_email'] ?? ''));
+  if ($email === '') $email = trim((string)($r['customer_email'] ?? ''));
+  return $email;
+}
+
+function campaign_recipient_coupon(array $r): string {
+  $payload = campaign_payload($r);
+  $coupon = trim((string)($r['coupon_code'] ?? ''));
+  if ($coupon === '') $coupon = trim((string)($payload['coupon_code'] ?? ''));
+  return $coupon;
+}
+
+function campaign_render_message(array $camp, array $r): string {
+  $payload = campaign_payload($r);
+  $message = (string)($payload['message'] ?? ($camp['message_template'] ?? ''));
+  return str_replace('{{coupon}}', campaign_recipient_coupon($r), $message);
+}
+
+function split_customer_name(string $name): array {
+  $name = trim(preg_replace('/\s+/', ' ', $name));
+  if ($name === '') return ['', ''];
+  $parts = explode(' ', $name, 2);
+  return [$parts[0] ?? '', $parts[1] ?? ''];
+}
+
+function customer_tags_from_text(string $tagsText): array {
+  $tags = [];
+  foreach (explode(',', trim($tagsText, ", \t\n\r\0\x0B")) as $tag) {
+    $tag = trim($tag);
+    if ($tag === '') continue;
+    $tags[strtolower($tag)] = $tag;
+  }
+  return array_values($tags);
+}
+
+function campaign_export_profile(string $format, array $camp, array $rows, string $countryCode): array {
+  $headers = [
+    'mailchimp' => ['Email Address', 'First Name', 'Last Name', 'Phone', 'Tags'],
+    'brevo' => ['EMAIL', 'SMS', 'FIRSTNAME', 'LASTNAME', 'COUPON_CODE'],
+    'sms' => ['phone', 'name', 'coupon_code', 'message'],
+    'whatsapp' => ['phone', 'name', 'message', 'wa_link'],
+  ][$format] ?? [];
+
+  $out = [];
+  $seen = [];
+  foreach ($rows as $r) {
+    $name = trim((string)($r['customer_name'] ?? ''));
+    [$first, $last] = split_customer_name($name);
+    $email = campaign_recipient_email($r);
+    $emailKey = strtolower($email);
+    $e164 = normalize_e164((string)($r['phone'] ?? ''), $countryCode);
+    $coupon = campaign_recipient_coupon($r);
+    $message = campaign_render_message($camp, $r);
+
+    if ($format === 'mailchimp') {
+      if ($email === '' || isset($seen[$emailKey])) continue;
+      $seen[$emailKey] = true;
+      $tags = array_merge(['campaign:'.(string)$camp['name']], customer_tags_from_text((string)($r['tags_text'] ?? '')));
+      $out[] = [
+        csv_safe_cell($email),
+        csv_safe_cell($first),
+        csv_safe_cell($last),
+        csv_safe_phone_cell($e164 ?? ''),
+        csv_safe_cell(implode(',', array_values(array_unique($tags)))),
+      ];
+      continue;
+    }
+
+    if ($format === 'brevo') {
+      if ($email === '' && $e164 === null) continue;
+      $key = $email !== '' ? 'email:'.$emailKey : 'phone:'.$e164;
+      if (isset($seen[$key])) continue;
+      $seen[$key] = true;
+      $out[] = [
+        csv_safe_cell($email),
+        csv_safe_phone_cell($e164 ?? ''),
+        csv_safe_cell($first),
+        csv_safe_cell($last),
+        csv_safe_cell($coupon),
+      ];
+      continue;
+    }
+
+    if ($e164 === null || isset($seen[$e164])) continue;
+    $seen[$e164] = true;
+
+    if ($format === 'sms') {
+      $out[] = [
+        csv_safe_phone_cell($e164),
+        csv_safe_cell($name),
+        csv_safe_cell($coupon),
+        csv_safe_cell($message),
+      ];
+      continue;
+    }
+
+    if ($format === 'whatsapp') {
+      $digits = preg_replace('/\D/', '', $e164);
+      $out[] = [
+        csv_safe_phone_cell($e164),
+        csv_safe_cell($name),
+        csv_safe_cell($message),
+        csv_safe_cell('https://wa.me/'.$digits.'?text='.rawurlencode($message)),
+      ];
+    }
+  }
+
+  return [$headers, $out];
+}
+
 function rand_code(int $len): string {
   $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   $out = '';
@@ -1217,11 +1340,21 @@ if ($action === 'campaign_export') {
   require_login();
   $uid = (int)($_SESSION['uid'] ?? 0);
   $id = (int)($_GET['id'] ?? 0);
+  $format = strtolower(trim((string)($_GET['format'] ?? 'full')));
+  if ($format === '') $format = 'full';
 
   if ($id <= 0) {
     http_response_code(400);
     header('Content-Type: text/plain; charset=utf-8');
     echo "Missing or invalid campaign id";
+    exit;
+  }
+
+  $allowedFormats = ['full', 'mailchimp', 'brevo', 'sms', 'whatsapp'];
+  if (!in_array($format, $allowedFormats, true)) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Invalid export format";
     exit;
   }
 
@@ -1253,6 +1386,7 @@ if ($action === 'campaign_export') {
       cr.payload_json,
       cust.name AS customer_name,
       cust.email AS customer_email,
+      cust.tags_text,
       cust.marketing_opt_in,
       cust.total_spent_cents,
       cust.order_count,
@@ -1272,13 +1406,35 @@ if ($action === 'campaign_export') {
     exit;
   }
 
-  audit($pdo, $uid, 'campaigns.export', ['id' => $id, 'count' => count($rows)]);
+  $store = current_store($pdo, $CONFIG);
+  $profileRows = [];
+  if ($format !== 'full') {
+    [, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'));
+  }
+
+  audit($pdo, $uid, 'campaigns.export', [
+    'id' => $id,
+    'count' => count($rows),
+    'format' => $format,
+    'export_count' => $format === 'full' ? count($rows) : count($profileRows),
+  ]);
 
   header('Content-Type: text/csv; charset=utf-8');
-  header('Content-Disposition: attachment; filename="campaign-'.$id.'-recipients.csv"');
+  $filename = $format === 'full' ? 'campaign-'.$id.'-recipients.csv' : 'campaign-'.$id.'-'.$format.'.csv';
+  header('Content-Disposition: attachment; filename="'.$filename.'"');
   header('Cache-Control: no-store');
 
   $out = fopen('php://output', 'w');
+  if ($format !== 'full') {
+    [$headers, $profileRows] = campaign_export_profile($format, $camp, $rows, (string)($store['default_country_code'] ?? '+1'));
+    fwrite($out, implode(',', $headers)."\n");
+    foreach ($profileRows as $profileRow) {
+      fputcsv($out, $profileRow);
+    }
+    fclose($out);
+    exit;
+  }
+
   fputcsv($out, [
     'campaign_id',
     'campaign_name',
@@ -2094,9 +2250,10 @@ if (str_starts_with($action, 'api_')) {
 
     $st = $pdo->prepare("INSERT INTO segments(name, filters_json, last_run_at) VALUES(?,?,NULL)");
     $st->execute([$name, json_encode($filters, JSON_UNESCAPED_SLASHES)]);
+    $segmentId = (int)$pdo->lastInsertId();
     audit($pdo, $uid, 'segments.create', ['name' => $name]);
 
-    json_out(['ok' => true, 'data' => ['id' => (int)$pdo->lastInsertId()]]);
+    json_out(['ok' => true, 'data' => ['id' => $segmentId]]);
   }
 
   if ($action === 'api_segment_preview') {

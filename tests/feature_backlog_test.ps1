@@ -59,6 +59,10 @@ Assert-SourceContains $source "api_admin_password_reset" 'Admin password reset A
 Assert-SourceContains $source "default_country_code" 'Store default country code setting is missing'
 Assert-SourceContains $source "function normalize_e164" 'E.164 phone normalizer is missing'
 Assert-SourceContains $source "api_dev_selftest" 'Developer self-test route is missing'
+Assert-SourceContains $source "function campaign_export_profile" 'Campaign export profile engine is missing'
+Assert-SourceContains $source "Email Address" 'Mailchimp export profile header is missing'
+Assert-SourceContains $source "COUPON_CODE" 'Brevo export profile coupon header is missing'
+Assert-SourceContains $source "https://wa.me/" 'WhatsApp export link builder is missing'
 Assert-SourceContains $source "portal_opt_in_update" 'Customer portal opt-in update route is missing'
 Assert-SourceContains $source "database_backup" 'Database backup route is missing'
 
