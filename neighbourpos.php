@@ -2573,6 +2573,17 @@ $csrf = csrf_token();
     .switch.on{background:var(--good);border-color:var(--good);justify-content:flex-end}
     .switch i{display:block;width:18px;height:18px;border-radius:999px;background:#fff}
     .tinyStatus{display:flex;align-items:center;gap:16px;overflow:auto;border:0;border-radius:var(--radius-card);background:var(--wash);padding:10px;margin-top:12px;color:var(--muted);font-size:12px;font-weight:500}
+    .toastHost{position:fixed;top:16px;right:16px;z-index:80;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px))}
+    .toast{border:1px solid var(--line);border-radius:var(--radius-card);background:#fff;box-shadow:var(--shadow-md);padding:10px 12px;font-size:13px;color:var(--txt)}
+    .toast.ok{border-color:#c7ecd5;background:#f1fbf5;color:#145c2e}
+    .toast.err{border-color:#ffd2cc;background:#fff6f4;color:#8a1f17}
+    .toast.info{border-color:#d8e3ff;background:#f4f7ff;color:#1f3f9a}
+    .modalRoot{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:18px}
+    .modalRoot.open{display:grid}
+    .modalBackdrop{position:absolute;inset:0;background:rgba(9,11,16,.32)}
+    .modalCard{position:relative;width:min(420px,100%);border:1px solid var(--line);border-radius:var(--radius-modal);background:#fff;box-shadow:var(--shadow-md);padding:18px;display:grid;gap:12px}
+    .modalActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .modalCard input{width:100%;padding:10px 12px}
     .saleTile strong{font-size:15px;font-weight:500;line-height:1.15}
     .cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
@@ -2667,6 +2678,8 @@ $csrf = csrf_token();
   </div>
 
   <div id="view"></div>
+  <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
+  <div id="modalRoot" class="modalRoot" aria-hidden="true"></div>
   </main>
 </div>
 
@@ -2732,6 +2745,75 @@ $csrf = csrf_token();
       <div>${esc(body)}</div>
       ${actionHtml ? `<div class="emptyActions">${actionHtml}</div>` : ''}
     </div>`
+  }
+  function toast(type, text){
+    const host = qs('#toastHost')
+    if (!host) return
+    const kind = type === 'ok' ? 'ok' : (type === 'err' ? 'err' : 'info')
+    const el = document.createElement('div')
+    el.className = `toast ${kind}`
+    el.textContent = text
+    host.appendChild(el)
+    window.setTimeout(()=>el.remove(), 3500)
+  }
+  function closeModal(value){
+    const root = qs('#modalRoot')
+    if (!root) return
+    const done = root._resolve
+    root.classList.remove('open')
+    root.setAttribute('aria-hidden', 'true')
+    root.innerHTML = ''
+    root._resolve = null
+    if (done) done(value)
+  }
+  function uiConfirm(title, body, danger=false){
+    const root = qs('#modalRoot')
+    if (!root) return Promise.resolve(false)
+    root.innerHTML = `<div class="modalBackdrop" data-modal-cancel></div>
+      <div class="modalCard" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="h1">${esc(title)}</div>
+        <div class="muted">${esc(body)}</div>
+        <div class="modalActions">
+          <button class="btn" type="button" data-modal-cancel>Cancel</button>
+          <button class="btn ${danger ? 'danger' : 'primary'}" type="button" data-modal-ok>Continue</button>
+        </div>
+      </div>`
+    root.classList.add('open')
+    root.setAttribute('aria-hidden', 'false')
+    return new Promise(resolve=>{
+      root._resolve = resolve
+      qsa('[data-modal-cancel]', root).forEach(el=>el.onclick=()=>closeModal(false))
+      qs('[data-modal-ok]', root).onclick=()=>closeModal(true)
+      qs('[data-modal-ok]', root).focus()
+    })
+  }
+  function uiPrompt(title, body, initial=''){
+    const root = qs('#modalRoot')
+    if (!root) return Promise.resolve(null)
+    root.innerHTML = `<div class="modalBackdrop" data-modal-cancel></div>
+      <div class="modalCard" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="h1">${esc(title)}</div>
+        <div class="muted">${esc(body)}</div>
+        <input id="modalPromptInput" value="${esc(initial)}">
+        <div class="modalActions">
+          <button class="btn" type="button" data-modal-cancel>Cancel</button>
+          <button class="btn primary" type="button" data-modal-ok>Save</button>
+        </div>
+      </div>`
+    root.classList.add('open')
+    root.setAttribute('aria-hidden', 'false')
+    return new Promise(resolve=>{
+      root._resolve = resolve
+      const input = qs('#modalPromptInput', root)
+      qsa('[data-modal-cancel]', root).forEach(el=>el.onclick=()=>closeModal(null))
+      qs('[data-modal-ok]', root).onclick=()=>closeModal(input.value)
+      input.onkeydown = e => {
+        if (e.key === 'Enter') closeModal(input.value)
+        if (e.key === 'Escape') closeModal(null)
+      }
+      input.focus()
+      input.select()
+    })
   }
   function setAppSidebarCollapsed(collapsed){
     const shell = qs('#appShell')
@@ -3636,6 +3718,7 @@ $csrf = csrf_token();
     if (!el) return
     const cls = type==='ok' ? 'okbox' : (type==='err' ? 'errbox' : 'warnbox')
     el.innerHTML = `<div class="${cls}">${esc(text)}</div>`
+    toast(type, text)
   }
 
   function bind(){
@@ -3721,11 +3804,11 @@ $csrf = csrf_token();
       const it = state.cart.find(x=>x.product_id===pid)
       if (it) it.notes = inp.value
     })
-    qsa('[data-note-prompt]').forEach(b=>b.onclick=()=>{
+    qsa('[data-note-prompt]').forEach(b=>b.onclick=async ()=>{
       const pid = Number(b.dataset.notePrompt)
       const it = state.cart.find(x=>x.product_id===pid)
       if (!it) return
-      const next = prompt('Item note', it.notes || '')
+      const next = await uiPrompt('Item note', `Add a note for ${it.name}.`, it.notes || '')
       if (next !== null) {
         it.notes = next.trim()
         render()
@@ -3993,7 +4076,8 @@ $csrf = csrf_token();
     const campSend = qs('#camp_send')
     if (campSend) campSend.onclick = async ()=>{
       try{
-        const id = Number(prompt('Enter campaign ID to send/queue now:') || '0')
+        const entered = await uiPrompt('Queue campaign', 'Enter the campaign ID to send or queue now.', '')
+        const id = Number(entered || '0')
         if (!id) return
         const override_opt_in = (qs('#camp_override')?.value || '0') === '1' ? 1 : 0
         const with_coupons = (qs('#camp_coupon')?.value || '0') === '1' ? 1 : 0
@@ -4097,14 +4181,14 @@ $csrf = csrf_token();
   async function loadSample(){
     try{
       await api('api_load_sample_data', { method:'POST', body:{} })
-      alert('Sample data loaded. Refreshing...')
+      toast('ok', 'Sample data loaded. Refreshing...')
       await loadProducts('')
       await loadLowStock()
       await loadOrders('active')
       await loadSegments()
       await loadCampaigns()
       render()
-    }catch(e){ alert(e.message || e) }
+    }catch(e){ toast('err', e.message || String(e)) }
   }
   window.loadSample = loadSample
 </script>

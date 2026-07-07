@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P1.4] Added toast and modal prompt/confirm UI, replacing all SPA native alert/prompt/confirm usage.
 - [P1.3] Added shared app page headers and designed empty states across Dashboard, POS, Orders, Inventory, CRM, Campaigns, Reports, and Admin.
 - [P1.2] Added elevation tokens, borders, card radii, sale-tile hover lift, and removed the dead legacy POS renderer.
 - [P1.1] Replaced SPA letter-glyph navigation and checkout controls with a shared inline SVG sprite; API unauth responses now return JSON 401 for verification smoke tests.
