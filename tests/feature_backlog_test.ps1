@@ -94,6 +94,10 @@ Assert-SourceContains $source 'pos_amount_received' 'Production cash received in
 Assert-SourceContains $source 'change_due' 'Production change-due display is missing'
 Assert-SourceContains $source 'min-height:44px' 'Production mobile tap target sizing is missing'
 Assert-SourceContains $source 'sku LIKE' 'Production product search does not include SKU matching'
+Assert-SourceContains $source 'function fmtMoney' 'Production shared money formatter is missing'
+Assert-SourceContains $source 'toLocaleString' 'Production money formatter lacks thousands separators'
+Assert-SourceContains $source 'function fmtDate' 'Production shared date formatter is missing'
+Assert-SourceDoesNotContain $source 'function money\(' 'Legacy JS money formatter should be removed'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'

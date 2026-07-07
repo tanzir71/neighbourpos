@@ -1,14 +1,14 @@
 <?php
 /*
-README (Deployment — 10 lines)
+README (Deployment - 10 lines)
 1) Upload this file as `neighbourpos.php` to your PHP hosting (same folder becomes app root).
 2) Ensure the folder is writable by PHP so it can create `neighbourpos.db` next to this file.
 3) Visit `/neighbourpos.php` once to auto-initialize the SQLite schema and settings.
 4) Default admin login: admin@example.com / ChangeMe123! (change in Settings immediately).
-5) Optional: click “Load sample data” (admin only) to populate demo products/customers/orders.
+5) Optional: click "Load sample data" (admin only) to populate demo products/customers/orders.
 6) Add cPanel Cron (daily): `php /home/USER/public_html/neighbourpos.php action=cron_campaigns token=YOUR_TOKEN`
 7) Add cPanel Cron (nightly): `php /home/USER/public_html/neighbourpos.php action=cron_purge_logs token=YOUR_TOKEN`
-8) If cron can’t call via CLI, use wget/curl URL with token: `/neighbourpos.php?action=cron_campaigns&token=...`
+8) If cron can't call via CLI, use wget/curl URL with token: `/neighbourpos.php?action=cron_campaigns&token=...`
 9) For HTTPS + cookies, enable SSL in hosting and keep `SESSION_SECURE_AUTO` true.
 10) Backups: copy `neighbourpos.db` regularly (download via FTP or hosting backup tools).
 */
@@ -939,7 +939,7 @@ if ($action === 'staff_login') {
   $csrf = csrf_token();
   $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
-  echo "<title>".h($CONFIG['APP_NAME'])." — Staff Login</title>";
+  echo "<title>".h($CONFIG['APP_NAME'])." - Staff Login</title>";
   echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
@@ -973,7 +973,7 @@ if ($action === 'staff_login') {
   echo "<button class='btn' type='submit'>Sign in</button>";
   if (!empty($err)) echo "<div class='err'>".h($err)."</div>";
   echo "</form>";
-  echo "<div class='foot'>Compliance note: you are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments. <a href='SETUP.md'>Docs</a> • <a href='SECURITY.md'>Security</a></div>";
+  echo "<div class='foot'>Compliance note: you are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments. <a href='SETUP.md'>Docs</a>  -  <a href='SECURITY.md'>Security</a></div>";
   echo "</div>";
   echo "</div></body></html>";
   exit;
@@ -1014,7 +1014,7 @@ if ($action === 'staff_register') {
   $accent = store_accent_safe($store, $CONFIG);
   $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
-  echo "<title>".h($CONFIG['APP_NAME'])." — Staff Register</title>";
+  echo "<title>".h($CONFIG['APP_NAME'])." - Staff Register</title>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
   echo "<style>
@@ -1041,7 +1041,7 @@ if ($action === 'staff_register') {
   echo "<button class='btn' type='submit'>Create</button>";
   if (!empty($err)) echo "<div class='err'>".h($err)."</div>";
   echo "</form>";
-  echo "<div class='muted'>Anti-gaming note: to flag device/IP creating many accounts with different phones, add counters in audit_log keyed by ip or a device fingerprint. <a href='SETUP.md'>Docs</a> • <a href='SECURITY.md'>Security</a></div>";
+  echo "<div class='muted'>Anti-gaming note: to flag device/IP creating many accounts with different phones, add counters in audit_log keyed by ip or a device fingerprint. <a href='SETUP.md'>Docs</a>  -  <a href='SECURITY.md'>Security</a></div>";
   echo "</div></div></body></html>";
   exit;
 }
@@ -2270,7 +2270,7 @@ if ($action === 'portal') {
   }
 
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
-  echo "<title>".h($CONFIG['APP_NAME'])." — Order Status</title>";
+  echo "<title>".h($CONFIG['APP_NAME'])." - Order Status</title>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
   echo "<style>
@@ -2317,9 +2317,9 @@ if ($action === 'portal') {
         if ($st === 'out_for_delivery') $cls = 'b-out';
         if ($st === 'completed' || $st === 'cancelled') $cls = 'b-done';
         echo "<div style='margin-top:10px;padding-top:10px;border-top:1px solid var(--line)'>";
-        echo "<div class='row'><div><div style='font-weight:500'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])." • ".h($o['created_at'])."</div></div>";
+        echo "<div class='row'><div><div style='font-weight:500'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])."  -  ".h($o['created_at'])."</div></div>";
         echo "<div class='badge {$cls}'>".h($st)."</div></div>";
-        echo "<div class='muted' style='margin-top:6px'>Total: ".h(money_fmt($CONFIG, (int)$o['total_cents']))." • ETA: ".(int)$o['expected_eta_minutes']." min</div>";
+        echo "<div class='muted' style='margin-top:6px'>Total: ".h(money_fmt($CONFIG, (int)$o['total_cents']))."  -  ETA: ".(int)$o['expected_eta_minutes']." min</div>";
         echo "</div>";
       }
       echo "</div>";
@@ -2360,8 +2360,8 @@ if ($action === 'receipt') {
     @media print{button{display:none}}
   </style></head><body><div class='wrap'>";
   echo "<button onclick='window.print()' style='padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font-weight:500'>Print</button>";
-  echo "<div style='margin-top:10px'><div class='h1'>".h($store['name'])."</div><div class='muted'>Order ".h($o['order_code'])." • ".h($o['created_at'])."</div>";
-  echo "<div class='muted'>Type: ".h($o['order_type'])." • Status: ".h($o['status'])."</div>";
+  echo "<div style='margin-top:10px'><div class='h1'>".h($store['name'])."</div><div class='muted'>Order ".h($o['order_code'])."  -  ".h($o['created_at'])."</div>";
+  echo "<div class='muted'>Type: ".h($o['order_type'])."  -  Status: ".h($o['status'])."</div>";
   echo "<div class='muted'>Customer: ".h((string)($o['phone_text'] ?? ''))."</div></div>";
 
   echo "<table>";
@@ -2370,13 +2370,13 @@ if ($action === 'receipt') {
     $qty = (int)($it['qty'] ?? 1);
     $price = (int)($it['price_cents'] ?? 0);
     $notes = (string)($it['notes'] ?? '');
-    echo "<tr><td>".h($qty."× ".$name).($notes ? "<div class='muted'>".h($notes)."</div>" : "")."</td><td class='right'>".h(money_fmt($CONFIG, $price*$qty))."</td></tr>";
+    echo "<tr><td>".h($qty."x ".$name).($notes ? "<div class='muted'>".h($notes)."</div>" : "")."</td><td class='right'>".h(money_fmt($CONFIG, $price*$qty))."</td></tr>";
   }
   echo "<tr><td class='right muted'>Subtotal</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['subtotal_cents']))."</td></tr>";
   echo "<tr><td class='right muted'>Tax</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['tax_cents']))."</td></tr>";
   echo "<tr><td class='right muted'>Tip</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['tip_cents']))."</td></tr>";
   echo "<tr><td class='right tot'>Total</td><td class='right tot'>".h(money_fmt($CONFIG, (int)$o['total_cents']))."</td></tr>";
-  echo "<tr><td class='right muted'>Payment</td><td class='right'>".h($o['payment_method'])." • ".(((int)$o['payment_received']===1) ? "received" : "pending")."</td></tr>";
+  echo "<tr><td class='right muted'>Payment</td><td class='right'>".h($o['payment_method'])."  -  ".(((int)$o['payment_received']===1) ? "received" : "pending")."</td></tr>";
   echo "</table>";
 
   echo "<div class='muted' style='margin-top:14px'>Platform does not process payments. Thank you!</div>";
@@ -2699,7 +2699,7 @@ $csrf = csrf_token();
     </div>
   </div>
 
-  <div id="offlineBanner" class="offlineBanner" role="status" aria-live="polite" hidden>Connection lost — changes can't save</div>
+  <div id="offlineBanner" class="offlineBanner" role="status" aria-live="polite" hidden>Connection lost - changes can't save</div>
   <div id="view"></div>
   <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
   <div id="modalRoot" class="modalRoot" aria-hidden="true"></div>
@@ -2921,7 +2921,7 @@ $csrf = csrf_token();
     try {
       res = await fetch(url, opt)
     } catch (e) {
-      const err = new Error("Connection lost — changes can't save")
+      const err = new Error("Connection lost - changes can't save")
       err.network = true
       setConnectionFetchFailed(true)
       throw err
@@ -2935,9 +2935,35 @@ $csrf = csrf_token();
     return data.data
   }
 
-  function money(cents){
-    const sym = state.store?.currency_symbol ?? '$'
-    return sym + (cents/100).toFixed(2)
+  function fmtMoney(cents){
+    const sym = state.store?.currency_symbol || ''
+    const value = (Number(cents || 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return `${sym}${value}`
+  }
+  function parseAppDate(iso){
+    if (!iso) return null
+    const text = String(iso)
+    const normalized = text.includes('T') ? text : text.replace(' ', 'T')
+    const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(normalized) ? normalized : normalized + 'Z'
+    const date = new Date(withZone)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  function fmtDate(iso){
+    const date = parseAppDate(iso)
+    if (!date) return iso ? String(iso) : '-'
+    const diff = Date.now() - date.getTime()
+    const abs = Math.abs(diff)
+    const future = diff < 0
+    if (abs < 48 * 60 * 60 * 1000) {
+      if (abs < 60 * 1000) return future ? 'in a moment' : 'just now'
+      if (abs < 60 * 60 * 1000) {
+        const mins = Math.max(1, Math.round(abs / (60 * 1000)))
+        return future ? `in ${mins}m` : `${mins}m ago`
+      }
+      const hours = Math.max(1, Math.round(abs / (60 * 60 * 1000)))
+      return future ? `in ${hours}h` : `${hours}h ago`
+    }
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
   function centsFromAmount(value){
     const n = Number(String(value || '').replace(/[^\d.]/g, ''))
@@ -3107,7 +3133,7 @@ $csrf = csrf_token();
           <div class="h1">Today snapshot dashboard</div>
           <div class="muted">A tiny control room for sales, service, stock, and queued CRM work.</div>
           <div class="kpi">
-            <div class="k"><div class="v">${money(d.today_revenue_cents || 0)}</div><div class="l">Today revenue</div></div>
+            <div class="k"><div class="v">${fmtMoney(d.today_revenue_cents || 0)}</div><div class="l">Today revenue</div></div>
             <div class="k"><div class="v">${esc(d.today_order_count || 0)}</div><div class="l">Today orders</div></div>
             <div class="k"><div class="v">${esc(d.active_orders_count || 0)}</div><div class="l">Active orders</div></div>
             <div class="k"><div class="v">${esc(d.low_stock_count || 0)}</div><div class="l">Low-stock products</div></div>
@@ -3167,7 +3193,7 @@ $csrf = csrf_token();
     if (found) {
       return `<div class="customerChip">
         <span class="avatar">${esc(productInitials(found.name || found.phone))}</span>
-        <span class="chipMain"><strong>${esc(found.name || found.phone)}</strong><span>${esc(found.phone)} / ${money(found.total_spent_cents || 0)} / ${esc(found.order_count || 0)} orders</span></span>
+        <span class="chipMain"><strong>${esc(found.name || found.phone)}</strong><span>${esc(found.phone)} / ${fmtMoney(found.total_spent_cents || 0)} / ${esc(found.order_count || 0)} orders</span></span>
         <span class="chipMeta">${found.marketing_opt_in ? 'Opt-in' : 'No opt-in'}</span>
       </div>`
     }
@@ -3258,7 +3284,7 @@ $csrf = csrf_token();
                 <span class="productVisual">${esc(productInitials(p.name))}</span>
                 <span class="productMeta">
                   <span class="name">${esc(p.name)}</span>
-                  <span>${money(p.price_cents)}</span>
+                  <span>${fmtMoney(p.price_cents)}</span>
                   <span class="stockText ${Number(p.stock_qty) <= Number(state.store?.low_stock_threshold ?? 5) ? 'low' : ''}">In stock ${esc(p.stock_qty)}</span>
                 </span>
               </button>
@@ -3282,7 +3308,7 @@ $csrf = csrf_token();
           <div class="list">
             ${state.cart.length === 0 ? emptyState('pos', 'Cart empty', 'Add items from the product grid to start a sale.') : state.cart.map(it=>`
               <div class="cartLine">
-                <div><strong>${esc(it.name)}</strong><br><span class="muted">${money(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
+                <div><strong>${esc(it.name)}</strong><br><span class="muted">${fmtMoney(it.price_cents)} each</span>${it.notes ? `<span class="noteText">Note: ${esc(it.notes)}</span>` : ''}</div>
                 <div class="lineControls">
                   <button class="btn small" data-qtyminus="${it.product_id}" aria-label="Decrease ${esc(it.name)} quantity">${icon('minus')}</button>
                   <span class="pill">${esc(it.qty)}</span>
@@ -3300,10 +3326,10 @@ $csrf = csrf_token();
           </div>
 
           <div class="totals">
-            <div class="totalRow"><span>Subtotal</span><span>${money(totals.subtotal)}</span></div>
-            <div class="totalRow"><span>Tax</span><span>${money(totals.tax)}</span></div>
+            <div class="totalRow"><span>Subtotal</span><span>${fmtMoney(totals.subtotal)}</span></div>
+            <div class="totalRow"><span>Tax</span><span>${fmtMoney(totals.tax)}</span></div>
             <div class="totalRow"><span>Tip (cents)</span><input id="pos_tip" style="max-width:104px;text-align:right" type="number" min="0" value="${esc(state.pos.tipCents)}"></div>
-            <div class="totalRow"><span>Total</span><strong>${money(totals.total)}</strong></div>
+            <div class="totalRow"><span>Total</span><strong>${fmtMoney(totals.total)}</strong></div>
           </div>
 
           <div class="segmented" id="pos_paymethod" aria-label="Payment method">
@@ -3318,7 +3344,7 @@ $csrf = csrf_token();
                 <label for="pos_amount_received">Cash received</label>
                 <input id="pos_amount_received" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" value="${esc(amountValue(state.pos.amountTenderedCents))}">
               </div>
-              <div class="changeDue">Change due<strong id="change_due">${money(changeDue)}</strong></div>
+              <div class="changeDue">Change due<strong id="change_due">${fmtMoney(changeDue)}</strong></div>
             </div>
           ` : ``}
 
@@ -3360,7 +3386,7 @@ $csrf = csrf_token();
         <div class="row" style="align-items:flex-start">
           <div>
             <div class="h1">Active Orders</div>
-            <div class="muted">Fast status updates: new → preparing → ready/out → completed/cancelled.</div>
+            <div class="muted">Fast status updates: new -> preparing -> ready/out -> completed/cancelled.</div>
           </div>
           <div style="flex:0;display:flex;gap:8px">
             <button class="btn small" id="orders_refresh">Refresh</button>
@@ -3392,7 +3418,7 @@ $csrf = csrf_token();
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
                     <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                    <div class="meta">${esc(o.phone_text || '')} • ${money(o.total_cents)} • ${esc(o.created_at)}</div>
+                    <div class="meta">${esc(o.phone_text || '')}  -  ${fmtMoney(o.total_cents)}  -  ${fmtDate(o.created_at)}</div>
                   </div>
                   <button class="btn small" data-open-order="${o.id}" style="flex:0">Open</button>
                 </div>
@@ -3413,8 +3439,8 @@ $csrf = csrf_token();
               <div class="row" style="align-items:flex-start">
                 <div style="flex:1">
                   <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                  <div class="meta">${esc(o.order_type)} • ${money(o.total_cents)} • ${esc(o.phone_text || '')}</div>
-                  <div class="meta">${esc(o.created_at)} • Payment: ${esc(o.payment_method)} • ${o.payment_received ? 'received' : 'pending'}</div>
+                  <div class="meta">${esc(o.order_type)}  -  ${fmtMoney(o.total_cents)}  -  ${esc(o.phone_text || '')}</div>
+                  <div class="meta">${fmtDate(o.created_at)}  -  Payment: ${esc(o.payment_method)}  -  ${o.payment_received ? 'received' : 'pending'}</div>
                 </div>
                 <div style="flex:0;display:flex;flex-direction:column;gap:6px;align-items:stretch">
                   <a class="btn small ghost" target="_blank" href="?action=receipt&id=${o.id}">Receipt</a>
@@ -3470,7 +3496,7 @@ $csrf = csrf_token();
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
                     <div class="name">${esc(p.name)}</div>
-                    <div class="meta">${esc(p.category || 'Uncategorized')} • ${money(p.price_cents)} • ID ${p.id}</div>
+                    <div class="meta">${esc(p.category || 'Uncategorized')}  -  ${fmtMoney(p.price_cents)}  -  ID ${p.id}</div>
                   </div>
                   <div style="flex:0;min-width:140px">
                     <div class="field" style="margin-top:-6px">
@@ -3498,7 +3524,7 @@ $csrf = csrf_token();
             ${lowStockStatus || (state.lowStock.length===0 ? emptyState('alert', 'Stock looks healthy', 'Products under the low-stock threshold will appear here.') : state.lowStock.map(p=>`
               <div class="item">
                 <div class="name">${esc(p.name)}</div>
-                <div class="meta">${esc(p.category || '')} • Stock: <b>${esc(p.stock_qty)}</b></div>
+                <div class="meta">${esc(p.category || '')}  -  Stock: <b>${esc(p.stock_qty)}</b></div>
               </div>
             `).join(''))}
           </div>
@@ -3514,7 +3540,7 @@ $csrf = csrf_token();
   function renderCRM(){
     const cust = state.selectedCustomer?.customer
     const orders = state.selectedCustomer?.orders || []
-    const ltv = cust?.ltv_estimate ? Number(cust.ltv_estimate).toFixed(2) : '0.00'
+    const ltvCents = Math.round(Number(cust?.ltv_estimate || 0) * 100)
     const customerSearchStatus = regionState('customerSearch', skeletonList(4), 'Customer search failed', 'Retry the customer search.')
     const profileStatus = regionState('customerProfile', skeletonList(5), 'Customer profile could not load', 'Retry the customer profile.')
     return `
@@ -3535,8 +3561,8 @@ $csrf = csrf_token();
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
                     <div class="name">${esc(c.name || c.phone)}</div>
-                    <div class="meta">${esc(c.phone)} • Orders: ${esc(c.order_count)} • Spent: ${money(c.total_spent_cents)}</div>
-                    <div class="meta">Opt-in: ${c.marketing_opt_in ? 'Yes' : 'No'} • Tags: ${esc((c.tags_text||'').replaceAll(',',' ').trim())}</div>
+                    <div class="meta">${esc(c.phone)}  -  Orders: ${esc(c.order_count)}  -  Spent: ${fmtMoney(c.total_spent_cents)}</div>
+                    <div class="meta">Opt-in: ${c.marketing_opt_in ? 'Yes' : 'No'}  -  Tags: ${esc((c.tags_text||'').replaceAll(',',' ').trim())}</div>
                   </div>
                   <div style="flex:0">
                     <button class="btn small" data-open="${c.id}">Open</button>
@@ -3552,10 +3578,10 @@ $csrf = csrf_token();
           <div class="h1">Profile</div>
           ${profileStatus || (!cust ? emptyState('user', 'No customer selected', 'Open a customer to view details, consent, order history, and timeline.') : `
             <div class="kpi">
-              <div class="k"><div class="v">${money(cust.total_spent_cents)}</div><div class="l">Total spent</div></div>
+              <div class="k"><div class="v">${fmtMoney(cust.total_spent_cents)}</div><div class="l">Total spent</div></div>
               <div class="k"><div class="v">${esc(cust.order_count)}</div><div class="l">Orders</div></div>
-              <div class="k"><div class="v">${esc(cust.last_order_at || '—')}</div><div class="l">Last order</div></div>
-              <div class="k"><div class="v">${esc(ltv)}</div><div class="l">LTV estimate</div></div>
+              <div class="k"><div class="v">${fmtDate(cust.last_order_at)}</div><div class="l">Last order</div></div>
+              <div class="k"><div class="v">${fmtMoney(ltvCents)}</div><div class="l">LTV estimate</div></div>
             </div>
 
             <div class="field">
@@ -3592,7 +3618,7 @@ $csrf = csrf_token();
             <button class="btn small primary" id="cust_save">Save</button>
 
             <div class="warnbox">
-              Consent: store should keep proof (timestamp + source). This app stores opt-in timestamp when toggled from No→Yes.
+              Consent: store should keep proof (timestamp + source). This app stores opt-in timestamp when toggled from No->Yes.
             </div>
 
             <div style="margin-top:12px">
@@ -3603,7 +3629,7 @@ $csrf = csrf_token();
                     <div class="row" style="align-items:flex-start">
                       <div style="flex:1">
                         <div class="name">${esc(o.order_code)} ${badge(o.status)}</div>
-                        <div class="meta">${esc(o.order_type)} • ${money(o.total_cents)} • ${esc(o.created_at)}</div>
+                        <div class="meta">${esc(o.order_type)}  -  ${fmtMoney(o.total_cents)}  -  ${fmtDate(o.created_at)}</div>
                       </div>
                       <div style="flex:0">
                         <a class="btn small ghost" target="_blank" href="?action=receipt&id=${o.id}">Receipt</a>
@@ -3620,8 +3646,8 @@ $csrf = csrf_token();
               <div class="list">
                 ${state.customerTimeline.length===0 ? emptyState('reports', 'No timeline events yet', 'Orders, campaigns, and consent changes will appear here.') : state.customerTimeline.map(ev=>`
                   <div class="item">
-                    <div class="name">${esc(ev.type)} • ${esc(ev.label)}</div>
-                    <div class="meta">${esc(ev.ts)} ${ev.amount_cents ? '• '+money(ev.amount_cents) : ''} ${ev.meta ? '• '+esc(ev.meta) : ''}</div>
+                    <div class="name">${esc(ev.type)}  -  ${esc(ev.label)}</div>
+                    <div class="meta">${fmtDate(ev.ts)} ${ev.amount_cents ? ' -  '+fmtMoney(ev.amount_cents) : ''} ${ev.meta ? ' -  '+esc(ev.meta) : ''}</div>
                   </div>
                 `).join('')}
               </div>
@@ -3710,7 +3736,7 @@ $csrf = csrf_token();
               <button class="btn small" data-preset="product_fans">Product fans</button>
             </div>
           </div>
-          <div class="muted">Choose a segment → write message → export list or (optionally) send via SMS/Email provider.</div>
+          <div class="muted">Choose a segment -> write message -> export list or (optionally) send via SMS/Email provider.</div>
 
           <div class="field">
             <label>Segment</label>
@@ -3765,13 +3791,13 @@ $csrf = csrf_token();
             <div class="okbox">
               Estimated recipients: <b>${esc(state.sim.recipients)}</b><br>
               Expected redemptions: <b>${esc(state.sim.expected_redemptions)}</b><br>
-              Est revenue: <b>${money(state.sim.expected_revenue_cents)}</b><br>
-              AOV est: <b>${money(state.sim.avg_order_value_cents_est)}</b>
+              Est revenue: <b>${fmtMoney(state.sim.expected_revenue_cents)}</b><br>
+              AOV est: <b>${fmtMoney(state.sim.avg_order_value_cents_est)}</b>
             </div>
           ` : ``}
 
           <div class="warnbox">
-            SMS costs and compliance are on you. By default, campaigns target only opted-in customers unless “override” is used (audited).
+            SMS costs and compliance are on you. By default, campaigns target only opted-in customers unless "override" is used (audited).
           </div>
 
           <div id="camp_msgbox"></div>
@@ -3789,8 +3815,8 @@ $csrf = csrf_token();
                           ? `<a class="btn small ghost" href="?action=campaign_export&id=${c.id}">Export CSV</a>`
                           : `<button class="btn small ghost" disabled>Queue first</button>`}
                       </div>
-                      <div class="meta">Segment: ${esc(c.segment_name || ('#'+c.segment_id))} • Channel: ${esc(c.channel)} • Sent/queued: ${esc(c.sent_count)}</div>
-                      <div class="meta">Scheduled: ${esc(c.scheduled_at || '—')} • Created: ${esc(c.created_at)}</div>
+                      <div class="meta">Segment: ${esc(c.segment_name || ('#'+c.segment_id))}  -  Channel: ${esc(c.channel)}  -  Sent/queued: ${esc(c.sent_count)}</div>
+                      <div class="meta">Scheduled: ${fmtDate(c.scheduled_at)}  -  Created: ${fmtDate(c.created_at)}</div>
                     </div>
                   </div>
                 </div>
@@ -3820,9 +3846,9 @@ $csrf = csrf_token();
           </div>
           <div class="kpi">
             ${state.loading.report ? Array.from({length:4},()=>'<div class="skeletonKpi"></div>').join('') : (state.errors.report ? retryState('report', 'Report could not load', state.errors.report) : `
-            <div class="k"><div class="v">${money(r.summary?.revenue_cents || 0)}</div><div class="l">Revenue</div></div>
+            <div class="k"><div class="v">${fmtMoney(r.summary?.revenue_cents || 0)}</div><div class="l">Revenue</div></div>
             <div class="k"><div class="v">${esc(r.summary?.order_count || 0)}</div><div class="l">Completed orders</div></div>
-            <div class="k"><div class="v">${money(r.summary?.aov_cents || 0)}</div><div class="l">AOV</div></div>
+            <div class="k"><div class="v">${fmtMoney(r.summary?.aov_cents || 0)}</div><div class="l">AOV</div></div>
             <div class="k"><div class="v">${esc(state.reportFrom || '')} - ${esc(state.reportTo || '')}</div><div class="l">Window</div></div>
             `)}
           </div>
@@ -3831,12 +3857,12 @@ $csrf = csrf_token();
           <div class="h1">Top products</div>
           <div class="list">
             ${reportListStatus || ((r.top_products || []).length===0 ? emptyState('reports', 'No completed sales', 'Completed orders in the selected window will appear here.') : r.top_products.map(p=>`
-              <div class="item"><div class="name">${esc(p.product_name)}</div><div class="meta">${esc(p.category)} • Qty ${esc(p.qty)} • ${money(p.revenue_cents)}</div></div>
+              <div class="item"><div class="name">${esc(p.product_name)}</div><div class="meta">${esc(p.category)}  -  Qty ${esc(p.qty)}  -  ${fmtMoney(p.revenue_cents)}</div></div>
             `).join(''))}
           </div>
           <div class="h1" style="margin-top:12px">Category mix</div>
           <div class="list">
-            ${reportListStatus || ((r.category_mix || []).length===0 ? emptyState('reports', 'No category mix yet', 'Category totals appear after completed sales in this report window.') : (r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} - ${money(c.revenue_cents)}</div></div>`).join(''))}
+            ${reportListStatus || ((r.category_mix || []).length===0 ? emptyState('reports', 'No category mix yet', 'Category totals appear after completed sales in this report window.') : (r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} - ${fmtMoney(c.revenue_cents)}</div></div>`).join(''))}
           </div>
         </div>
       </div>
@@ -3855,6 +3881,21 @@ $csrf = csrf_token();
           <div class="field"><label>New password</label><input id="pw_new" type="password"></div>
           <button class="btn small primary" id="pw_change">Change password</button>
           <div id="admin_msg"></div>
+          ${isAdmin ? `
+            <div class="item" style="margin-top:12px">
+              <div class="h1">Store settings</div>
+              <div class="row" style="flex-wrap:wrap">
+                <div class="field"><label>Store name</label><input id="store_name" value="${esc(state.store?.name || '')}"></div>
+                <div class="field"><label>Currency symbol</label><input id="store_symbol" maxlength="4" value="${esc(state.store?.currency_symbol || '')}"></div>
+              </div>
+              <div class="row" style="flex-wrap:wrap">
+                <div class="field"><label>Tax rate</label><input id="store_tax" type="number" min="0" step="0.001" value="${esc(state.store?.tax_rate ?? 0)}"></div>
+                <div class="field"><label>Accent</label><input id="store_accent" value="${esc(state.store?.accent || '#2563eb')}"></div>
+                <div class="field"><label>Delivery</label><select id="store_delivery"><option value="1" ${Number(state.store?.enable_delivery ?? 1) === 1 ? 'selected' : ''}>enabled</option><option value="0" ${Number(state.store?.enable_delivery ?? 1) === 1 ? '' : 'selected'}>disabled</option></select></div>
+              </div>
+              <button class="btn small primary" id="store_save">Save store settings</button>
+            </div>
+          ` : ``}
           ${isAdmin ? `
             <div class="item" style="margin-top:12px">
               <div class="h1">Admin reset</div>
@@ -3878,7 +3919,7 @@ $csrf = csrf_token();
               ${auditStatus || (state.auditLogs.length===0 ? emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.') : state.auditLogs.map(a=>`
                 <div class="item">
                   <div class="name">${esc(a.action)}</div>
-                  <div class="meta">${esc(a.ts)} • ${esc(a.user_email || 'system')}</div>
+                  <div class="meta">${fmtDate(a.ts)}  -  ${esc(a.user_email || 'system')}</div>
                   <div class="meta">${esc(a.payload_json || '')}</div>
                 </div>
               `).join(''))}
@@ -4073,7 +4114,7 @@ $csrf = csrf_token();
     if (posReceived) posReceived.oninput = () => {
       state.pos.amountTenderedCents = centsFromAmount(posReceived.value)
       const due = qs('#change_due')
-      if (due) due.textContent = money(Math.max(0, state.pos.amountTenderedCents - cartTotals().total))
+      if (due) due.textContent = fmtMoney(Math.max(0, state.pos.amountTenderedCents - cartTotals().total))
     }
     const posType = qs('#pos_type')
     if (posType) posType.onchange = () => { state.pos.type = posType.value }
@@ -4368,6 +4409,24 @@ $csrf = csrf_token();
       }
     }
 
+    const storeSave = qs('#store_save')
+    if (storeSave) storeSave.onclick = async ()=>{
+      try{
+        await api('api_settings_update', { method:'POST', body: {
+          name: qs('#store_name')?.value || state.store?.name || '',
+          currency_symbol: qs('#store_symbol')?.value || state.store?.currency_symbol || '',
+          tax_rate: Number(qs('#store_tax')?.value || state.store?.tax_rate || 0),
+          accent: qs('#store_accent')?.value || state.store?.accent || '#2563eb',
+          enable_delivery: (qs('#store_delivery')?.value || '1') === '1' ? 1 : 0
+        }})
+        await loadMe()
+        toast('ok', 'Store settings saved')
+        render()
+      }catch(e){
+        msg('admin_msg','err', e.message || 'Store settings failed')
+      }
+    }
+
     const pwChange = qs('#pw_change')
     if (pwChange) pwChange.onclick = async ()=>{
       try{
@@ -4446,7 +4505,7 @@ $csrf = csrf_token();
   <div class="card" style="margin:14px 0">
     <div class="h1">Security & docs</div>
     <div class="muted" style="margin-top:6px">
-      <a href="SETUP.md">Docs</a> • <a href="SECURITY.md">Security</a> • <a href="README.md">README</a>
+      <a href="SETUP.md">Docs</a>  -  <a href="SECURITY.md">Security</a>  -  <a href="README.md">README</a>
     </div>
     <div class="muted" style="margin-top:10px">
       Logged in as <?=h((string)($_SESSION['email'] ?? ''))?> (<?=h((string)($_SESSION['role'] ?? 'staff'))?>).

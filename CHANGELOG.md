@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P1.7] Added shared money/date formatters, Admin currency-symbol editing, locale thousands separators, and relative dates in the SPA.
 - [P1.6] Added POS scanner-style SKU entry, keyboard shortcuts, cash change due, and mobile tap-target sizing.
 - [P1.5] Added section skeletons, retry cards, and a global connection banner for failed fetches.
 - Restored larger checkout product tile names while keeping the lighter UI font weight.
