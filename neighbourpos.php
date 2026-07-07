@@ -16,6 +16,7 @@ README (Deployment - 10 lines)
 declare(strict_types=1);
 
 const APP_VERSION = '0.3.0';
+const PRODUCT_IMPORT_MAX_ROWS = 500;
 
 /* =========================
    Customize here (CONFIG)
@@ -434,6 +435,147 @@ function csv_safe_phone_cell($value): string {
   // Provider import profiles require strict E.164 phone values without a leading apostrophe.
   if (preg_match('/^\+[1-9][0-9]{6,14}$/', $text) === 1) return $text;
   return csv_safe_cell($text);
+}
+
+function product_import_price_to_cents($value): ?int {
+  $text = trim((string)($value ?? ''));
+  if ($text === '') return null;
+  $clean = preg_replace('/[^\d\.\-]/', '', $text);
+  if ($clean === null || preg_match('/^-?\d+(?:\.\d{1,4})?$/', $clean) !== 1) return null;
+  $amount = (float)$clean;
+  if (!is_finite($amount) || $amount < 0) return null;
+  return (int)round($amount * 100);
+}
+
+function product_import_parse_csv(string $csv): array {
+  $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv) ?? $csv;
+  $fh = fopen('php://temp', 'r+');
+  if ($fh === false) {
+    return ['rows_total' => 0, 'valid_count' => 0, 'rows' => [], 'errors' => [['row' => 0, 'errors' => ['Could not read CSV']]], 'too_many' => false];
+  }
+  fwrite($fh, $csv);
+  rewind($fh);
+
+  $header = fgetcsv($fh);
+  if ($header === false) {
+    fclose($fh);
+    return ['rows_total' => 0, 'valid_count' => 0, 'rows' => [], 'errors' => [['row' => 1, 'errors' => ['CSV header required']]], 'too_many' => false];
+  }
+
+  $map = [];
+  foreach ($header as $idx => $name) {
+    $map[strtolower(trim((string)$name))] = $idx;
+  }
+  $required = ['sku', 'name', 'price', 'stock', 'category'];
+  $missing = array_values(array_filter($required, fn($col) => !array_key_exists($col, $map)));
+  if ($missing) {
+    fclose($fh);
+    return [
+      'rows_total' => 0,
+      'valid_count' => 0,
+      'rows' => [],
+      'errors' => [['row' => 1, 'errors' => ['Missing columns: '.implode(', ', $missing)]]],
+      'too_many' => false,
+    ];
+  }
+
+  $rows = [];
+  $errors = [];
+  $rowsTotal = 0;
+  $rowNumber = 1;
+  while (($line = fgetcsv($fh)) !== false) {
+    $rowNumber++;
+    $nonBlank = false;
+    foreach ($line as $cell) {
+      if (trim((string)$cell) !== '') {
+        $nonBlank = true;
+        break;
+      }
+    }
+    if (!$nonBlank) continue;
+
+    $rowsTotal++;
+    if ($rowsTotal > PRODUCT_IMPORT_MAX_ROWS) {
+      fclose($fh);
+      return [
+        'rows_total' => $rowsTotal,
+        'valid_count' => count($rows),
+        'rows' => $rows,
+        'errors' => $errors,
+        'too_many' => true,
+        'error' => 'Product import is capped at 500 rows',
+      ];
+    }
+
+    $cell = function (string $key) use ($line, $map): string {
+      $idx = $map[$key] ?? -1;
+      return $idx >= 0 && array_key_exists($idx, $line) ? trim((string)$line[$idx]) : '';
+    };
+
+    $rowErrors = [];
+    $sku = substr($cell('sku'), 0, 64);
+    $name = trim($cell('name'));
+    if ($name === '') $rowErrors[] = 'name required';
+    $price = product_import_price_to_cents($cell('price'));
+    if ($price === null) $rowErrors[] = 'price must be a non-negative amount';
+    $stockText = $cell('stock');
+    $stock = null;
+    if (preg_match('/^\d+$/', $stockText) === 1) $stock = (int)$stockText;
+    else $rowErrors[] = 'stock must be a non-negative whole number';
+    $category = substr($cell('category'), 0, 80);
+
+    if ($rowErrors) {
+      $errors[] = ['row' => $rowNumber, 'errors' => $rowErrors];
+      continue;
+    }
+
+    $rows[] = [
+      'row' => $rowNumber,
+      'sku' => $sku,
+      'name' => substr($name, 0, 160),
+      'price_cents' => $price,
+      'stock_qty' => $stock,
+      'category' => $category,
+    ];
+  }
+  fclose($fh);
+
+  return [
+    'rows_total' => $rowsTotal,
+    'valid_count' => count($rows),
+    'rows' => $rows,
+    'errors' => $errors,
+    'too_many' => false,
+  ];
+}
+
+function product_import_apply(PDO $pdo, array $rows, string $ts): int {
+  $imported = 0;
+  $findSku = $pdo->prepare("SELECT id FROM products WHERE sku = ? LIMIT 1");
+  $update = $pdo->prepare("UPDATE products SET name=?, price_cents=?, stock_qty=?, category=?, active=1 WHERE id=?");
+  $insert = $pdo->prepare("INSERT INTO products(sku,name,price_cents,stock_qty,category,active,created_at) VALUES(?,?,?,?,?,?,?)");
+
+  foreach ($rows as $row) {
+    $sku = trim((string)($row['sku'] ?? ''));
+    $name = (string)($row['name'] ?? '');
+    $price = (int)($row['price_cents'] ?? 0);
+    $stock = (int)($row['stock_qty'] ?? 0);
+    $category = trim((string)($row['category'] ?? ''));
+
+    $existing = null;
+    if ($sku !== '') {
+      $findSku->execute([$sku]);
+      $existing = $findSku->fetch();
+    }
+    if ($existing) {
+      $update->execute([$name, $price, $stock, $category ?: null, (int)$existing['id']]);
+    } else {
+      $insert->execute([$sku ?: null, $name, $price, $stock, $category ?: null, 1, $ts]);
+    }
+    $imported++;
+  }
+
+  return $imported;
 }
 
 function campaign_payload(array $r): array {
@@ -1853,6 +1995,24 @@ if ($action === 'customer_export') {
   exit;
 }
 
+if ($action === 'product_import_template') {
+  require_login();
+  if (!is_admin()) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Admin only';
+    exit;
+  }
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="product-import-template.csv"');
+  header('Cache-Control: no-store');
+  $out = fopen('php://output', 'w');
+  fputcsv($out, ['sku', 'name', 'price', 'stock', 'category']);
+  fputcsv($out, ['COF-250', 'Neighbour Blend Coffee', '8.50', '24', 'Grocery']);
+  fclose($out);
+  exit;
+}
+
 if ($action === 'inventory_low_stock_export') {
   require_login();
   $threshold = (int)($CONFIG['LOW_STOCK_THRESHOLD'] ?? 5);
@@ -2204,6 +2364,61 @@ if (str_starts_with($action, 'api_')) {
     }
 
     json_out(['ok' => true, 'data' => ['id' => $id]]);
+  }
+
+  if ($action === 'api_product_import_preview') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'product_import_preview:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+
+    $parsed = product_import_parse_csv((string)($body['csv'] ?? ''));
+    if (!empty($parsed['too_many'])) json_out(['ok' => false, 'error' => $parsed['error'] ?? 'Product import is capped at 500 rows'], 400);
+    json_out(['ok' => true, 'data' => $parsed]);
+  }
+
+  if ($action === 'api_product_import_commit') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $rl = (array)($CONFIG['RATE_LIMITS']['API_WRITE'] ?? ['limit' => 120, 'window_seconds' => 300]);
+    rate_limit_or_fail($pdo, 'product_import_commit:ip:'.client_ip(), (int)($rl['limit'] ?? 120), (int)($rl['window_seconds'] ?? 300), true);
+
+    $filename = substr(trim((string)($body['filename'] ?? 'products.csv')), 0, 180);
+    if ($filename === '') $filename = 'products.csv';
+    $parsed = product_import_parse_csv((string)($body['csv'] ?? ''));
+    if (!empty($parsed['too_many'])) json_out(['ok' => false, 'error' => $parsed['error'] ?? 'Product import is capped at 500 rows'], 400);
+
+    $ts = now_iso();
+    $pdo->beginTransaction();
+    $imported = product_import_apply($pdo, (array)$parsed['rows'], $ts);
+    $ins = $pdo->prepare("INSERT INTO imports(filename,rows_total,rows_imported,errors_json,created_at) VALUES(?,?,?,?,?)");
+    $ins->execute([
+      $filename,
+      (int)$parsed['rows_total'],
+      $imported,
+      json_encode($parsed['errors'], JSON_UNESCAPED_SLASHES),
+      $ts,
+    ]);
+    $importId = (int)$pdo->lastInsertId();
+    audit($pdo, $uid, 'product_import.commit', ['id' => $importId, 'filename' => $filename, 'rows_total' => (int)$parsed['rows_total'], 'rows_imported' => $imported, 'errors' => count((array)$parsed['errors'])]);
+    $pdo->commit();
+
+    json_out(['ok' => true, 'data' => [
+      'import_id' => $importId,
+      'filename' => $filename,
+      'rows_total' => (int)$parsed['rows_total'],
+      'rows_imported' => $imported,
+      'errors' => $parsed['errors'],
+    ]]);
+  }
+
+  if ($action === 'api_product_imports_list') {
+    if (!is_admin()) json_out(['ok' => false, 'error' => 'Admin only'], 403);
+    $rows = $pdo->query("SELECT id, filename, rows_total, rows_imported, errors_json, created_at FROM imports ORDER BY id DESC LIMIT 20")->fetchAll();
+    foreach ($rows as &$row) {
+      $errors = json_decode((string)($row['errors_json'] ?? '[]'), true);
+      $row['errors'] = is_array($errors) ? $errors : [];
+    }
+    unset($row);
+    json_out(['ok' => true, 'data' => $rows]);
   }
 
   if ($action === 'api_low_stock') {
@@ -3704,6 +3919,13 @@ $csrf = csrf_token();
     lastTouchedProductId: null,
     lastTouchedLineId: null,
     lowStock: [],
+    productImports: [],
+    productImport: {
+      filename: 'products.csv',
+      csv: '',
+      preview: null,
+      busy: false
+    },
     orders: [],
     orderSearch: [],
     selectedOrder: null,
@@ -4001,7 +4223,7 @@ $csrf = csrf_token();
     render()
     if (tab === 'dashboard') { await loadDashboard(); clearConnectionIfHealthy(['dashboard']) }
     if (tab === 'pos') { await Promise.all([loadProducts(state.pos.q || '', false), loadOrders('active'), loadLowStock()]); clearConnectionIfHealthy(['products','orders','lowStock']) }
-    if (tab === 'inventory') { await Promise.all([loadProducts('', true), loadLowStock()]); clearConnectionIfHealthy(['products','lowStock']) }
+    if (tab === 'inventory') { await Promise.all([loadProducts('', true), loadLowStock(), loadProductImports()]); clearConnectionIfHealthy(['products','lowStock','productImports']) }
     if (tab === 'orders') { await loadOrders('active'); clearConnectionIfHealthy(['orders']) }
     if (tab === 'crm') { await loadSegments(); clearConnectionIfHealthy(['segments']) }
     if (tab === 'campaigns') { await Promise.all([loadSegments(), loadCampaigns()]); clearConnectionIfHealthy(['segments','campaigns']) }
@@ -4116,6 +4338,13 @@ $csrf = csrf_token();
     return withRegionLoad('lowStock', async ()=>{
       const data = await api('api_low_stock')
       state.lowStock = data.items
+    }, options)
+  }
+
+  async function loadProductImports(options={}){
+    if (state.me?.role !== 'admin') return
+    return withRegionLoad('productImports', async ()=>{
+      state.productImports = await api('api_product_imports_list')
     }, options)
   }
 
@@ -4678,6 +4907,42 @@ $csrf = csrf_token();
     `
   }
 
+  function productImportPreviewHtml(){
+    const preview = state.productImport.preview
+    if (!preview) return `<div class="muted">Preview checks the first <?=PRODUCT_IMPORT_MAX_ROWS?> rows before anything is saved.</div>`
+    const errors = preview.errors || []
+    const rows = preview.rows || []
+    return `
+      <div class="exportSummary">
+        <span>Total ${esc(preview.rows_total || 0)}</span>
+        <span>Ready ${esc(preview.valid_count || 0)}</span>
+        <span>Errors ${esc(errors.length)}</span>
+      </div>
+      ${errors.length ? `<div class="warnbox">${errors.map(e=>`Row ${esc(e.row)}: ${esc((e.errors || []).join(', '))}`).join('<br>')}</div>` : `<div class="okbox">All previewed rows look ready to import.</div>`}
+      ${rows.length ? dataTable(
+        [{label:'SKU'}, {label:'Name'}, {label:'Price', className:'num'}, {label:'Stock', className:'num'}, {label:'Category'}],
+        rows.slice(0, 5).map(r=>`<tr><td>${esc(r.sku || '')}</td><td>${esc(r.name)}</td><td class="num">${fmtMoney(r.price_cents)}</td><td class="num">${esc(r.stock_qty)}</td><td>${esc(r.category || '')}</td></tr>`),
+        ''
+      ) : ''}
+    `
+  }
+
+  function productImportLogHtml(){
+    const importsStatus = regionState('productImports', skeletonList(3), 'Import history could not load', 'Retry product import history.')
+    if (importsStatus) return importsStatus
+    if (!state.productImports.length) return emptyState('inventory', 'No imports yet', 'Committed product CSV imports will appear here.')
+    return state.productImports.map(row=>{
+      const errors = row.errors || []
+      return `<div class="item">
+        <div class="row">
+          <div><div class="name">${esc(row.filename)}</div><div class="meta">${esc(fmtDate(row.created_at))} - ${esc(row.rows_imported)} of ${esc(row.rows_total)} imported</div></div>
+          <span class="statusBadge ${errors.length ? 'warn' : 'good'}">${esc(errors.length)} errors</span>
+        </div>
+        ${errors.length ? `<div class="noteText">${errors.slice(0, 3).map(e=>`Row ${esc(e.row)}: ${esc((e.errors || []).join(', '))}`).join('<br>')}</div>` : ''}
+      </div>`
+    }).join('')
+  }
+
   function renderInventory(){
     const productsStatus = regionState('products', skeletonList(5), 'Products could not load', 'Retry the inventory catalog.')
     const lowStockStatus = regionState('lowStock', skeletonList(3), 'Low-stock list could not load', 'Retry low-stock alerts.')
@@ -4710,6 +4975,29 @@ $csrf = csrf_token();
             <button class="btn small ghost" id="prod_clear">Clear</button>
           </div>
 
+          <div class="item">
+            <div class="row" style="align-items:flex-start">
+              <div>
+                <div class="h1">Import CSV</div>
+                <div class="muted">Columns: sku, name, price, stock, category. Price is entered in currency units.</div>
+              </div>
+              <a class="btn small ghost" href="?action=product_import_template">Template CSV</a>
+            </div>
+            <div class="row" style="flex-wrap:wrap">
+              <div class="field"><label>File</label><input id="prod_import_file" type="file" accept=".csv,text/csv"></div>
+              <div class="field"><label>Filename</label><input id="prod_import_filename" value="${esc(state.productImport.filename)}"></div>
+            </div>
+            <div class="field">
+              <label>CSV content</label>
+              <textarea id="prod_import_csv" rows="6" placeholder="sku,name,price,stock,category">${esc(state.productImport.csv)}</textarea>
+            </div>
+            <div class="row">
+              <button class="btn small" id="prod_import_preview" ${state.productImport.busy ? 'disabled' : ''}>Preview import</button>
+              <button class="btn small primary" id="prod_import_commit" ${(!state.productImport.preview || state.productImport.busy) ? 'disabled' : ''}>Import valid rows</button>
+            </div>
+            <div id="prod_import_result">${productImportPreviewHtml()}</div>
+          </div>
+
           ${productsStatus || dataTable(
             [{label:'Product'}, {label:'Category'}, {label:'Price', className:'num'}, {label:'Stock', className:'num'}, {label:'Actions', className:'actions'}],
             state.products.map(p=>`
@@ -4733,6 +5021,8 @@ $csrf = csrf_token();
 
           <button class="btn small" id="low_refresh">Refresh</button>
           <a class="btn small ghost" href="?action=inventory_low_stock_export">Export low-stock CSV</a>
+          <div class="h1" style="margin-top:14px">Recent imports</div>
+          <div class="list">${productImportLogHtml()}</div>
           <div class="list">
             ${lowStockStatus || (state.lowStock.length===0 ? emptyState('alert', 'Stock looks healthy', 'Products under the low-stock threshold will appear here.') : state.lowStock.map(p=>`
               <div class="item">
@@ -5493,6 +5783,53 @@ $csrf = csrf_token();
     }
     const prodClear = qs('#prod_clear')
     if (prodClear) prodClear.onclick = clearProd
+
+    const importFile = qs('#prod_import_file')
+    const importFilename = qs('#prod_import_filename')
+    const importCsv = qs('#prod_import_csv')
+    if (importFilename) importFilename.oninput = () => { state.productImport.filename = importFilename.value || 'products.csv' }
+    if (importCsv) importCsv.oninput = () => {
+      state.productImport.csv = importCsv.value
+      state.productImport.preview = null
+    }
+    if (importFile) importFile.onchange = async () => {
+      const file = importFile.files && importFile.files[0]
+      if (!file) return
+      state.productImport.filename = file.name || 'products.csv'
+      state.productImport.csv = await file.text()
+      state.productImport.preview = null
+      render()
+    }
+    const importPreview = qs('#prod_import_preview')
+    if (importPreview) importPreview.onclick = async ()=>{
+      try{
+        state.productImport.busy = true
+        const payload = { filename: state.productImport.filename || 'products.csv', csv: state.productImport.csv || '' }
+        state.productImport.preview = await api('api_product_import_preview', { method:'POST', body: payload })
+        msg('inv_msg','ok',`Preview ready: ${state.productImport.preview.valid_count} rows can import`)
+      }catch(e){
+        msg('inv_msg','err', e.message || 'Import preview failed')
+      }finally{
+        state.productImport.busy = false
+        render()
+      }
+    }
+    const importCommit = qs('#prod_import_commit')
+    if (importCommit) importCommit.onclick = async ()=>{
+      try{
+        state.productImport.busy = true
+        const payload = { filename: state.productImport.filename || 'products.csv', csv: state.productImport.csv || '' }
+        const out = await api('api_product_import_commit', { method:'POST', body: payload })
+        state.productImport.preview = { rows_total: out.rows_total, valid_count: out.rows_imported, rows: [], errors: out.errors || [] }
+        msg('inv_msg','ok',`Imported ${out.rows_imported} products`)
+        await Promise.all([loadProducts(qs('#inv_q')?.value || '', true, {renderStart:false}), loadLowStock({renderStart:false}), loadProductImports({renderStart:false}), loadDashboard({renderStart:false})])
+      }catch(e){
+        msg('inv_msg','err', e.message || 'Import failed')
+      }finally{
+        state.productImport.busy = false
+        render()
+      }
+    }
 
     const prodSave = qs('#prod_save')
     if (prodSave) prodSave.onclick = async ()=>{
