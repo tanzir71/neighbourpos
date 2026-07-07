@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-07-07
+- [P1.5] Added section skeletons, retry cards, and a global connection banner for failed fetches.
 - Restored larger checkout product tile names while keeping the lighter UI font weight.
 - [P1.4] Added toast and modal prompt/confirm UI, replacing all SPA native alert/prompt/confirm usage.
 - [P1.3] Added shared app page headers and designed empty states across Dashboard, POS, Orders, Inventory, CRM, Campaigns, Reports, and Admin.

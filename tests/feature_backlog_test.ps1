@@ -82,6 +82,11 @@ Assert-SourceContains $source 'brandMark' 'Production premium brand mark is miss
 Assert-SourceContains $source 'navCollapsed' 'Production collapsible sidebar state is missing'
 Assert-SourceContains $source 'navToggle' 'Production sidebar collapse toggle is missing'
 Assert-SourceContains $source 'navIcon' 'Production icon rail labels are missing'
+Assert-SourceContains $source 'skeletonRow' 'Production loading skeleton rows are missing'
+Assert-SourceContains $source 'retryCard' 'Production inline retry cards are missing'
+Assert-SourceContains $source 'data-retry' 'Production retry action binding is missing'
+Assert-SourceContains $source 'offlineBanner' 'Production offline banner is missing'
+Assert-SourceContains $source 'Connection lost' 'Production offline warning copy is missing'
 
 Assert-SourceContains $landing 'brandMark' 'Landing page premium brand mark is missing'
 Assert-SourceDoesNotContain $landing 'heroLogo|heroPanel|heroImage' 'Landing page hero should stay logo/image-free'

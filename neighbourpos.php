@@ -2506,6 +2506,20 @@ $csrf = csrf_token();
     .emptyIcon .icon{width:18px;height:18px}
     .emptyTitle{color:var(--txt);font-size:15px;font-weight:700}
     .emptyActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+    .retryCard{border:1px solid var(--line);border-radius:var(--radius-card);background:var(--redWash);color:#8a1f17;padding:14px;display:grid;gap:8px}
+    .retryCard .muted{color:#8a1f17}
+    .retryCard .btn{justify-self:start;background:#fff}
+    .saleGrid .retryCard,.saleGrid .emptyState,.kpi .retryCard{grid-column:1/-1}
+    .offlineBanner{margin:-2px 0 12px;padding:10px 12px;border-radius:var(--radius-card);background:var(--redWash);color:#8a1f17;font-size:13px;font-weight:500}
+    .offlineBanner[hidden]{display:none}
+    .skeletonStack{display:grid;gap:10px;margin-top:10px}
+    .skeletonRow,.skeletonTile,.skeletonKpi{position:relative;overflow:hidden;border-radius:var(--radius-card);background:var(--wash)}
+    .skeletonRow{height:54px}
+    .skeletonTile{min-height:150px;border:1px solid var(--line);background:#fff}
+    .skeletonKpi{height:76px;border:1px solid var(--line);background:#fff}
+    .skeletonRow::after,.skeletonTile::after,.skeletonKpi::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:skeletonSweep 1.2s infinite}
+    .skeletonGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;margin-top:10px}
+    @keyframes skeletonSweep{to{transform:translateX(100%)}}
     .item{padding:12px 0;border-radius:0;border:0;background:#fff}
     .item + .item{border-top:1px solid var(--line2)}
     .item .name{font-weight:500;font-size:13px}
@@ -2677,6 +2691,7 @@ $csrf = csrf_token();
     </div>
   </div>
 
+  <div id="offlineBanner" class="offlineBanner" role="status" aria-live="polite" hidden>Connection lost — changes can't save</div>
   <div id="view"></div>
   <div id="toastHost" class="toastHost" aria-live="polite" aria-atomic="true"></div>
   <div id="modalRoot" class="modalRoot" aria-hidden="true"></div>
@@ -2725,6 +2740,10 @@ $csrf = csrf_token();
     segments: [],
     campaigns: [],
     auditLogs: [],
+    loading: {},
+    errors: {},
+    lastCustomerId: null,
+    connectionFetchFailed: false,
     sim: null
   }
 
@@ -2745,6 +2764,53 @@ $csrf = csrf_token();
       <div>${esc(body)}</div>
       ${actionHtml ? `<div class="emptyActions">${actionHtml}</div>` : ''}
     </div>`
+  }
+  function skeletonList(count=3){ return `<div class="skeletonStack" aria-label="Loading">${Array.from({length:count},()=>'<div class="skeletonRow"></div>').join('')}</div>` }
+  function skeletonTiles(count=8){ return `<div class="skeletonGrid" aria-label="Loading products">${Array.from({length:count},()=>'<div class="skeletonTile"></div>').join('')}</div>` }
+  function skeletonKpis(count=4){ return `<div class="kpi" aria-label="Loading metrics">${Array.from({length:count},()=>'<div class="skeletonKpi"></div>').join('')}</div>` }
+  function retryState(key, title='Could not load this section', body='Check the connection and try again.'){
+    return `<div class="retryCard">
+      <div class="h1">${esc(title)}</div>
+      <div class="muted">${esc(body)}</div>
+      <button class="btn small" type="button" data-retry="${esc(key)}">Retry</button>
+    </div>`
+  }
+  function regionState(key, loadingHtml, errorTitle, errorBody){
+    if (state.loading[key]) return loadingHtml
+    if (state.errors[key]) return retryState(key, errorTitle, state.errors[key] || errorBody)
+    return ''
+  }
+  function setRegionLoading(key, loading){
+    state.loading[key] = loading
+    if (loading) state.errors[key] = ''
+  }
+  async function withRegionLoad(key, work, {renderStart=true, renderEnd=false} = {}){
+    setRegionLoading(key, true)
+    if (renderStart) render()
+    try {
+      const out = await work()
+      state.errors[key] = ''
+      return out
+    } catch (e) {
+      state.errors[key] = e.message || String(e)
+      return null
+    } finally {
+      state.loading[key] = false
+      if (renderEnd) render()
+    }
+  }
+  function updateConnectionBanner(){
+    const banner = qs('#offlineBanner')
+    if (!banner) return
+    const offline = state.connectionFetchFailed || navigator.onLine === false
+    banner.hidden = !offline
+  }
+  function setConnectionFetchFailed(failed){
+    state.connectionFetchFailed = failed
+    updateConnectionBanner()
+  }
+  function clearConnectionIfHealthy(keys=[]){
+    if (!keys.some(key=>state.errors[key])) setConnectionFetchFailed(false)
   }
   function toast(type, text){
     const host = qs('#toastHost')
@@ -2841,9 +2907,21 @@ $csrf = csrf_token();
       opt.headers['X-CSRF-Token'] = CSRF
       opt.body = JSON.stringify(body ?? {})
     }
-    const res = await fetch(url, opt)
+    let res
+    try {
+      res = await fetch(url, opt)
+    } catch (e) {
+      const err = new Error("Connection lost — changes can't save")
+      err.network = true
+      setConnectionFetchFailed(true)
+      throw err
+    }
     const data = await res.json().catch(()=>({ok:false,error:'Bad JSON'}))
-    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`)
+    if (!res.ok || data.ok === false) {
+      const err = new Error(data.error || `HTTP ${res.status}`)
+      err.status = res.status
+      throw err
+    }
     return data.data
   }
 
@@ -2863,14 +2941,16 @@ $csrf = csrf_token();
   async function setTab(tab){
     state.tab = tab
     qsa('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab))
-    if (tab === 'dashboard') await loadDashboard()
-    if (tab === 'pos') { await loadProducts(state.pos.q || '', false); await loadOrders('active'); await loadLowStock() }
-    if (tab === 'inventory') { await loadProducts('', true); await loadLowStock() }
-    if (tab === 'orders') await loadOrders('active')
-    if (tab === 'reports') await loadSalesReport()
-    if (tab === 'admin') await loadAuditLog('')
-    render()
     window.location.hash = tab
+    render()
+    if (tab === 'dashboard') { await loadDashboard(); clearConnectionIfHealthy(['dashboard']) }
+    if (tab === 'pos') { await Promise.all([loadProducts(state.pos.q || '', false), loadOrders('active'), loadLowStock()]); clearConnectionIfHealthy(['products','orders','lowStock']) }
+    if (tab === 'inventory') { await Promise.all([loadProducts('', true), loadLowStock()]); clearConnectionIfHealthy(['products','lowStock']) }
+    if (tab === 'orders') { await loadOrders('active'); clearConnectionIfHealthy(['orders']) }
+    if (tab === 'campaigns') { await Promise.all([loadSegments(), loadCampaigns()]); clearConnectionIfHealthy(['segments','campaigns']) }
+    if (tab === 'reports') { await loadSalesReport(); clearConnectionIfHealthy(['report']) }
+    if (tab === 'admin') { await loadAuditLog(''); clearConnectionIfHealthy(['audit']) }
+    render()
   }
 
   function cartAdd(p){
@@ -2906,33 +2986,45 @@ $csrf = csrf_token();
     document.documentElement.style.setProperty('--accent', state.store.accent)
   }
 
-  async function loadDashboard(){
-    state.dashboard = await api('api_today_snapshot')
+  async function loadDashboard(options={}){
+    return withRegionLoad('dashboard', async ()=>{
+      state.dashboard = await api('api_today_snapshot')
+    }, options)
   }
 
-  async function loadProducts(q='', includeInactive=false){
-    const data = await api('api_products_list', { params: { q, page: 1, per: 30, include_inactive: includeInactive ? 1 : 0 }})
-    state.products = data.items
+  async function loadProducts(q='', includeInactive=false, options={}){
+    return withRegionLoad('products', async ()=>{
+      const data = await api('api_products_list', { params: { q, page: 1, per: 30, include_inactive: includeInactive ? 1 : 0 }})
+      state.products = data.items
+    }, options)
   }
 
-  async function loadLowStock(){
-    const data = await api('api_low_stock')
-    state.lowStock = data.items
+  async function loadLowStock(options={}){
+    return withRegionLoad('lowStock', async ()=>{
+      const data = await api('api_low_stock')
+      state.lowStock = data.items
+    }, options)
   }
 
-  async function loadOrders(status='active'){
-    state.orders = await api('api_orders_list', { params: { status, page: 1, per: 25 } })
+  async function loadOrders(status='active', options={}){
+    return withRegionLoad('orders', async ()=>{
+      state.orders = await api('api_orders_list', { params: { status, page: 1, per: 25 } })
+    }, options)
   }
 
-  async function loadSegments(){
-    state.segments = await api('api_segments_list')
+  async function loadSegments(options={}){
+    return withRegionLoad('segments', async ()=>{
+      state.segments = await api('api_segments_list')
+    }, options)
   }
 
-  async function loadCampaigns(){
-    state.campaigns = await api('api_campaigns_list')
+  async function loadCampaigns(options={}){
+    return withRegionLoad('campaigns', async ()=>{
+      state.campaigns = await api('api_campaigns_list')
+    }, options)
   }
 
-  async function loadSalesReport(){
+  async function loadSalesReport(options={}){
     const today = new Date().toISOString().slice(0,10)
     if (!state.reportTo) state.reportTo = today
     if (!state.reportFrom) {
@@ -2940,25 +3032,49 @@ $csrf = csrf_token();
       d.setDate(d.getDate() - 6)
       state.reportFrom = d.toISOString().slice(0,10)
     }
-    state.report = await api('api_sales_report', { params: { from: state.reportFrom, to: state.reportTo }})
+    return withRegionLoad('report', async ()=>{
+      state.report = await api('api_sales_report', { params: { from: state.reportFrom, to: state.reportTo }})
+    }, options)
   }
 
-  async function loadAuditLog(q=''){
+  async function loadAuditLog(q='', options={}){
     if (state.me?.role !== 'admin') return
-    state.auditLogs = await api('api_audit_log', { params: { q, limit: 50 }})
+    return withRegionLoad('audit', async ()=>{
+      state.auditLogs = await api('api_audit_log', { params: { q, limit: 50 }})
+    }, options)
   }
 
-  async function loadOrderSearch(){
+  async function loadOrderSearch(options={}){
     const q = qs('#order_q')?.value || ''
     const status = qs('#order_status')?.value || 'all'
     const from = qs('#order_from')?.value || ''
     const to = qs('#order_to')?.value || ''
-    const data = await api('api_orders_search', { params: { q, status, from, to }})
-    state.orderSearch = data.items
+    return withRegionLoad('orderSearch', async ()=>{
+      const data = await api('api_orders_search', { params: { q, status, from, to }})
+      state.orderSearch = data.items
+    }, options)
+  }
+
+  async function loadCustomerSearch(q='', options={}){
+    return withRegionLoad('customerSearch', async ()=>{
+      state.customerSearch = await api('api_customers_search', { params: { q }})
+    }, options)
+  }
+
+  async function loadCustomerProfile(id, options={}){
+    state.lastCustomerId = id
+    return withRegionLoad('customerProfile', async ()=>{
+      state.selectedCustomer = await api('api_customer_get', { params: { id }})
+      state.customerTimeline = await api('api_customer_timeline', { params: { id }})
+    }, options)
   }
 
   function renderDashboard(){
     const d = state.dashboard || {}
+    const dashboardStatus = regionState('dashboard', `<div class="card"><div class="h1">Loading dashboard</div>${skeletonKpis(6)}</div>`, 'Dashboard could not load', 'Try refreshing today snapshot.')
+    if (dashboardStatus) {
+      return `${pageHeader('Dashboard', 'Today at a glance across checkout, orders, stock, and campaign queues.', `<button class="btn primary" data-go="pos">New order</button>`)}${dashboardStatus}`
+    }
     return `
       ${pageHeader('Dashboard', 'Today at a glance across checkout, orders, stock, and campaign queues.', `<button class="btn primary" data-go="pos">New order</button>`)}
       <div class="grid">
@@ -3015,6 +3131,12 @@ $csrf = csrf_token();
         <span class="chipMeta">${found.marketing_opt_in ? 'Opt-in' : 'No opt-in'}</span>
       </div>`
     }
+    if (state.customerLookupStatus === 'checking') {
+      return `<div class="customerChip"><span class="avatar">${icon('user')}</span><span class="chipMain"><strong>Checking customer</strong><span>Looking up this phone number...</span></span><span class="chipMeta">Wait</span></div>`
+    }
+    if (state.customerLookupStatus === 'error') {
+      return `<div class="errbox">Customer lookup failed. Check the connection and try again.</div>`
+    }
     return `<div class="compactFields">
       <input id="pos_name" placeholder="${state.customerLookupStatus === 'new' ? 'New customer name' : 'Customer name'}" value="${esc(state.pos.name)}">
       <select id="pos_optin">
@@ -3025,6 +3147,8 @@ $csrf = csrf_token();
   }
 
   function checkoutStatusHtml(){
+    if (state.loading.orders || state.loading.lowStock) return `<span>Refreshing status...</span>`
+    if (state.errors.orders || state.errors.lowStock) return `<span>Some status data could not load</span>`
     const active = state.orders.length
     const low = state.lowStock || []
     return [
@@ -3058,7 +3182,7 @@ $csrf = csrf_token();
       }
     } catch (e) {
       state.attachedCustomer = null
-      state.customerLookupStatus = 'new'
+      state.customerLookupStatus = e.network ? 'error' : 'new'
       state.customerLookupError = e.message || ''
     }
     render()
@@ -3069,6 +3193,7 @@ $csrf = csrf_token();
     const totals = cartTotals()
     const products = visibleCheckoutProducts()
     const count = state.cart.reduce((sum,it)=>sum+it.qty,0)
+    const productGridStatus = regionState('products', Array.from({length:8},()=>'<div class="skeletonTile"></div>').join(''), 'Products could not load', 'Retry the product catalog.')
 
     return `
       ${pageHeader('Checkout', 'Search or scan items, attach a customer, tender payment, and place the order.', `<button class="btn primary" data-focus="#pos_q">Find item</button>`)}
@@ -3087,7 +3212,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="saleGrid" id="pos_products">
-            ${products.length === 0 ? emptyState('search', 'No matching products', 'Try another search or add the first product in Inventory.', `<button class="btn small primary" data-go="inventory">Add product</button>`) : products.map(p=>`
+            ${productGridStatus || (products.length === 0 ? emptyState('search', 'No matching products', 'Try another search or add the first product in Inventory.', `<button class="btn small primary" data-go="inventory">Add product</button>`) : products.map(p=>`
               <button class="item saleTile" type="button" data-add="${p.id}" ${Number(p.stock_qty) <= 0 ? 'disabled' : ''}>
                 <span class="productVisual">${esc(productInitials(p.name))}</span>
                 <span class="productMeta">
@@ -3096,7 +3221,7 @@ $csrf = csrf_token();
                   <span class="stockText ${Number(p.stock_qty) <= Number(state.store?.low_stock_threshold ?? 5) ? 'low' : ''}">In stock ${esc(p.stock_qty)}</span>
                 </span>
               </button>
-            `).join('')}
+            `).join(''))}
           </div>
           <div class="tinyStatus" id="tinyStatus">${checkoutStatusHtml()}</div>
         </div>
@@ -3176,6 +3301,8 @@ $csrf = csrf_token();
   }
 
   function renderOrders(){
+    const orderSearchStatus = regionState('orderSearch', skeletonList(3), 'Order search failed', 'Adjust the search or retry.')
+    const ordersStatus = regionState('orders', skeletonList(4), 'Orders could not load', 'Retry active orders.')
     return `
       ${pageHeader('Orders', 'Search, open receipts, and move active orders through fulfillment.', `<button class="btn primary" data-go="pos">New order</button>`)}
       <div class="card">
@@ -3209,7 +3336,7 @@ $csrf = csrf_token();
             <button class="btn small primary" id="order_search_btn">Search</button>
           </div>
           <div class="list">
-            ${state.orderSearch.length===0 ? emptyState('search', 'Search recent orders', 'Use code, phone, status, or date filters to find an order.') : state.orderSearch.map(o=>`
+            ${orderSearchStatus || (state.orderSearch.length===0 ? emptyState('search', 'Search recent orders', 'Use code, phone, status, or date filters to find an order.') : state.orderSearch.map(o=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3219,7 +3346,7 @@ $csrf = csrf_token();
                   <button class="btn small" data-open-order="${o.id}" style="flex:0">Open</button>
                 </div>
               </div>
-            `).join('')}
+            `).join(''))}
           </div>
           ${state.selectedOrder ? `
             <div class="okbox">
@@ -3230,7 +3357,7 @@ $csrf = csrf_token();
         </div>
 
         <div class="list">
-          ${state.orders.length===0 ? emptyState('orders', 'No active orders', 'New checkout orders will appear here for fulfillment.', `<button class="btn small primary" data-go="pos">Start checkout</button>`) : state.orders.map(o=>`
+          ${ordersStatus || (state.orders.length===0 ? emptyState('orders', 'No active orders', 'New checkout orders will appear here for fulfillment.', `<button class="btn small primary" data-go="pos">Start checkout</button>`) : state.orders.map(o=>`
             <div class="item">
               <div class="row" style="align-items:flex-start">
                 <div style="flex:1">
@@ -3247,7 +3374,7 @@ $csrf = csrf_token();
                 </div>
               </div>
             </div>
-          `).join('')}
+          `).join(''))}
         </div>
         <div id="orders_msg"></div>
       </div>
@@ -3255,6 +3382,8 @@ $csrf = csrf_token();
   }
 
   function renderInventory(){
+    const productsStatus = regionState('products', skeletonList(5), 'Products could not load', 'Retry the inventory catalog.')
+    const lowStockStatus = regionState('lowStock', skeletonList(3), 'Low-stock list could not load', 'Retry low-stock alerts.')
     return `
       ${pageHeader('Inventory', 'Maintain products, stock counts, categories, and low-stock restock exports.', `<button class="btn primary" data-focus="#prod_name">Add product</button>`)}
       <div class="grid">
@@ -3285,7 +3414,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="list">
-            ${state.products.length===0 ? emptyState('inventory', 'No products yet', 'Add your first product or load sample data from Admin.', `<button class="btn small primary" data-focus="#prod_name">Add product</button>`) : state.products.map(p=>`
+            ${productsStatus || (state.products.length===0 ? emptyState('inventory', 'No products yet', 'Add your first product or load sample data from Admin.', `<button class="btn small primary" data-focus="#prod_name">Add product</button>`) : state.products.map(p=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3302,7 +3431,7 @@ $csrf = csrf_token();
                   </div>
                 </div>
               </div>
-            `).join('')}
+            `).join(''))}
           </div>
 
           <div id="inv_msg"></div>
@@ -3315,12 +3444,12 @@ $csrf = csrf_token();
           <button class="btn small" id="low_refresh">Refresh</button>
           <a class="btn small ghost" href="?action=inventory_low_stock_export">Export low-stock CSV</a>
           <div class="list">
-            ${state.lowStock.length===0 ? emptyState('alert', 'Stock looks healthy', 'Products under the low-stock threshold will appear here.') : state.lowStock.map(p=>`
+            ${lowStockStatus || (state.lowStock.length===0 ? emptyState('alert', 'Stock looks healthy', 'Products under the low-stock threshold will appear here.') : state.lowStock.map(p=>`
               <div class="item">
                 <div class="name">${esc(p.name)}</div>
                 <div class="meta">${esc(p.category || '')} • Stock: <b>${esc(p.stock_qty)}</b></div>
               </div>
-            `).join('')}
+            `).join(''))}
           </div>
 
           <div class="warnbox">
@@ -3335,6 +3464,8 @@ $csrf = csrf_token();
     const cust = state.selectedCustomer?.customer
     const orders = state.selectedCustomer?.orders || []
     const ltv = cust?.ltv_estimate ? Number(cust.ltv_estimate).toFixed(2) : '0.00'
+    const customerSearchStatus = regionState('customerSearch', skeletonList(4), 'Customer search failed', 'Retry the customer search.')
+    const profileStatus = regionState('customerProfile', skeletonList(5), 'Customer profile could not load', 'Retry the customer profile.')
     return `
       ${pageHeader('CRM', 'Find customers by phone, maintain consent, and review purchase history.', `<button class="btn primary" data-focus="#crm_q">Find customer</button>`)}
       <div class="grid">
@@ -3348,7 +3479,7 @@ $csrf = csrf_token();
           </div>
 
           <div class="list">
-            ${state.customerSearch.length===0 ? emptyState('user', 'Search customers', 'Type at least two characters to find customers by phone, name, email, or tag.') : state.customerSearch.map(c=>`
+            ${customerSearchStatus || (state.customerSearch.length===0 ? emptyState('user', 'Search customers', 'Type at least two characters to find customers by phone, name, email, or tag.') : state.customerSearch.map(c=>`
               <div class="item" data-cust="${c.id}">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3361,14 +3492,14 @@ $csrf = csrf_token();
                   </div>
                 </div>
               </div>
-            `).join('')}
+            `).join(''))}
           </div>
           <div id="crm_msg"></div>
         </div>
 
         <div class="card">
           <div class="h1">Profile</div>
-          ${!cust ? emptyState('user', 'No customer selected', 'Open a customer to view details, consent, order history, and timeline.') : `
+          ${profileStatus || (!cust ? emptyState('user', 'No customer selected', 'Open a customer to view details, consent, order history, and timeline.') : `
             <div class="kpi">
               <div class="k"><div class="v">${money(cust.total_spent_cents)}</div><div class="l">Total spent</div></div>
               <div class="k"><div class="v">${esc(cust.order_count)}</div><div class="l">Orders</div></div>
@@ -3431,8 +3562,8 @@ $csrf = csrf_token();
                 `).join('')}
               </div>
             </div>
-          `}
-          ${cust ? `
+          `)}
+          ${!profileStatus && cust ? `
             <div style="margin-top:12px">
               <div class="h1">Timeline</div>
               <div class="list">
@@ -3452,6 +3583,8 @@ $csrf = csrf_token();
   }
 
   function renderCampaigns(){
+    const segmentsStatus = regionState('segments', skeletonList(3), 'Segments could not load', 'Retry saved segments.')
+    const campaignsStatus = regionState('campaigns', skeletonList(4), 'Campaigns could not load', 'Retry campaign history.')
     return `
       ${pageHeader('Campaigns', 'Build opted-in segments, queue campaigns, and export sending lists.', `<button class="btn primary" data-focus="#seg_name">New segment</button>`)}
       <div class="grid">
@@ -3498,7 +3631,7 @@ $csrf = csrf_token();
           <div id="seg_msg"></div>
 
           <div class="list">
-            ${state.segments.length===0 ? emptyState('crm', 'No segments yet', 'Create a saved filter for customers you want to reach later.', `<button class="btn small primary" data-focus="#seg_name">Create segment</button>`) : state.segments.map(s=>`
+            ${segmentsStatus || (state.segments.length===0 ? emptyState('crm', 'No segments yet', 'Create a saved filter for customers you want to reach later.', `<button class="btn small primary" data-focus="#seg_name">Create segment</button>`) : state.segments.map(s=>`
               <div class="item">
                 <div class="row" style="align-items:flex-start">
                   <div style="flex:1">
@@ -3510,7 +3643,7 @@ $csrf = csrf_token();
                   </div>
                 </div>
               </div>
-            `).join('')}
+            `).join(''))}
           </div>
         </div>
 
@@ -3532,7 +3665,7 @@ $csrf = csrf_token();
             <label>Segment</label>
             <select id="camp_seg">
               <option value="">Select segment</option>
-              ${state.segments.map(s=>`<option value="${s.id}">#${s.id} ${esc(s.name)}</option>`).join('')}
+              ${state.loading.segments ? `<option value="" disabled>Loading segments...</option>` : state.segments.map(s=>`<option value="${s.id}">#${s.id} ${esc(s.name)}</option>`).join('')}
             </select>
           </div>
 
@@ -3595,7 +3728,7 @@ $csrf = csrf_token();
           <div style="margin-top:12px">
             <div class="h1">Past campaigns</div>
             <div class="list">
-              ${state.campaigns.length===0 ? emptyState('campaigns', 'No campaigns yet', 'Create a campaign from a segment, then queue recipients for export.', `<button class="btn small primary" data-focus="#camp_msg">Write campaign</button>`) : state.campaigns.map(c=>`
+              ${campaignsStatus || (state.campaigns.length===0 ? emptyState('campaigns', 'No campaigns yet', 'Create a campaign from a segment, then queue recipients for export.', `<button class="btn small primary" data-focus="#camp_msg">Write campaign</button>`) : state.campaigns.map(c=>`
                 <div class="item">
                   <div class="row" style="align-items:flex-start">
                     <div style="flex:1">
@@ -3610,7 +3743,7 @@ $csrf = csrf_token();
                     </div>
                   </div>
                 </div>
-              `).join('')}
+              `).join(''))}
             </div>
           </div>
         </div>
@@ -3621,6 +3754,7 @@ $csrf = csrf_token();
   function renderReports(){
     const r = state.report || { summary:{}, top_products:[], category_mix:[] }
     const exportHref = `?action=sales_report_export&from=${encodeURIComponent(state.reportFrom || '')}&to=${encodeURIComponent(state.reportTo || '')}`
+    const reportListStatus = regionState('report', skeletonList(3), 'Report could not load', 'Retry this report window.')
     return `
       ${pageHeader('Reports', 'Review completed-order revenue and export owner-friendly CSV reports.', `<a class="btn primary" href="${exportHref}">Export CSV</a>`)}
       <div class="grid">
@@ -3634,22 +3768,24 @@ $csrf = csrf_token();
             <a class="btn small ghost" href="${exportHref}">Export report CSV</a>
           </div>
           <div class="kpi">
+            ${state.loading.report ? Array.from({length:4},()=>'<div class="skeletonKpi"></div>').join('') : (state.errors.report ? retryState('report', 'Report could not load', state.errors.report) : `
             <div class="k"><div class="v">${money(r.summary?.revenue_cents || 0)}</div><div class="l">Revenue</div></div>
             <div class="k"><div class="v">${esc(r.summary?.order_count || 0)}</div><div class="l">Completed orders</div></div>
             <div class="k"><div class="v">${money(r.summary?.aov_cents || 0)}</div><div class="l">AOV</div></div>
             <div class="k"><div class="v">${esc(state.reportFrom || '')} - ${esc(state.reportTo || '')}</div><div class="l">Window</div></div>
+            `)}
           </div>
         </div>
         <div class="card">
           <div class="h1">Top products</div>
           <div class="list">
-            ${(r.top_products || []).length===0 ? emptyState('reports', 'No completed sales', 'Completed orders in the selected window will appear here.') : r.top_products.map(p=>`
+            ${reportListStatus || ((r.top_products || []).length===0 ? emptyState('reports', 'No completed sales', 'Completed orders in the selected window will appear here.') : r.top_products.map(p=>`
               <div class="item"><div class="name">${esc(p.product_name)}</div><div class="meta">${esc(p.category)} • Qty ${esc(p.qty)} • ${money(p.revenue_cents)}</div></div>
-            `).join('')}
+            `).join(''))}
           </div>
           <div class="h1" style="margin-top:12px">Category mix</div>
           <div class="list">
-            ${(r.category_mix || []).length===0 ? emptyState('reports', 'No category mix yet', 'Category totals appear after completed sales in this report window.') : (r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} - ${money(c.revenue_cents)}</div></div>`).join('')}
+            ${reportListStatus || ((r.category_mix || []).length===0 ? emptyState('reports', 'No category mix yet', 'Category totals appear after completed sales in this report window.') : (r.category_mix || []).map(c=>`<div class="item"><div class="name">${esc(c.category)}</div><div class="meta">Qty ${esc(c.qty)} - ${money(c.revenue_cents)}</div></div>`).join(''))}
           </div>
         </div>
       </div>
@@ -3658,6 +3794,7 @@ $csrf = csrf_token();
 
   function renderAdmin(){
     const isAdmin = state.me?.role === 'admin'
+    const auditStatus = isAdmin ? regionState('audit', skeletonList(5), 'Audit log could not load', 'Retry audit history.') : ''
     return `
       ${pageHeader('Admin', 'Change passwords, download backups, and inspect audited staff actions.', isAdmin ? `<a class="btn primary" href="?action=database_backup">Download backup</a>` : `<button class="btn primary" data-focus="#pw_current">Change password</button>`)}
       <div class="grid">
@@ -3687,13 +3824,13 @@ $csrf = csrf_token();
             <div class="field"><label>Filter</label><input id="audit_q" placeholder="action, email, payload"></div>
             <button class="btn small" id="audit_refresh">Refresh</button>
             <div class="list">
-              ${state.auditLogs.length===0 ? emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.') : state.auditLogs.map(a=>`
+              ${auditStatus || (state.auditLogs.length===0 ? emptyState('admin', 'No audit rows loaded', 'Refresh or adjust the filter to inspect recent audited actions.') : state.auditLogs.map(a=>`
                 <div class="item">
                   <div class="name">${esc(a.action)}</div>
                   <div class="meta">${esc(a.ts)} • ${esc(a.user_email || 'system')}</div>
                   <div class="meta">${esc(a.payload_json || '')}</div>
                 </div>
-              `).join('')}
+              `).join(''))}
             </div>
           ` : emptyState('admin', 'Audit log is admin only', 'Sign in as an admin to review audit history.')}
         </div>
@@ -3721,6 +3858,29 @@ $csrf = csrf_token();
     toast(type, text)
   }
 
+  async function retryRegion(key){
+    if (key === 'dashboard') await loadDashboard()
+    if (key === 'products') await loadProducts(state.tab === 'inventory' ? (qs('#inv_q')?.value || '') : (state.pos.q || ''), state.tab === 'inventory')
+    if (key === 'lowStock') await loadLowStock()
+    if (key === 'orders') await loadOrders(qs('#orders_filter')?.value || 'active')
+    if (key === 'orderSearch') await loadOrderSearch()
+    if (key === 'customerSearch') await loadCustomerSearch(qs('#crm_q')?.value?.trim() || '')
+    if (key === 'customerProfile' && state.lastCustomerId) await loadCustomerProfile(state.lastCustomerId)
+    if (key === 'segments') await loadSegments()
+    if (key === 'campaigns') await loadCampaigns()
+    if (key === 'report') await loadSalesReport()
+    if (key === 'audit') await loadAuditLog(qs('#audit_q')?.value || '')
+    clearConnectionIfHealthy([key])
+    render()
+  }
+
+  function setupConnectionWatch(){
+    updateConnectionBanner()
+    window.addEventListener('online', updateConnectionBanner)
+    window.addEventListener('offline', updateConnectionBanner)
+    window.setInterval(updateConnectionBanner, 5000)
+  }
+
   function bind(){
     const navToggle = qs('#navToggle')
     if (navToggle) navToggle.onclick = () => setAppSidebarCollapsed(!qs('#appShell').classList.contains('navCollapsed'))
@@ -3730,12 +3890,13 @@ $csrf = csrf_token();
       const target = qs(b.dataset.focus || '')
       if (target) target.focus()
     })
+    qsa('[data-retry]').forEach(b=>b.onclick=()=>retryRegion(b.dataset.retry).catch(e=>toast('err', e.message || 'Retry failed')))
 
     const posQ = qs('#pos_q')
     if (posQ) posQ.oninput = async () => {
       state.pos.q = posQ.value
       state.categoryFilter = 'All'
-      await loadProducts(state.pos.q)
+      await loadProducts(state.pos.q, false, {renderStart:false})
       render()
     }
 
@@ -3883,7 +4044,7 @@ $csrf = csrf_token();
     })
 
     const invQ = qs('#inv_q')
-    if (invQ) invQ.oninput = async ()=>{ await loadProducts(invQ.value, true); render() }
+    if (invQ) invQ.oninput = async ()=>{ await loadProducts(invQ.value, true, {renderStart:false}); render() }
 
     const clearProd = () => {
       if (qs('#prod_id')) qs('#prod_id').value = ''
@@ -3955,23 +4116,16 @@ $csrf = csrf_token();
     if (crmQ) crmQ.oninput = async ()=>{
       const q = crmQ.value.trim()
       if (q.length < 2) { state.customerSearch = []; render(); return }
-      try{
-        state.customerSearch = await api('api_customers_search', { params: { q }})
-        render()
-      }catch(e){
-        msg('crm_msg','err', e.message || 'Search failed')
-      }
+      await loadCustomerSearch(q, {renderStart:false})
+      render()
     }
 
     qsa('[data-open]').forEach(b=>b.onclick=async ()=>{
-      try{
-        const id = Number(b.dataset.open)
-        state.selectedCustomer = await api('api_customer_get', { params: { id }})
-        state.customerTimeline = await api('api_customer_timeline', { params: { id }})
-        render()
-      }catch(e){
-        msg('crm_msg','err', e.message || 'Open failed')
-      }
+      const id = Number(b.dataset.open)
+      state.selectedCustomer = null
+      state.customerTimeline = []
+      await loadCustomerProfile(id)
+      render()
     })
 
     const custSave = qs('#cust_save')
@@ -4157,16 +4311,8 @@ $csrf = csrf_token();
 
   async function boot(){
     setAppSidebarCollapsed(localStorage.getItem('neighbourposSidebarCollapsed') === '1')
+    setupConnectionWatch()
     await loadMe()
-    await loadDashboard()
-    await loadProducts('')
-    await loadLowStock()
-    await loadOrders('active')
-    await loadSegments()
-    await loadCampaigns()
-    await loadSalesReport()
-    await loadAuditLog('')
-
     const initial = (window.location.hash || '#pos').slice(1)
     await setTab(['dashboard','pos','orders','inventory','crm','campaigns','reports','admin'].includes(initial) ? initial : 'pos')
   }
@@ -4175,6 +4321,7 @@ $csrf = csrf_token();
     $view.innerHTML = `<div class="card"><div class="h1">Error</div><div class="errbox">${esc(e.message || e)}</div>
       <div class="muted">If you just deployed: ensure PHP can write next to this file to create <b>neighbourpos.db</b>.</div>
       <div class="muted" style="margin-top:10px">Admin-only demo: open DevTools Console and run <b>loadSample()</b> after login.</div>
+      <button class="btn small" type="button" onclick="window.location.reload()">Retry</button>
       </div>`
   })
 
