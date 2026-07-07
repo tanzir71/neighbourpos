@@ -288,10 +288,111 @@ function store_accent_safe(array $store, array $CONFIG): string {
   return $fallback ?: '#2563EB';
 }
 
-function money_fmt(array $CONFIG, int $cents): string {
-  $sym = $CONFIG['CURRENCY_SYMBOL'] ?? '$';
+function money_fmt(array $settings, int $cents): string {
+  $sym = $settings['currency_symbol'] ?? ($settings['CURRENCY_SYMBOL'] ?? '$');
   $amt = number_format($cents / 100, 2, '.', ',');
   return $sym.$amt;
+}
+
+function public_script_url(): string {
+  $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  $scheme = $https ? 'https' : 'http';
+  $host = $_SERVER['HTTP_HOST'] ?? '';
+  $script = $_SERVER['SCRIPT_NAME'] ?? basename(__FILE__);
+  if ($host === '') return $script;
+  return $scheme.'://'.$host.$script;
+}
+
+function receipt_public_url(string $orderCode): string {
+  return public_script_url().'?action=receipt&code='.rawurlencode($orderCode);
+}
+
+function public_page_css(string $accent): string {
+  return "
+    :root{--accent:{$accent};--bg:#f6f8fc;--panel:#fff;--txt:#090b10;--muted:#5c6472;--line:#dfe6f0;--line2:#cfd8e6;--wash:#edf2f8;--bad:#b42318;--good:#177a3b;--shadow-sm:0 1px 2px rgb(9 11 16 / .06);--shadow-md:0 8px 28px rgb(9 11 16 / .08);--radius-card:10px;--radius-control:6px}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#f8fafc 0%,#eef3fb 100%);color:var(--txt);font-size:14px}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .publicShell{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .publicWrap{width:min(100%,430px)}
+    .publicWrap.wide{width:min(100%,560px)}
+    .publicBrand{display:flex;align-items:center;gap:10px;margin:0 0 16px}
+    .brandMark{width:40px;height:40px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+    .brandMark::after{content:'';position:absolute;right:7px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
+    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
+    .brandText strong{display:block;font-size:15px;font-weight:700;letter-spacing:-.03em}
+    .brandText span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+    .publicCard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:18px}
+    .publicCard + .publicCard{margin-top:12px}
+    .h1{font-size:18px;line-height:1.2;font-weight:700;margin:0;letter-spacing:-.03em}
+    .p,.muted{color:var(--muted);font-size:12.5px;line-height:1.45;margin:6px 0 0}
+    label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:12px 0 6px}
+    input,select{width:100%;height:38px;border-radius:var(--radius-control);border:1px solid var(--line);background:var(--wash);color:var(--txt);padding:0 11px;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;outline:none}
+    input[type='checkbox']{width:16px;height:16px;margin:0 7px 0 0;vertical-align:-3px}
+    input:focus,select:focus{border-color:color-mix(in srgb,var(--accent) 64%,#fff);background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border-radius:var(--radius-control);border:0;background:var(--wash);color:var(--txt);padding:0 13px;font:500 13px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;text-decoration:none;cursor:pointer}
+    .btn:hover{text-decoration:none;background:#e5ebf3}
+    .btn.primary{width:100%;margin-top:14px;background:var(--accent);color:#fff}
+    .btn.primary:hover{filter:brightness(.96)}
+    .err{margin-top:12px;border-radius:8px;background:#fff0ee;color:var(--bad);padding:10px 11px;font-size:12.5px;line-height:1.35}
+    .ok{margin-top:12px;border-radius:8px;background:#eaf7ef;color:var(--good);padding:10px 11px;font-size:12.5px;line-height:1.35}
+    .row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .row.wrap{flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;background:#eef2f7;color:#445064;white-space:nowrap}
+    .b-new{background:#eaf1ff;color:#1642a6}.b-prep{background:#fff5dc;color:#744800}.b-ready{background:#eaf7ef;color:#145c2e}.b-out{background:#f2eafd;color:#5f2e9c}.b-done{background:#eef2f7;color:#445064}
+    .orderRow{padding:11px 0;border-top:1px solid var(--line)}
+    .orderRow:first-of-type{border-top:0}
+    .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.5}
+    @media(max-width:620px){.publicShell{display:block;padding:16px}.publicWrap,.publicWrap.wide{width:100%}.row{align-items:stretch;flex-direction:column}.badge{align-self:flex-start}}
+  ";
+}
+
+function public_brand_html(array $CONFIG, string $subtitle): string {
+  return "<div class='publicBrand'><div class='brandMark' aria-hidden='true'><span>NP</span></div><div class='brandText'><strong>".h((string)$CONFIG['APP_NAME'])."</strong><span>".h($subtitle)."</span></div></div>";
+}
+
+function receipt_page_css(string $accent): string {
+  return "
+    :root{--accent:{$accent};--txt:#090b10;--muted:#5c6472;--line:#dfe6f0;--wash:#edf2f8;--panel:#fff;--shadow-sm:0 1px 2px rgb(9 11 16 / .06)}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f6f8fc;color:var(--txt);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+    .receiptShell{min-height:100vh;padding:18px;display:grid;place-items:start center}
+    .receiptWrap{width:min(100%,420px)}
+    .receiptToolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+    .toolbarActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border-radius:6px;border:0;background:var(--wash);color:var(--txt);padding:0 12px;font:500 13px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;text-decoration:none;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#fff}
+    .receiptPaper{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-sm);padding:18px}
+    .brandLine{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .brandMark{width:36px;height:36px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;background:#090b10;color:#fff;font-size:13px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden}
+    .brandMark::after{content:'';position:absolute;right:6px;top:6px;width:4px;height:24px;border-radius:999px;background:var(--accent)}
+    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
+    .h1{font-size:18px;font-weight:700;margin:0;letter-spacing:-.03em}
+    .muted{color:var(--muted);font-size:12px;line-height:1.4}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    td{padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+    .right{text-align:right}
+    .receiptTotals{margin-top:12px;border-radius:8px;background:#f8fafc;border:1px solid var(--line);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+    .totalRow{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;border-top:1px solid var(--line)}
+    .totalRow:first-child{border-top:0}
+    .totalRow.total{font-weight:700;font-size:13px;color:var(--txt)}
+    .shareStatus{width:100%;color:var(--muted);font-size:12px;line-height:1.4}
+    @page{size:80mm auto;margin:4mm}
+    @media print{
+      html,body{width:80mm;margin:0;background:#fff}
+      .receiptShell{display:block;min-height:0;padding:0}
+      .receiptWrap{width:72mm;max-width:none;margin:0 auto}
+      .receiptToolbar,.shareStatus{display:none!important}
+      .receiptPaper{border:0;border-radius:0;box-shadow:none;padding:0;width:72mm}
+      .brandMark{display:none}
+      .h1{font-size:14px}
+      .muted{font-size:10px;color:#222}
+      td{font-size:10.5px;padding:5px 0;border-bottom:1px solid #ddd}
+      .receiptTotals{border:0;border-radius:0;background:#fff;font-size:10.5px;margin-top:8px}
+      .totalRow{padding:4px 0;border-top:1px solid #ddd}
+    }
+  ";
 }
 
 function csv_safe_cell($value): string {
@@ -937,45 +1038,26 @@ if ($action === 'staff_login') {
   $store = current_store($pdo, $CONFIG);
   $accent = store_accent_safe($store, $CONFIG);
   $csrf = csrf_token();
-  $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>".h($CONFIG['APP_NAME'])." - Staff Login</title>";
   echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
-  echo "<style>
-    :root{--accent:{$accent};--bg:#0b0c0f;--card:#11131a;--txt:#f5f7ff;--muted:#9aa3b2;--line:#23283a;}
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#07080b,#0b0c0f);color:var(--txt);}
-    a{color:var(--txt)}
-    .wrap{max-width:420px;margin:0 auto;padding:24px}
-    .brand{display:flex;align-items:center;gap:10px;margin-top:20px;margin-bottom:18px}
-    .brandMark{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:#050609;color:#fff;font-size:14px;font-weight:900;letter-spacing:-.1em;position:relative;overflow:hidden;box-shadow:0 12px 26px rgba(0,0,0,.3)}
-    .brandMark::after{content:'';position:absolute;right:6px;top:7px;width:4px;height:26px;border-radius:999px;background:var(--accent)}
-    .brandMark span{position:relative;z-index:1;transform:translateX(-1px)}
-    .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:16px}
-    .h1{font-size:18px;font-weight:700;margin:0}
-    .p{color:var(--muted);font-size:13px;line-height:1.4;margin:6px 0 0}
-    label{display:block;font-size:12px;color:var(--muted);margin-top:12px}
-    input{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none}
-    input:focus{border-color:rgba(37,99,235,.6);box-shadow:0 0 0 4px rgba(37,99,235,.14)}
-    .btn{margin-top:14px;width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
-    .btn:active{transform:translateY(1px)}
-    .err{margin-top:12px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#fecaca;padding:10px;border-radius:12px;font-size:13px}
-    .foot{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.5}
-  </style></head><body>";
-  echo "<div class='wrap'>";
-  echo "<div class='brand'><div class='brandMark' aria-hidden='true'><span>NP</span></div><div><div class='h1'>".h($CONFIG['APP_NAME'])."</div><div class='p'>Mobile-first POS + CRM for neighborhood stores.</div></div></div>";
-  echo "<div class='card'>";
+  echo "<style>".public_page_css($accent)."</style></head><body>";
+  echo "<main class='publicShell'><div class='publicWrap'>";
+  echo public_brand_html($CONFIG, 'Mobile-first POS + CRM for neighborhood stores.');
+  echo "<section class='publicCard'>";
+  echo "<div class='h1'>Staff sign in</div><div class='p'>Open the cashier station, customer list, campaigns, and reports.</div>";
   echo "<form method='post' action='?action=staff_login'>";
   echo "<input type='hidden' name='csrf' value='".h($csrf)."'>";
   echo "<label>Email</label><input name='email' type='email' autocomplete='username' required>";
   echo "<label>Password</label><input name='password' type='password' autocomplete='current-password' required>";
-  echo "<button class='btn' type='submit'>Sign in</button>";
+  echo "<button class='btn primary' type='submit'>Sign in</button>";
   if (!empty($err)) echo "<div class='err'>".h($err)."</div>";
   echo "</form>";
   echo "<div class='foot'>Compliance note: you are responsible for SMS/email marketing laws and costs. NeighbourPOS does not process payments. <a href='SETUP.md'>Docs</a>  -  <a href='SECURITY.md'>Security</a></div>";
-  echo "</div>";
-  echo "</div></body></html>";
+  echo "</section>";
+  echo "</div></main></body></html>";
   exit;
 }
 
@@ -1015,34 +1097,26 @@ if ($action === 'staff_register') {
   $csrf = csrf_token();
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>".h($CONFIG['APP_NAME'])." - Staff Register</title>";
+  echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
-  echo "<style>
-    :root{--accent:{$accent};--bg:#0b0c0f;--card:#11131a;--txt:#f5f7ff;--muted:#9aa3b2;--line:#23283a;}
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#07080b,#0b0c0f);color:var(--txt);}
-    .wrap{max-width:420px;margin:0 auto;padding:24px}
-    .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:16px}
-    .h1{font-size:18px;font-weight:700;margin:0}
-    label{display:block;font-size:12px;color:var(--muted);margin-top:12px}
-    input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none}
-    .btn{margin-top:14px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
-    .err{margin-top:12px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.28);color:#fecaca;padding:10px;border-radius:12px;font-size:13px}
-    .muted{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.4}
-  </style></head><body>";
-  echo "<div class='wrap'><div class='card'>";
-  echo "<div class='h1'>Create staff account</div>";
+  echo "<style>".public_page_css($accent)."</style></head><body>";
+  echo "<main class='publicShell'><div class='publicWrap'>";
+  echo public_brand_html($CONFIG, 'Create a staff login for this store.');
+  echo "<section class='publicCard'>";
+  echo "<div class='h1'>Create staff account</div><div class='p'>Add an operator account without leaving the single-file install.</div>";
   echo "<form method='post' action='?action=staff_register'>";
   echo "<input type='hidden' name='csrf' value='".h($csrf)."'>";
-  echo "<label>Email</label><input name='email' type='email' required>";
-  echo "<label>Password</label><input name='password' type='password' required>";
+  echo "<label>Email</label><input name='email' type='email' autocomplete='username' required>";
+  echo "<label>Password</label><input name='password' type='password' autocomplete='new-password' minlength='8' required>";
   if (is_admin() || $userCount === 0) {
     echo "<label>Role</label><select name='role'><option value='staff'>staff</option><option value='admin'>admin</option></select>";
   }
-  echo "<button class='btn' type='submit'>Create</button>";
+  echo "<button class='btn primary' type='submit'>Create account</button>";
   if (!empty($err)) echo "<div class='err'>".h($err)."</div>";
   echo "</form>";
   echo "<div class='muted'>Anti-gaming note: to flag device/IP creating many accounts with different phones, add counters in audit_log keyed by ip or a device fingerprint. <a href='SETUP.md'>Docs</a>  -  <a href='SECURITY.md'>Security</a></div>";
-  echo "</div></div></body></html>";
+  echo "</section></div></main></body></html>";
   exit;
 }
 
@@ -2254,6 +2328,7 @@ if (str_starts_with($action, 'api_')) {
 if ($action === 'portal') {
   $store = current_store($pdo, $CONFIG);
   $accent = store_accent_safe($store, $CONFIG);
+  $csrf = csrf_token();
 
   $phone = normalize_phone((string)($_GET['phone'] ?? ''));
   $orders = [];
@@ -2271,43 +2346,29 @@ if ($action === 'portal') {
 
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>".h($CONFIG['APP_NAME'])." - Order Status</title>";
+  echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
   echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
   echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
-  echo "<style>
-    :root{--accent:{$accent};--bg:#0b0c0f;--card:#11131a;--txt:#f5f7ff;--muted:#9aa3b2;--line:#23283a;}
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#07080b;color:var(--txt);}
-    .wrap{max-width:520px;margin:0 auto;padding:18px}
-    .card{background:rgba(17,19,26,.78);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
-    .h1{font-size:16px;font-weight:700;margin:0}
-    .muted{color:var(--muted);font-size:12px;line-height:1.4}
-    input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1118;color:var(--txt);outline:none;margin-top:10px}
-    .btn{margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:var(--accent);color:#fff;font-weight:500}
-    .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
-    .badge{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:#cbd5e1}
-    .b-new{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.22)}
-    .b-prep{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.22)}
-    .b-ready{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.22)}
-    .b-out{background:rgba(147,51,234,.12);border-color:rgba(147,51,234,.22)}
-    .b-done{background:rgba(100,116,139,.18);border-color:rgba(100,116,139,.26)}
-  </style></head><body><div class='wrap'>";
-  echo "<div class='card'><div class='h1'>Order status lookup</div><div class='muted'>Enter your phone number to see recent orders and current status.</div>";
+  echo "<style>".public_page_css($accent)."</style></head><body><main class='publicShell'><div class='publicWrap wide'>";
+  echo public_brand_html($CONFIG, 'Customer order status and marketing consent.');
+  echo "<section class='publicCard'><div class='h1'>Order status lookup</div><div class='p'>Enter your phone number to see recent orders and current status.</div>";
   echo "<form method='get'><input type='hidden' name='action' value='portal'>";
-  echo "<input name='phone' placeholder='Phone (e.g., +14155550101)' value='".h($_GET['phone'] ?? '')."'>";
-  echo "<button class='btn' type='submit'>Lookup</button></form></div>";
+  echo "<label>Phone</label><input name='phone' inputmode='tel' autocomplete='tel' placeholder='Phone (e.g., +14155550101)' value='".h((string)($_GET['phone'] ?? ''))."'>";
+  echo "<button class='btn primary' type='submit'>Lookup</button></form></section>";
 
   if ($phone !== '') {
     if (!$cust) {
-      echo "<div class='card'><div class='h1'>Not found</div><div class='muted'>No customer record for ".h($phone).". Ask staff to add you at checkout.</div></div>";
+      echo "<section class='publicCard'><div class='h1'>Not found</div><div class='muted'>No customer record for ".h($phone).". Ask staff to add you at checkout.</div></section>";
     } else {
-      echo "<div class='card'><div class='h1'>".h($cust['name'] ?: $cust['phone'])."</div>";
+      echo "<section class='publicCard'><div class='h1'>".h($cust['name'] ?: $cust['phone'])."</div>";
       echo "<div class='muted'>Marketing opt-in: ".(((int)$cust['marketing_opt_in'] === 1) ? "Yes" : "No")."</div>";
       echo "<form method='post' action='?action=portal_opt_in_update'>";
       echo "<input type='hidden' name='csrf' value='".h($csrf)."'>";
       echo "<input type='hidden' name='phone' value='".h($cust['phone'])."'>";
       echo "<label class='muted' style='display:block;margin-top:10px'><input type='checkbox' name='marketing_opt_in' value='1' ".(((int)$cust['marketing_opt_in'] === 1) ? "checked" : "")."> Marketing opt-in</label>";
-      echo "<button class='btn' type='submit'>Update opt-in</button></form></div>";
+      echo "<button class='btn primary' type='submit'>Update opt-in</button></form></section>";
 
-      echo "<div class='card'><div class='h1'>Recent orders</div>";
+      echo "<section class='publicCard'><div class='h1'>Recent orders</div>";
       if (!$orders) echo "<div class='muted' style='margin-top:8px'>No orders yet.</div>";
       foreach ($orders as $o) {
         $st = (string)$o['status'];
@@ -2316,18 +2377,18 @@ if ($action === 'portal') {
         if ($st === 'ready_for_pickup') $cls = 'b-ready';
         if ($st === 'out_for_delivery') $cls = 'b-out';
         if ($st === 'completed' || $st === 'cancelled') $cls = 'b-done';
-        echo "<div style='margin-top:10px;padding-top:10px;border-top:1px solid var(--line)'>";
-        echo "<div class='row'><div><div style='font-weight:500'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])."  -  ".h($o['created_at'])."</div></div>";
+        echo "<div class='orderRow'>";
+        echo "<div class='row'><div><div style='font-weight:600'>".h($o['order_code'])."</div><div class='muted'>".h($o['order_type'])."  -  ".h($o['created_at'])."</div></div>";
         echo "<div class='badge {$cls}'>".h($st)."</div></div>";
-        echo "<div class='muted' style='margin-top:6px'>Total: ".h(money_fmt($CONFIG, (int)$o['total_cents']))."  -  ETA: ".(int)$o['expected_eta_minutes']." min</div>";
+        echo "<div class='muted' style='margin-top:6px'>Total: ".h(money_fmt($store, (int)$o['total_cents']))."  -  ETA: ".(int)$o['expected_eta_minutes']." min</div>";
         echo "</div>";
       }
-      echo "</div>";
+      echo "</section>";
     }
   }
 
-  echo "<div class='card'><div class='muted'>Disclaimer: Status updates depend on staff actions. For marketing messages, opt-in is required by default; stores must comply with local laws and keep consent proof. <a href='SECURITY.md'>Security</a></div></div>";
-  echo "</div></body></html>";
+  echo "<section class='publicCard'><div class='muted'>Disclaimer: Status updates depend on staff actions. For marketing messages, opt-in is required by default; stores must comply with local laws and keep consent proof. <a href='SECURITY.md'>Security</a></div></section>";
+  echo "</div></main></body></html>";
   exit;
 }
 
@@ -2336,33 +2397,38 @@ if ($action === 'portal') {
    ========================= */
 
 if ($action === 'receipt') {
-  require_login();
+  $code = strtoupper(trim((string)($_GET['code'] ?? '')));
   $id = (int)($_GET['id'] ?? 0);
-  $st = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
-  $st->execute([$id]);
+  if ($code !== '') {
+    $st = $pdo->prepare("SELECT * FROM orders WHERE order_code = ?");
+    $st->execute([$code]);
+  } else {
+    require_login();
+    $st = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
+    $st->execute([$id]);
+  }
   $o = $st->fetch();
   if (!$o) { http_response_code(404); echo "Not found"; exit; }
 
   $store = current_store($pdo, $CONFIG);
+  $accent = store_accent_safe($store, $CONFIG);
   $items = json_decode((string)$o['items_json'], true) ?: [];
+  $receiptUrl = receipt_public_url((string)$o['order_code']);
 
   echo "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>";
   echo "<title>Receipt ".h($o['order_code'])."</title>";
-  echo "<style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:16px;color:#111}
-    .wrap{max-width:520px;margin:0 auto}
-    .h1{font-size:18px;font-weight:700;margin:0}
-    .muted{color:#555;font-size:12px}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    td{padding:8px 0;border-bottom:1px solid #eee;font-size:13px}
-    .right{text-align:right}
-    .tot{font-weight:700}
-    @media print{button{display:none}}
-  </style></head><body><div class='wrap'>";
-  echo "<button onclick='window.print()' style='padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font-weight:500'>Print</button>";
-  echo "<div style='margin-top:10px'><div class='h1'>".h($store['name'])."</div><div class='muted'>Order ".h($o['order_code'])."  -  ".h($o['created_at'])."</div>";
+  echo "<link rel='icon' type='image/svg+xml' href='".h(brand_favicon_href())."'>";
+  echo "<link rel='preconnect' href='https://fonts.googleapis.com'><link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>";
+  echo "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>";
+  echo "<style>".receipt_page_css($accent)."</style></head><body><main class='receiptShell'><div class='receiptWrap'>";
+  echo "<div class='receiptToolbar'><div class='muted'>Public receipt link</div><div class='toolbarActions'>";
+  echo "<button class='btn' type='button' onclick='window.print()'>Print</button>";
+  echo "<button class='btn primary' type='button' id='shareReceipt' data-url='".h($receiptUrl)."' data-code='".h((string)$o['order_code'])."'>Share</button>";
+  echo "</div><div class='shareStatus' id='shareStatus' aria-live='polite'></div></div>";
+  echo "<section class='receiptPaper'>";
+  echo "<div class='brandLine'><div class='brandMark' aria-hidden='true'><span>NP</span></div><div><div class='h1'>".h($store['name'])."</div><div class='muted'>Order ".h($o['order_code'])."  -  ".h($o['created_at'])."</div></div></div>";
   echo "<div class='muted'>Type: ".h($o['order_type'])."  -  Status: ".h($o['status'])."</div>";
-  echo "<div class='muted'>Customer: ".h((string)($o['phone_text'] ?? ''))."</div></div>";
+  echo "<div class='muted'>Customer: ".h((string)($o['phone_text'] ?? ''))."</div>";
 
   echo "<table>";
   foreach ($items as $it) {
@@ -2370,17 +2436,44 @@ if ($action === 'receipt') {
     $qty = (int)($it['qty'] ?? 1);
     $price = (int)($it['price_cents'] ?? 0);
     $notes = (string)($it['notes'] ?? '');
-    echo "<tr><td>".h($qty."x ".$name).($notes ? "<div class='muted'>".h($notes)."</div>" : "")."</td><td class='right'>".h(money_fmt($CONFIG, $price*$qty))."</td></tr>";
+    echo "<tr><td>".h($qty."x ".$name).($notes ? "<div class='muted'>".h($notes)."</div>" : "")."</td><td class='right'>".h(money_fmt($store, $price*$qty))."</td></tr>";
   }
-  echo "<tr><td class='right muted'>Subtotal</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['subtotal_cents']))."</td></tr>";
-  echo "<tr><td class='right muted'>Tax</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['tax_cents']))."</td></tr>";
-  echo "<tr><td class='right muted'>Tip</td><td class='right'>".h(money_fmt($CONFIG, (int)$o['tip_cents']))."</td></tr>";
-  echo "<tr><td class='right tot'>Total</td><td class='right tot'>".h(money_fmt($CONFIG, (int)$o['total_cents']))."</td></tr>";
-  echo "<tr><td class='right muted'>Payment</td><td class='right'>".h($o['payment_method'])."  -  ".(((int)$o['payment_received']===1) ? "received" : "pending")."</td></tr>";
   echo "</table>";
 
-  echo "<div class='muted' style='margin-top:14px'>Platform does not process payments. Thank you!</div>";
-  echo "</div></body></html>";
+  echo "<div class='receiptTotals'>";
+  echo "<div class='totalRow'><span>Subtotal</span><span>".h(money_fmt($store, (int)$o['subtotal_cents']))."</span></div>";
+  echo "<div class='totalRow'><span>Tax</span><span>".h(money_fmt($store, (int)$o['tax_cents']))."</span></div>";
+  echo "<div class='totalRow'><span>Tip</span><span>".h(money_fmt($store, (int)$o['tip_cents']))."</span></div>";
+  echo "<div class='totalRow total'><span>Total</span><span>".h(money_fmt($store, (int)$o['total_cents']))."</span></div>";
+  echo "<div class='totalRow'><span>Payment</span><span>".h($o['payment_method'])." - ".(((int)$o['payment_received']===1) ? "received" : "pending")."</span></div>";
+  echo "</div>";
+  echo "<div class='muted' style='margin-top:14px'>Platform records payments only; it does not process payments. Thank you!</div>";
+  echo "</section></div></main>";
+  echo "<script>
+    (function(){
+      const btn = document.getElementById('shareReceipt');
+      const status = document.getElementById('shareStatus');
+      if (!btn || !status) return;
+      btn.addEventListener('click', async function(){
+        const url = btn.dataset.url || window.location.href;
+        const payload = {title: document.title, text: 'Receipt '+(btn.dataset.code || ''), url};
+        try {
+          if (navigator.share) {
+            await navigator.share(payload);
+            status.textContent = 'Share sheet opened.';
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            status.textContent = 'Receipt link copied.';
+          } else {
+            status.textContent = 'Copy receipt link: '+url;
+          }
+        } catch (err) {
+          status.textContent = 'Copy receipt link: '+url;
+        }
+      });
+    })();
+  </script>";
+  echo "</body></html>";
   exit;
 }
 
@@ -2603,7 +2696,7 @@ $csrf = csrf_token();
     .modalCard{position:relative;width:min(420px,100%);border:1px solid var(--line);border-radius:var(--radius-modal);background:#fff;box-shadow:var(--shadow-md);padding:18px;display:grid;gap:12px}
     .modalActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
     .modalCard input{width:100%;padding:10px 12px}
-    .saleTile strong{font-size:16px;font-weight:500;line-height:1.18}
+    .saleTile strong,.saleTile .name{font-size:16px;font-weight:500;line-height:1.18}
     .cartLine strong,td strong{font-size:13px;font-weight:500}
     .tinyStatus span{white-space:nowrap}
     .tinyStatus b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:#eaf0ff;color:var(--accent);margin-left:4px}
@@ -3443,7 +3536,7 @@ $csrf = csrf_token();
                   <div class="meta">${fmtDate(o.created_at)}  -  Payment: ${esc(o.payment_method)}  -  ${o.payment_received ? 'received' : 'pending'}</div>
                 </div>
                 <div style="flex:0;display:flex;flex-direction:column;gap:6px;align-items:stretch">
-                  <a class="btn small ghost" target="_blank" href="?action=receipt&id=${o.id}">Receipt</a>
+                  <a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a>
                   <button class="btn small" data-st="${o.id}" data-next="preparing">Preparing</button>
                   <button class="btn small" data-st="${o.id}" data-next="${o.order_type==='delivery'?'out_for_delivery':'ready_for_pickup'}">${o.order_type==='delivery'?'Out for delivery':'Ready'}</button>
                   <button class="btn small primary" data-st="${o.id}" data-next="completed">Complete</button>
@@ -3632,7 +3725,7 @@ $csrf = csrf_token();
                         <div class="meta">${esc(o.order_type)}  -  ${fmtMoney(o.total_cents)}  -  ${fmtDate(o.created_at)}</div>
                       </div>
                       <div style="flex:0">
-                        <a class="btn small ghost" target="_blank" href="?action=receipt&id=${o.id}">Receipt</a>
+                        <a class="btn small ghost" target="_blank" href="?action=receipt&code=${encodeURIComponent(o.order_code)}">Receipt</a>
                       </div>
                     </div>
                   </div>
